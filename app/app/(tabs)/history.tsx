@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CalendarMonthModal } from '@/components/CalendarMonthModal';
 import { DifficultyStars } from '@/components/DifficultyStars';
 import { DimensionChip } from '@/components/DimensionChip';
 import { XpHeatmap } from '@/components/XpHeatmap';
@@ -23,7 +24,7 @@ import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
-const HEATMAP_WEEKS = 13;
+const HEATMAP_WEEKS = 5;
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -60,6 +61,7 @@ function formatDay(d: Date): string {
 
 export default function HistoryScreen() {
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Heatmap range: anchor on `selected` so users browsing the past
   // can still see grid context.
@@ -150,8 +152,20 @@ export default function HistoryScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>HISTORY</Text>
-          <Text style={styles.title}>Your trail</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>HISTORY</Text>
+            <Text style={styles.title}>Your trail</Text>
+          </View>
+          <Pressable
+            onPress={() => setCalendarOpen(true)}
+            style={({ pressed }) => [
+              styles.calendarBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons name="calendar-outline" size={22} color={tokens.text.hi} />
+          </Pressable>
         </View>
 
         <View style={styles.heatmapCard}>
@@ -375,6 +389,13 @@ export default function HistoryScreen() {
           </>
         )}
       </ScrollView>
+
+      <CalendarMonthModal
+        visible={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        onSelectDay={setSelected}
+        selected={selected}
+      />
     </SafeAreaView>
   );
 }
@@ -386,8 +407,20 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.layout.bottomNavClearance,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     paddingTop: tokens.space[2],
     paddingBottom: tokens.space[4],
+  },
+  calendarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eyebrow: {
     ...tokens.type.eyebrow,
