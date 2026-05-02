@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { DimensionId, TaskWithDimensions } from '@/lib/db/types';
+import { isDueOn, parseRecurrence } from '@/lib/recurrence';
 import { supabase } from '@/lib/supabase';
 
 export const historyKeys = {
@@ -146,6 +147,8 @@ interface TaskRowFull {
   description: string | null;
   difficulty: 1 | 2 | 3 | 4 | 5;
   task_type: 'one_shot' | 'daily' | 'weekly';
+  recurrence: unknown;
+  target_count: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -205,7 +208,14 @@ export function useDayDetail(date: Date) {
         completedAt: c.completed_at,
       }));
 
-      const completedTaskIdsThisDay = new Set(compRows.map((c) => c.task_id));
+      // Per-task completion count for THIS day (multi-target aware).
+      const completionCountThisDay = new Map<string, number>();
+      compRows.forEach((c) => {
+        completionCountThisDay.set(
+          c.task_id,
+          (completionCountThisDay.get(c.task_id) ?? 0) + 1,
+        );
+      });
 
       // Active tasks created on or before this day.
       const { data: tasks, error: taskErr } = await supabase
@@ -216,19 +226,46 @@ export function useDayDetail(date: Date) {
         .order('created_at', { ascending: true });
       if (taskErr) throw taskErr;
 
-      const openTasks: TaskWithDimensions[] = ((tasks ?? []) as TaskRowFull[])
-        .filter((t) => !completedTaskIdsThisDay.has(t.id))
-        .map((t) => ({
-          id: t.id,
-          character_id: t.character_id,
-          title: t.title,
-          description: t.description,
-          difficulty: t.difficulty,
-          task_type: t.task_type,
-          is_archived: t.is_archived,
-          created_at: t.created_at,
-          updated_at: t.updated_at,
-          dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
+      const taskRows = (tasks ?? []) as TaskRowFull[];
+      const oneShotIds = taskRows
+        .filter((t) => parseRecurrence(t.recurrence).type === 'one_shot')
+        .map((t) => t.id);
+      let oneShotCompletedAnytime = new Set<string>();
+      if (oneShotIds.length > 0) {
+        const { data: anyComp, error: anyErr } = await supabase
+          .from('task_completion')
+          .select('task_id')
+          .in('task_id', oneShotIds);
+        if (anyErr) throw anyErr;
+        oneShotCompletedAnytime = new Set((anyComp ?? []).map((r) => r.task_id));
+      }
+
+      const openTasks: TaskWithDimensions[] = taskRows
+        .map((t) => ({ raw: t, recurrence: parseRecurrence(t.recurrence) }))
+        .filter(({ raw, recurrence }) => {
+          if (recurrence.type === 'one_shot') {
+            // For a past day: still candidate if ever-completed is false.
+            // (Edge case: if completed-on-this-day, the completion is already
+            // shown above; we want to hide here so list isn't empty.)
+            return !oneShotCompletedAnytime.has(raw.id);
+          }
+          if (!isDueOn(recurrence, date)) return false;
+          const doneCount = completionCountThisDay.get(raw.id) ?? 0;
+          return doneCount < (raw.target_count ?? 1);
+        })
+        .map(({ raw, recurrence }) => ({
+          id: raw.id,
+          character_id: raw.character_id,
+          title: raw.title,
+          description: raw.description,
+          difficulty: raw.difficulty,
+          task_type: raw.task_type,
+          recurrence,
+          target_count: raw.target_count ?? 1,
+          is_archived: raw.is_archived,
+          created_at: raw.created_at,
+          updated_at: raw.updated_at,
+          dimensions: (raw.task_dimension ?? []).map((td) => td.dimension_id),
         }));
 
       const totalXp = completions.reduce((s, c) => s + c.xpGranted, 0);

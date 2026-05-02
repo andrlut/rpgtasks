@@ -69,7 +69,7 @@ This applies to **velocity and ceremony only** — security, RLS, secret hygiene
 
 ---
 
-## Database schema (7 migrations applied to cloud)
+## Database schema (8 migrations applied to cloud)
 
 Tables in `public`:
 
@@ -79,7 +79,7 @@ Tables in `public`:
 | `character` | 1:1 with profile. total_xp, coins |
 | `dimension` | catalog: health, strength, mind, wealth, social, discipline (color, icon) |
 | `character_dimension` | per-user XP per dimension (composite PK) |
-| `task` | character-owned. title, difficulty 1-5, type one_shot/daily/weekly, is_archived |
+| `task` | character-owned. title, difficulty 1-5, **recurrence jsonb** (one_shot/daily/weekly+days/monthly+day), **target_count int** (1-50), legacy `task_type` enum kept for compat, is_archived |
 | `task_dimension` | M:N task ↔ dimension (a task can grant XP in multiple dims) |
 | `task_completion` | **immutable** — guards xp_granted, coins_granted at the moment of completion |
 | `reward` | character-owned. title, cost, icon, **category** (indulgence/good/experience), is_archived |

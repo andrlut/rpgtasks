@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { TaskWithDimensions } from '@/lib/db/types';
+import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -27,6 +28,11 @@ interface Props {
 export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
   const reward = rewardForDifficulty(task.difficulty);
   const scale = useSharedValue(1);
+
+  // Only show the recurrence note when it deviates from the default
+  // ("daily, target=1") — otherwise it'd add clutter to every card.
+  const showRecurrenceNote =
+    task.recurrence.type !== 'daily' || task.target_count > 1;
 
   // Brief celebration pulse if the parent flips isCompleting briefly.
   useEffect(() => {
@@ -70,6 +76,11 @@ export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
             </View>
           )}
         </View>
+        {showRecurrenceNote && (
+          <Text style={styles.recurrenceNote} numberOfLines={1}>
+            {describeRecurrence(task.recurrence, task.target_count)}
+          </Text>
+        )}
         <View style={styles.rewardRow}>
           <View style={styles.rewardItem}>
             <Ionicons name="flash" size={12} color={tokens.semantic.xp} />
@@ -152,6 +163,11 @@ const styles = StyleSheet.create({
   rewardText: {
     ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
+  },
+  recurrenceNote: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+    fontStyle: 'italic',
   },
   completeButtonWrap: {
     ...tokens.shadow.violetGlow,

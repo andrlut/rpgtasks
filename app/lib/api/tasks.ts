@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { DimensionId, TaskWithDimensions } from '@/lib/db/types';
+import type {
+  DimensionId,
+  Recurrence,
+  TaskWithDimensions,
+} from '@/lib/db/types';
+import { isDueOn, parseRecurrence } from '@/lib/recurrence';
 import { supabase } from '@/lib/supabase';
 
 import { characterKeys, type CharacterWithProfile } from './character';
@@ -18,6 +23,8 @@ export interface TaskFormInput {
   description: string | null;
   difficulty: 1 | 2 | 3 | 4 | 5;
   task_type: 'one_shot' | 'daily' | 'weekly';
+  recurrence: Recurrence;
+  target_count: number;
   dimensions: DimensionId[];
 }
 
@@ -28,52 +35,86 @@ interface TaskRow {
   description: string | null;
   difficulty: 1 | 2 | 3 | 4 | 5;
   task_type: 'one_shot' | 'daily' | 'weekly';
+  recurrence: unknown;
+  target_count: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
   task_dimension: { dimension_id: DimensionId }[];
 }
 
+function mapTaskRow(t: TaskRow): TaskWithDimensions {
+  return {
+    id: t.id,
+    character_id: t.character_id,
+    title: t.title,
+    description: t.description,
+    difficulty: t.difficulty,
+    task_type: t.task_type,
+    recurrence: parseRecurrence(t.recurrence),
+    target_count: t.target_count ?? 1,
+    is_archived: t.is_archived,
+    created_at: t.created_at,
+    updated_at: t.updated_at,
+    dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
+  };
+}
+
 /**
- * For V0: returns all non-archived tasks that have NOT been completed today.
- * Daily/weekly resets are simplified — we just check completed_at >= start of today.
+ * Tasks pending right now: every active task whose recurrence says it's
+ * due *today* AND that hasn't already met its `target_count` for today.
+ * Plus one_shot tasks that have never been completed.
  */
 async function fetchPendingTasks(): Promise<TaskWithDimensions[]> {
-  // Get today's start in UTC (good enough for V0)
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
+  const today = new Date();
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
     .select('*, task_dimension(dimension_id)')
     .eq('is_archived', false)
     .order('created_at', { ascending: true });
-
   if (taskErr) throw taskErr;
 
+  const allTasks = ((tasks ?? []) as TaskRow[]).map(mapTaskRow);
+
+  // Today's completion counts (per task) — used to decide "still pending today".
   const { data: completionsToday, error: compErr } = await supabase
     .from('task_completion')
     .select('task_id')
     .gte('completed_at', startOfToday.toISOString());
-
   if (compErr) throw compErr;
 
-  const completedIdsToday = new Set((completionsToday ?? []).map((c) => c.task_id));
+  const completionCountToday = new Map<string, number>();
+  (completionsToday ?? []).forEach((c) => {
+    completionCountToday.set(c.task_id, (completionCountToday.get(c.task_id) ?? 0) + 1);
+  });
 
-  return (tasks ?? [])
-    .filter((t: TaskRow) => !completedIdsToday.has(t.id))
-    .map((t: TaskRow) => ({
-      id: t.id,
-      character_id: t.character_id,
-      title: t.title,
-      description: t.description,
-      difficulty: t.difficulty,
-      task_type: t.task_type,
-      is_archived: t.is_archived,
-      created_at: t.created_at,
-      updated_at: t.updated_at,
-      dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
-    }));
+  // For one_shot tasks we additionally need to know "ever completed?". Only
+  // query if there's at least one one_shot among the active tasks.
+  const oneShotIds = allTasks
+    .filter((t) => t.recurrence.type === 'one_shot')
+    .map((t) => t.id);
+
+  let everCompletedOneShots = new Set<string>();
+  if (oneShotIds.length > 0) {
+    const { data: anyComp, error: anyErr } = await supabase
+      .from('task_completion')
+      .select('task_id')
+      .in('task_id', oneShotIds);
+    if (anyErr) throw anyErr;
+    everCompletedOneShots = new Set((anyComp ?? []).map((r) => r.task_id));
+  }
+
+  return allTasks.filter((t) => {
+    if (t.recurrence.type === 'one_shot') {
+      return !everCompletedOneShots.has(t.id);
+    }
+    if (!isDueOn(t.recurrence, today)) return false;
+    const doneToday = completionCountToday.get(t.id) ?? 0;
+    return doneToday < t.target_count;
+  });
 }
 
 export function useTasks() {
@@ -90,7 +131,7 @@ export interface CompleteTaskResult {
 
 /**
  * Calls the complete_task() RPC on Supabase. Optimistically:
- *   - removes the task from the pending list
+ *   - removes the task from the pending list (live tap, single-target only)
  *   - bumps total_xp + coins on the character
  * On error, rolls back. On success, invalidates so the truth wins.
  */
@@ -123,14 +164,17 @@ export function useCompleteTask() {
       const prevTasks = queryClient.getQueryData<TaskWithDimensions[]>(taskKeys.pending());
       const prevChar = queryClient.getQueryData<CharacterWithProfile>(characterKeys.me());
 
-      // Only optimistically remove from "pending today" when it's a live
-      // completion. Retroactive completions on a past day must NOT remove
-      // the task from today's pending list.
+      // Optimistic removal from "pending today" only when:
+      //   - it's a live tap (no completedAt), AND
+      //   - the task's target is 1 (multi-target tasks need a refetch to know
+      //     whether THIS tap was the one that closed out the day).
       const isLive = !params.completedAt;
-      if (prevTasks && isLive) {
+      const t = prevTasks?.find((x) => x.id === params.taskId);
+      const singleTarget = !t || (t.target_count ?? 1) === 1;
+      if (prevTasks && isLive && singleTarget) {
         queryClient.setQueryData<TaskWithDimensions[]>(
           taskKeys.pending(),
-          prevTasks.filter((t) => t.id !== params.taskId),
+          prevTasks.filter((x) => x.id !== params.taskId),
         );
       }
 
@@ -183,19 +227,7 @@ export function useTask(id: string | null | undefined) {
         .eq('id', id)
         .single();
       if (error) throw error;
-      const t = data as TaskRow;
-      return {
-        id: t.id,
-        character_id: t.character_id,
-        title: t.title,
-        description: t.description,
-        difficulty: t.difficulty,
-        task_type: t.task_type,
-        is_archived: t.is_archived,
-        created_at: t.created_at,
-        updated_at: t.updated_at,
-        dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
-      };
+      return mapTaskRow(data as TaskRow);
     },
   });
 }
@@ -232,6 +264,8 @@ export function useCreateTask() {
           description: input.description,
           difficulty: input.difficulty,
           task_type: input.task_type,
+          recurrence: input.recurrence,
+          target_count: input.target_count,
         })
         .select('id')
         .single();
@@ -258,6 +292,8 @@ export function useUpdateTask(taskId: string) {
           description: input.description,
           difficulty: input.difficulty,
           task_type: input.task_type,
+          recurrence: input.recurrence,
+          target_count: input.target_count,
         })
         .eq('id', taskId);
       if (error) throw error;

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DifficultyPicker } from '@/components/DifficultyPicker';
 import { DimensionMultiSelect } from '@/components/DimensionMultiSelect';
-import { SegmentedControl } from '@/components/SegmentedControl';
+import { RecurrencePicker } from '@/components/RecurrencePicker';
 import {
   useArchiveTask,
   useCreateTask,
@@ -25,15 +25,17 @@ import {
   useUpdateTask,
   type TaskFormInput,
 } from '@/lib/api/tasks';
-import type { DimensionId } from '@/lib/db/types';
+import type { DimensionId, Recurrence } from '@/lib/db/types';
 import type { Difficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
-const TASK_TYPE_OPTIONS = [
-  { value: 'one_shot', label: 'One-shot' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-] as const;
+/** Map a Recurrence to the legacy task_type column (kept for compat). */
+function legacyTypeFor(r: Recurrence): 'one_shot' | 'daily' | 'weekly' {
+  if (r.type === 'one_shot') return 'one_shot';
+  if (r.type === 'weekly') return 'weekly';
+  // daily and monthly both map to daily for the legacy column
+  return 'daily';
+}
 
 export default function TaskFormScreen() {
   const router = useRouter();
@@ -45,7 +47,8 @@ export default function TaskFormScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>(2);
-  const [taskType, setTaskType] = useState<'one_shot' | 'daily' | 'weekly'>('daily');
+  const [recurrence, setRecurrence] = useState<Recurrence>({ type: 'daily' });
+  const [targetCount, setTargetCount] = useState<number>(1);
   const [dimensions, setDimensions] = useState<DimensionId[]>([]);
 
   // Hydrate from server when editing
@@ -54,7 +57,8 @@ export default function TaskFormScreen() {
       setTitle(existing.data.title);
       setDescription(existing.data.description ?? '');
       setDifficulty(existing.data.difficulty);
-      setTaskType(existing.data.task_type);
+      setRecurrence(existing.data.recurrence);
+      setTargetCount(existing.data.target_count ?? 1);
       setDimensions(existing.data.dimensions);
     }
   }, [existing.data]);
@@ -71,10 +75,12 @@ export default function TaskFormScreen() {
       title: title.trim(),
       description: description.trim() === '' ? null : description.trim(),
       difficulty,
-      task_type: taskType,
+      task_type: legacyTypeFor(recurrence),
+      recurrence,
+      target_count: recurrence.type === 'one_shot' ? 1 : targetCount,
       dimensions,
     }),
-    [title, description, difficulty, taskType, dimensions],
+    [title, description, difficulty, recurrence, targetCount, dimensions],
   );
 
   const handleSave = async () => {
@@ -199,11 +205,12 @@ export default function TaskFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Type</Text>
-            <SegmentedControl
-              options={TASK_TYPE_OPTIONS as unknown as { value: 'one_shot' | 'daily' | 'weekly'; label: string }[]}
-              value={taskType}
-              onChange={setTaskType}
+            <Text style={styles.label}>How often</Text>
+            <RecurrencePicker
+              recurrence={recurrence}
+              onChange={setRecurrence}
+              targetCount={targetCount}
+              onChangeTargetCount={setTargetCount}
             />
           </View>
 

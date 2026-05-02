@@ -14,6 +14,25 @@ export type DimensionId =
 
 export type TaskType = 'one_shot' | 'daily' | 'weekly';
 
+/**
+ * Source of truth for when a task is "due". `task_type` is preserved as
+ * a legacy hint but `recurrence` is what queries should consult.
+ *
+ * - one_shot: due once, ever. Disappears from "today" after first completion.
+ * - daily: due every day. `target_count > 1` lets a single task be done
+ *   multiple times per day (e.g. brush teeth 3x).
+ * - weekly: due only on the listed weekdays (0=Sun, 6=Sat).
+ * - monthly: due on the given day-of-month (skipped silently in months
+ *   without that day, e.g. day=31 in February).
+ */
+export type Recurrence =
+  | { type: 'one_shot' }
+  | { type: 'daily' }
+  | { type: 'weekly'; days: number[] }
+  | { type: 'monthly'; day: number };
+
+export type RecurrenceType = Recurrence['type'];
+
 export interface Dimension {
   id: DimensionId;
   display_name: string;
@@ -51,6 +70,8 @@ export interface Task {
   description: string | null;
   difficulty: 1 | 2 | 3 | 4 | 5;
   task_type: TaskType;
+  recurrence: Recurrence;
+  target_count: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
