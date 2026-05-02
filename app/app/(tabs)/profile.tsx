@@ -1,6 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as Updates from 'expo-updates';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCharacter } from '@/lib/api/character';
@@ -13,6 +24,41 @@ export default function ProfileScreen() {
   const character = useCharacter();
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const profile = character.data?.profile;
+
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdate = async () => {
+    if (isCheckingUpdate) return;
+    if (__DEV__) {
+      Alert.alert(
+        'Dev mode',
+        'OTA updates are only available on production builds (the APK), not in Expo Go / dev mode.',
+      );
+      return;
+    }
+    setIsCheckingUpdate(true);
+    try {
+      const result = await Updates.checkForUpdateAsync();
+      if (result.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        Alert.alert(
+          'Update ready',
+          'Restart the app now to apply it?',
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Restart', onPress: () => Updates.reloadAsync() },
+          ],
+        );
+      } else {
+        Alert.alert('Up to date', 'You are on the latest version.');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      Alert.alert('Could not check', msg);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
 
   const handleSignOut = async () => {
     Alert.alert('Sign out?', 'You can log back in with the same email.', [
@@ -53,6 +99,25 @@ export default function ProfileScreen() {
           <Text style={[styles.rowText, { color: tokens.text.hi }]}>Replay onboarding</Text>
         </Pressable>
 
+        <Pressable
+          style={({ pressed }) => [
+            styles.row,
+            { marginTop: tokens.space[2] },
+            pressed && styles.rowPressed,
+          ]}
+          onPress={handleCheckForUpdate}
+          disabled={isCheckingUpdate}
+        >
+          {isCheckingUpdate ? (
+            <ActivityIndicator color={tokens.brand.violet2} size="small" style={{ width: 22 }} />
+          ) : (
+            <Ionicons name="cloud-download-outline" size={22} color={tokens.brand.violet2} />
+          )}
+          <Text style={[styles.rowText, { color: tokens.text.hi }]}>
+            {isCheckingUpdate ? 'Checking...' : 'Check for updates'}
+          </Text>
+        </Pressable>
+
         <Text style={styles.sectionTitle}>Account</Text>
         <Pressable
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
@@ -62,7 +127,10 @@ export default function ProfileScreen() {
           <Text style={[styles.rowText, { color: tokens.semantic.danger }]}>Sign out</Text>
         </Pressable>
 
-        <Text style={styles.footer}>RPG Tasks · v0</Text>
+        <Text style={styles.footer}>
+          RPG Tasks · v{Constants.expoConfig?.version ?? '0'}
+          {Updates.updateId ? `\nupdate ${Updates.updateId.slice(0, 8)}` : ''}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
