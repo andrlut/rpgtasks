@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
@@ -50,6 +50,16 @@ export default function CharacterScreen() {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={character.isRefetching || skillStates.isRefetching}
+            onRefresh={() => {
+              character.refetch();
+              skillStates.refetch();
+            }}
+            tintColor={tokens.brand.violet2}
+          />
+        }
       >
         <View style={styles.heroBlock}>
           <View style={styles.bigAvatar}>

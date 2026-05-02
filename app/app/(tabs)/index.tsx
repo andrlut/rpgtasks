@@ -2,7 +2,15 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeroCard } from '@/components/HeroCard';
@@ -13,6 +21,7 @@ import { useCharacter } from '@/lib/api/character';
 import { useStreak } from '@/lib/api/streak';
 import { useCompleteTask, useTasks } from '@/lib/api/tasks';
 import type { TaskWithDimensions } from '@/lib/db/types';
+import { formatLongDate, timeOfDayGreeting } from '@/lib/time';
 import { rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -49,15 +58,34 @@ export default function HomeScreen() {
   const isLoading = character.isLoading || tasks.isLoading;
   const hasError = character.error || tasks.error;
 
+  const handleRefresh = async () => {
+    await Promise.all([
+      character.refetch(),
+      tasks.refetch(),
+      streak.refetch(),
+    ]);
+  };
+  const isRefreshing =
+    character.isRefetching || tasks.isRefetching || streak.isRefetching;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={tokens.brand.violet2}
+            colors={[tokens.brand.violet2]}
+          />
+        }
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Good day,</Text>
+          <Text style={styles.dateText}>{formatLongDate()}</Text>
+          <Text style={styles.greeting}>{timeOfDayGreeting()}</Text>
           <Text style={styles.name}>
             {character.data?.profile.display_name ?? 'Adventurer'}
           </Text>
@@ -159,6 +187,13 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: tokens.space[2],
     paddingBottom: tokens.space[5],
+  },
+  dateText: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: tokens.space[2],
   },
   greeting: {
     ...tokens.type.body,
