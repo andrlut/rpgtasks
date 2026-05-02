@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,19 +15,71 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RewardCard } from '@/components/RewardCard';
+import { TemplateCard } from '@/components/TemplateCard';
 import { useCharacter } from '@/lib/api/character';
-import { useRedeemReward, useRewards } from '@/lib/api/rewards';
-import type { Reward } from '@/lib/db/types';
+import {
+  useAddTemplateToShop,
+  useRedeemReward,
+  useRewardTemplates,
+  useRewards,
+} from '@/lib/api/rewards';
+import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { tokens } from '@/theme';
+import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
 export default function RewardsScreen() {
   const router = useRouter();
   const character = useCharacter();
   const rewards = useRewards();
+  const templates = useRewardTemplates();
   const redeem = useRedeemReward();
+  const addTemplate = useAddTemplateToShop();
+
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<RewardCategory>('indulgence');
 
   const coins = character.data?.character.coins ?? 0;
+
+  const myRewardsByCategory = useMemo(() => {
+    const map: Record<RewardCategory, Reward[]> = {
+      indulgence: [],
+      good: [],
+      experience: [],
+    };
+    (rewards.data ?? []).forEach((r) => map[r.category]?.push(r));
+    return map;
+  }, [rewards.data]);
+
+  const myTitlesByCategory = useMemo(() => {
+    const map: Record<RewardCategory, Set<string>> = {
+      indulgence: new Set(),
+      good: new Set(),
+      experience: new Set(),
+    };
+    (rewards.data ?? []).forEach((r) =>
+      map[r.category]?.add(r.title.trim().toLowerCase()),
+    );
+    return map;
+  }, [rewards.data]);
+
+  const templatesByCategory = useMemo(() => {
+    const map: Record<RewardCategory, RewardTemplate[]> = {
+      indulgence: [],
+      good: [],
+      experience: [],
+    };
+    (templates.data ?? []).forEach((t) => {
+      if (!myTitlesByCategory[t.category].has(t.title.trim().toLowerCase())) {
+        map[t.category]?.push(t);
+      }
+    });
+    return map;
+  }, [templates.data, myTitlesByCategory]);
+
+  const meta = REWARD_CATEGORY_META[activeCategory];
+  const myList = myRewardsByCategory[activeCategory];
+  const tmplList = templatesByCategory[activeCategory];
 
   const handleRedeem = (reward: Reward) => {
     Alert.alert(
@@ -54,6 +106,19 @@ export default function RewardsScreen() {
     );
   };
 
+  const handleAddTemplate = async (template: RewardTemplate) => {
+    setAddingTemplateId(template.id);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      await addTemplate.mutateAsync(template);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      Alert.alert('Could not add', msg);
+    } finally {
+      setAddingTemplateId(null);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
@@ -61,10 +126,13 @@ export default function RewardsScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={rewards.isRefetching || character.isRefetching}
+            refreshing={
+              rewards.isRefetching || character.isRefetching || templates.isRefetching
+            }
             onRefresh={() => {
               rewards.refetch();
               character.refetch();
+              templates.refetch();
             }}
             tintColor={tokens.brand.violet2}
           />
@@ -76,28 +144,65 @@ export default function RewardsScreen() {
           <Text style={styles.balanceLabel}>coins available</Text>
         </View>
 
+        <View style={styles.tabs}>
+          {REWARD_CATEGORY_ORDER.map((cat) => {
+            const m = REWARD_CATEGORY_META[cat];
+            const active = cat === activeCategory;
+            return (
+              <Pressable
+                key={cat}
+                onPress={() => setActiveCategory(cat)}
+                style={[
+                  styles.tab,
+                  active && {
+                    backgroundColor: m.bg,
+                    borderColor: m.color,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={m.icon as never}
+                  size={16}
+                  color={active ? m.color : tokens.text.mid}
+                />
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: active ? m.color : tokens.text.mid },
+                  ]}
+                >
+                  {m.short}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={styles.tagline}>{meta.tagline}</Text>
+
+        {/* YOUR SHOP */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>My rewards</Text>
-          {rewards.data && rewards.data.length > 0 ? (
-            <Text style={styles.sectionMeta}>{rewards.data.length} total</Text>
-          ) : null}
+          <Text style={styles.sectionTitle}>Your shop</Text>
+          {myList.length > 0 && (
+            <Text style={styles.sectionMeta}>{myList.length}</Text>
+          )}
         </View>
 
         {rewards.isLoading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={tokens.brand.violet2} />
           </View>
-        ) : rewards.data?.length === 0 ? (
+        ) : myList.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="gift-outline" size={48} color={tokens.text.dim} />
-            <Text style={styles.emptyTitle}>No rewards yet</Text>
+            <Ionicons name={meta.icon as never} size={40} color={meta.color} />
+            <Text style={styles.emptyTitle}>Nothing here yet</Text>
             <Text style={styles.emptySub}>
-              Tap the + below to define what you can spend coins on.
+              Tap a suggestion below to add it, or use + to make your own.
             </Text>
           </View>
         ) : (
           <View style={styles.list}>
-            {rewards.data?.map((reward) => (
+            {myList.map((reward) => (
               <RewardCard
                 key={reward.id}
                 reward={reward}
@@ -111,10 +216,39 @@ export default function RewardsScreen() {
             ))}
           </View>
         )}
+
+        {/* INSPIRATION */}
+        {tmplList.length > 0 && (
+          <>
+            <View style={[styles.sectionHeader, { marginTop: tokens.space[6] }]}>
+              <View style={styles.inspirationLabel}>
+                <Ionicons name="bulb" size={14} color={tokens.text.mid} />
+                <Text style={styles.sectionTitle}>Inspiration</Text>
+              </View>
+              <Text style={styles.sectionMeta}>tap to add</Text>
+            </View>
+
+            <View style={styles.list}>
+              {tmplList.map((t) => (
+                <TemplateCard
+                  key={t.id}
+                  template={t}
+                  onAdd={() => handleAddTemplate(t)}
+                  isAdding={addingTemplateId === t.id}
+                />
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <Pressable
-        onPress={() => router.push('/reward-form')}
+        onPress={() =>
+          router.push({
+            pathname: '/reward-form',
+            params: { category: activeCategory },
+          })
+        }
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
         hitSlop={8}
       >
@@ -139,7 +273,7 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.space[6],
     gap: tokens.space[2],
     marginTop: tokens.space[3],
-    marginBottom: tokens.space[6],
+    marginBottom: tokens.space[5],
   },
   balanceValue: {
     ...tokens.type.numXl,
@@ -151,6 +285,35 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  tabs: {
+    flexDirection: 'row',
+    gap: tokens.space[2],
+    marginBottom: tokens.space[3],
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: tokens.bg.surface,
+  },
+  tabText: {
+    ...tokens.type.caption,
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.3,
+  },
+  tagline: {
+    ...tokens.type.caption,
+    color: tokens.text.mid,
+    fontStyle: 'italic',
+    marginBottom: tokens.space[5],
+    paddingHorizontal: tokens.space[1],
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -158,21 +321,33 @@ const styles = StyleSheet.create({
     marginBottom: tokens.space[3],
   },
   sectionTitle: {
-    ...tokens.type.h2,
+    ...tokens.type.h3,
     color: tokens.text.hi,
   },
   sectionMeta: {
     ...tokens.type.caption,
     color: tokens.text.mid,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inspirationLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   loadingBox: {
     paddingVertical: tokens.space[8],
     alignItems: 'center',
   },
   emptyBox: {
-    paddingVertical: tokens.space[7],
+    paddingVertical: tokens.space[6],
     alignItems: 'center',
     gap: tokens.space[2],
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    borderStyle: 'dashed',
   },
   emptyTitle: {
     ...tokens.type.h3,

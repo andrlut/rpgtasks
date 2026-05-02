@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Reward } from '@/lib/db/types';
 import { tokens } from '@/theme';
+import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
 interface Props {
   reward: Reward;
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function RewardCard({ reward, affordable, onRedeem, onEdit, isRedeeming }: Props) {
+  const cat = REWARD_CATEGORY_META[reward.category];
   return (
     <View style={[styles.container, !affordable && styles.containerLocked]}>
       <Pressable
@@ -20,8 +22,8 @@ export function RewardCard({ reward, affordable, onRedeem, onEdit, isRedeeming }
         onPress={onEdit}
         disabled={!onEdit}
       >
-        <View style={styles.iconWrap}>
-          <Ionicons name={reward.icon as never} size={20} color={tokens.semantic.coin} />
+        <View style={[styles.iconWrap, { backgroundColor: cat.bg }]}>
+          <Ionicons name={reward.icon as never} size={20} color={cat.color} />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Text style={styles.title} numberOfLines={1}>
@@ -84,7 +86,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: tokens.radius.md,
-    backgroundColor: 'rgba(255, 200, 61, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
   },

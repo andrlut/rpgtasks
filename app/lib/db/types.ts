@@ -70,6 +70,8 @@ export interface TaskCompletion {
   coins_granted: number;
 }
 
+export type RewardCategory = 'indulgence' | 'good' | 'experience';
+
 export interface Reward {
   id: string;
   character_id: string;
@@ -77,9 +79,20 @@ export interface Reward {
   description: string | null;
   cost: number;
   icon: string;
+  category: RewardCategory;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface RewardTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  cost: number;
+  icon: string;
+  category: RewardCategory;
+  sort_order: number;
 }
 
 export interface RewardRedemption {

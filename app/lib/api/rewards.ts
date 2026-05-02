@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { Reward } from '@/lib/db/types';
+import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { supabase } from '@/lib/supabase';
 
 import { characterKeys, type CharacterWithProfile } from './character';
@@ -9,6 +9,7 @@ export const rewardKeys = {
   all: ['rewards'] as const,
   active: () => [...rewardKeys.all, 'active'] as const,
   detail: (id: string) => [...rewardKeys.all, 'detail', id] as const,
+  templates: () => [...rewardKeys.all, 'templates'] as const,
 };
 
 export interface RewardFormInput {
@@ -16,6 +17,7 @@ export interface RewardFormInput {
   description: string | null;
   cost: number;
   icon: string;
+  category: RewardCategory;
 }
 
 async function fetchActiveRewards(): Promise<Reward[]> {
@@ -69,6 +71,7 @@ export function useCreateReward() {
           description: input.description,
           cost: input.cost,
           icon: input.icon,
+          category: input.category,
         })
         .select('id')
         .single();
@@ -92,6 +95,7 @@ export function useUpdateReward(rewardId: string) {
           description: input.description,
           cost: input.cost,
           icon: input.icon,
+          category: input.category,
         })
         .eq('id', rewardId);
       if (error) throw error;
@@ -116,6 +120,55 @@ export function useArchiveReward() {
     onSuccess: (_data, rewardId) => {
       queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
       queryClient.invalidateQueries({ queryKey: rewardKeys.detail(rewardId) });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Templates: public catalog users browse to add to their own shop
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useRewardTemplates() {
+  return useQuery({
+    queryKey: rewardKeys.templates(),
+    queryFn: async (): Promise<RewardTemplate[]> => {
+      const { data, error } = await supabase
+        .from('reward_template')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as RewardTemplate[];
+    },
+  });
+}
+
+export function useAddTemplateToShop() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (template: RewardTemplate): Promise<string> => {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('reward')
+        .insert({
+          character_id: userId,
+          title: template.title,
+          description: template.description,
+          cost: template.cost,
+          icon: template.icon,
+          category: template.category,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
     },
   });
 }

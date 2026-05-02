@@ -69,7 +69,7 @@ This applies to **velocity and ceremony only** — security, RLS, secret hygiene
 
 ---
 
-## Database schema (5 migrations applied to cloud)
+## Database schema (6 migrations applied to cloud)
 
 Tables in `public`:
 
@@ -82,8 +82,9 @@ Tables in `public`:
 | `task` | character-owned. title, difficulty 1-5, type one_shot/daily/weekly, is_archived |
 | `task_dimension` | M:N task ↔ dimension (a task can grant XP in multiple dims) |
 | `task_completion` | **immutable** — guards xp_granted, coins_granted at the moment of completion |
-| `reward` | character-owned. title, cost, icon, is_archived |
+| `reward` | character-owned. title, cost, icon, **category** (indulgence/good/experience), is_archived |
 | `reward_redemption` | **immutable** — cost_paid history |
+| `reward_template` | catalog: public-read suggestions users can clone into their own shop (title, cost, icon, category, sort_order) |
 | `skill` | catalog: pushups, running, meditate, reading (display_name, unit, dimension_id, icon) |
 | `skill_tier` | catalog ladder: 5 tiers per skill (beginner / bronze / silver / gold / master + threshold) |
 | `skill_log` | per-user PR entries, immutable |
@@ -97,9 +98,9 @@ RPCs:
 Trigger `handle_new_user()` on `auth.users` insert:
 - creates profile + character + 6 character_dimension rows
 - seeds 6 sample tasks (`seed_sample_tasks`)
-- seeds 5 sample rewards (`seed_sample_rewards`)
+- **does NOT auto-seed rewards** — users browse the `reward_template` catalog and tap to add (since migration 006). The legacy `seed_sample_rewards` function still exists but is no longer called from the trigger.
 
-Both `seed_sample_*` functions are idempotent and were backfilled for existing users when introduced.
+`seed_sample_tasks` is idempotent and was backfilled for existing users when introduced.
 
 ---
 

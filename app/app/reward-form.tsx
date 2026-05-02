@@ -22,7 +22,9 @@ import {
   useUpdateReward,
   type RewardFormInput,
 } from '@/lib/api/rewards';
+import type { RewardCategory } from '@/lib/db/types';
 import { tokens } from '@/theme';
+import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
 const ICON_CHOICES = [
   'gift',
@@ -41,8 +43,12 @@ const ICON_CHOICES = [
 
 export default function RewardFormScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; category?: string }>();
   const isEdit = !!params.id;
+  const initialCategory: RewardCategory =
+    params.category === 'good' || params.category === 'experience'
+      ? params.category
+      : 'indulgence';
 
   const existing = useReward(params.id);
 
@@ -50,6 +56,7 @@ export default function RewardFormScreen() {
   const [description, setDescription] = useState('');
   const [costStr, setCostStr] = useState('50');
   const [icon, setIcon] = useState<string>('gift');
+  const [category, setCategory] = useState<RewardCategory>(initialCategory);
 
   useEffect(() => {
     if (existing.data) {
@@ -57,6 +64,7 @@ export default function RewardFormScreen() {
       setDescription(existing.data.description ?? '');
       setCostStr(String(existing.data.cost));
       setIcon(existing.data.icon);
+      setCategory(existing.data.category);
     }
   }, [existing.data]);
 
@@ -74,8 +82,9 @@ export default function RewardFormScreen() {
       description: description.trim() === '' ? null : description.trim(),
       cost: Number.isFinite(parsedCost) ? parsedCost : 0,
       icon,
+      category,
     };
-  }, [title, description, costStr, icon]);
+  }, [title, description, costStr, icon, category]);
 
   const handleSave = async () => {
     if (!formInput.title) {
@@ -168,6 +177,43 @@ export default function RewardFormScreen() {
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
+          <View style={styles.field}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.categoryRow}>
+              {REWARD_CATEGORY_ORDER.map((cat) => {
+                const meta = REWARD_CATEGORY_META[cat];
+                const selected = cat === category;
+                return (
+                  <Pressable
+                    key={cat}
+                    onPress={() => setCategory(cat)}
+                    style={[
+                      styles.categoryCell,
+                      selected && {
+                        borderColor: meta.color,
+                        backgroundColor: meta.bg,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={meta.icon as never}
+                      size={18}
+                      color={selected ? meta.color : tokens.text.mid}
+                    />
+                    <Text
+                      style={[
+                        styles.categoryText,
+                        { color: selected ? meta.color : tokens.text.mid },
+                      ]}
+                    >
+                      {meta.short}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.field}>
             <Text style={styles.label}>Title</Text>
             <TextInput
@@ -331,6 +377,27 @@ const styles = StyleSheet.create({
   iconCellSelected: {
     borderColor: tokens.semantic.coin,
     backgroundColor: 'rgba(255, 200, 61, 0.16)',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: tokens.space[2],
+  },
+  categoryCell: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: tokens.bg.surface,
+  },
+  categoryText: {
+    ...tokens.type.caption,
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.3,
   },
   archiveButton: {
     flexDirection: 'row',
