@@ -1,0 +1,240 @@
+import { useQuery } from '@tanstack/react-query';
+
+import type { DimensionId, TaskWithDimensions } from '@/lib/db/types';
+import { supabase } from '@/lib/supabase';
+
+export const historyKeys = {
+  all: ['history'] as const,
+  daily: (fromIso: string, toIso: string) =>
+    [...historyKeys.all, 'daily', fromIso, toIso] as const,
+  day: (dateKey: string) => [...historyKeys.all, 'day', dateKey] as const,
+};
+
+export interface DailySummaryEntry {
+  /** Local-date key in `YYYY-MM-DD` form (using device's local timezone). */
+  dateKey: string;
+  totalXp: number;
+  totalCoins: number;
+  completionCount: number;
+  byDimension: Partial<Record<DimensionId, number>>;
+}
+
+interface CompletionRow {
+  id: string;
+  task_id: string;
+  completed_at: string;
+  xp_granted: number;
+  coins_granted: number;
+  task: { id: string; title: string; difficulty: 1 | 2 | 3 | 4 | 5 } | null;
+}
+
+interface CompletionWithDimsRow extends CompletionRow {
+  // joined via task → task_dimension
+  task_dimensions: { dimension_id: DimensionId }[] | null;
+}
+
+/**
+ * Convert a Date to a "YYYY-MM-DD" key in the device's *local* timezone.
+ * Local-day keys are how the user thinks about days, not UTC.
+ */
+export function dateKeyFromLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Local start-of-day for the given date. */
+export function startOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Local end-of-day for the given date (next day's 00:00 minus 1 ms). */
+export function endOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+/**
+ * Aggregate completions per local day across [from, to]. Used to render
+ * the History calendar heatmap. Pulled raw from the client; for V1 the
+ * data volume is tiny (≤ a few hundred rows for a 90-day window).
+ */
+export function useDailySummary(from: Date, to: Date) {
+  const fromIso = startOfLocalDay(from).toISOString();
+  const toIso = endOfLocalDay(to).toISOString();
+
+  return useQuery({
+    queryKey: historyKeys.daily(fromIso, toIso),
+    queryFn: async (): Promise<Map<string, DailySummaryEntry>> => {
+      // We need per-completion XP plus the dimensions linked to each task.
+      // Two fetches keep the join surface small and predictable.
+      const { data: completions, error: compErr } = await supabase
+        .from('task_completion')
+        .select('id, task_id, completed_at, xp_granted, coins_granted')
+        .gte('completed_at', fromIso)
+        .lte('completed_at', toIso);
+      if (compErr) throw compErr;
+
+      const taskIds = Array.from(new Set((completions ?? []).map((c) => c.task_id)));
+      const dimsByTask = new Map<string, DimensionId[]>();
+      if (taskIds.length > 0) {
+        const { data: dimRows, error: dimErr } = await supabase
+          .from('task_dimension')
+          .select('task_id, dimension_id')
+          .in('task_id', taskIds);
+        if (dimErr) throw dimErr;
+        (dimRows ?? []).forEach((r) => {
+          const arr = dimsByTask.get(r.task_id) ?? [];
+          arr.push(r.dimension_id as DimensionId);
+          dimsByTask.set(r.task_id, arr);
+        });
+      }
+
+      const map = new Map<string, DailySummaryEntry>();
+      (completions ?? []).forEach((c) => {
+        const key = dateKeyFromLocal(new Date(c.completed_at));
+        const entry = map.get(key) ?? {
+          dateKey: key,
+          totalXp: 0,
+          totalCoins: 0,
+          completionCount: 0,
+          byDimension: {},
+        };
+        entry.totalXp += c.xp_granted;
+        entry.totalCoins += c.coins_granted;
+        entry.completionCount += 1;
+        const dims = dimsByTask.get(c.task_id) ?? [];
+        dims.forEach((d) => {
+          entry.byDimension[d] = (entry.byDimension[d] ?? 0) + c.xp_granted;
+        });
+        map.set(key, entry);
+      });
+
+      return map;
+    },
+  });
+}
+
+export interface DayCompletion {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  dimensions: DimensionId[];
+  xpGranted: number;
+  coinsGranted: number;
+  completedAt: string;
+}
+
+export interface DayDetail {
+  dateKey: string;
+  completions: DayCompletion[];
+  /** Active tasks not yet completed on this day — candidates for retro logging. */
+  openTasks: TaskWithDimensions[];
+  totalXp: number;
+  totalCoins: number;
+}
+
+interface TaskRowFull {
+  id: string;
+  character_id: string;
+  title: string;
+  description: string | null;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  task_type: 'one_shot' | 'daily' | 'weekly';
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  task_dimension: { dimension_id: DimensionId }[];
+}
+
+/**
+ * For a single local day: the completions logged that day plus the
+ * currently-active tasks that haven't been completed for that day yet
+ * (retro-logging candidates).
+ */
+export function useDayDetail(date: Date) {
+  const dayStart = startOfLocalDay(date);
+  const dayEnd = endOfLocalDay(date);
+  const dateKey = dateKeyFromLocal(date);
+
+  return useQuery({
+    queryKey: historyKeys.day(dateKey),
+    queryFn: async (): Promise<DayDetail> => {
+      const fromIso = dayStart.toISOString();
+      const toIso = dayEnd.toISOString();
+
+      const { data: comps, error: compErr } = await supabase
+        .from('task_completion')
+        .select(
+          'id, task_id, completed_at, xp_granted, coins_granted, task:task_id(id, title, difficulty)',
+        )
+        .gte('completed_at', fromIso)
+        .lte('completed_at', toIso)
+        .order('completed_at', { ascending: true });
+      if (compErr) throw compErr;
+
+      const compRows = (comps ?? []) as unknown as CompletionWithDimsRow[];
+      const taskIds = Array.from(new Set(compRows.map((c) => c.task_id)));
+      const dimsByTask = new Map<string, DimensionId[]>();
+      if (taskIds.length > 0) {
+        const { data: dimRows, error: dimErr } = await supabase
+          .from('task_dimension')
+          .select('task_id, dimension_id')
+          .in('task_id', taskIds);
+        if (dimErr) throw dimErr;
+        (dimRows ?? []).forEach((r) => {
+          const arr = dimsByTask.get(r.task_id) ?? [];
+          arr.push(r.dimension_id as DimensionId);
+          dimsByTask.set(r.task_id, arr);
+        });
+      }
+
+      const completions: DayCompletion[] = compRows.map((c) => ({
+        id: c.id,
+        taskId: c.task_id,
+        taskTitle: c.task?.title ?? '(deleted task)',
+        difficulty: (c.task?.difficulty ?? 1) as 1 | 2 | 3 | 4 | 5,
+        dimensions: dimsByTask.get(c.task_id) ?? [],
+        xpGranted: c.xp_granted,
+        coinsGranted: c.coins_granted,
+        completedAt: c.completed_at,
+      }));
+
+      const completedTaskIdsThisDay = new Set(compRows.map((c) => c.task_id));
+
+      // Active tasks created on or before this day.
+      const { data: tasks, error: taskErr } = await supabase
+        .from('task')
+        .select('*, task_dimension(dimension_id)')
+        .eq('is_archived', false)
+        .lte('created_at', dayEnd.toISOString())
+        .order('created_at', { ascending: true });
+      if (taskErr) throw taskErr;
+
+      const openTasks: TaskWithDimensions[] = ((tasks ?? []) as TaskRowFull[])
+        .filter((t) => !completedTaskIdsThisDay.has(t.id))
+        .map((t) => ({
+          id: t.id,
+          character_id: t.character_id,
+          title: t.title,
+          description: t.description,
+          difficulty: t.difficulty,
+          task_type: t.task_type,
+          is_archived: t.is_archived,
+          created_at: t.created_at,
+          updated_at: t.updated_at,
+          dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
+        }));
+
+      const totalXp = completions.reduce((s, c) => s + c.xpGranted, 0);
+      const totalCoins = completions.reduce((s, c) => s + c.coinsGranted, 0);
+
+      return { dateKey, completions, openTasks, totalXp, totalCoins };
+    },
+  });
+}

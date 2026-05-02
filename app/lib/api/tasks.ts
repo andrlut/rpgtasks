@@ -4,6 +4,7 @@ import type { DimensionId, TaskWithDimensions } from '@/lib/db/types';
 import { supabase } from '@/lib/supabase';
 
 import { characterKeys, type CharacterWithProfile } from './character';
+import { historyKeys } from './history';
 import { streakKeys } from './streak';
 
 export const taskKeys = {
@@ -102,9 +103,12 @@ export function useCompleteTask() {
       expectedXp: number;
       expectedCoins: number;
       dimensions: DimensionId[];
+      // Optional ISO timestamp for retroactive logging. Omit for "now".
+      completedAt?: string;
     }): Promise<CompleteTaskResult> => {
       const { data, error } = await supabase.rpc('complete_task', {
         p_task_id: params.taskId,
+        ...(params.completedAt ? { p_completed_at: params.completedAt } : {}),
       });
       if (error) throw error;
       return data as CompleteTaskResult;
@@ -119,7 +123,11 @@ export function useCompleteTask() {
       const prevTasks = queryClient.getQueryData<TaskWithDimensions[]>(taskKeys.pending());
       const prevChar = queryClient.getQueryData<CharacterWithProfile>(characterKeys.me());
 
-      if (prevTasks) {
+      // Only optimistically remove from "pending today" when it's a live
+      // completion. Retroactive completions on a past day must NOT remove
+      // the task from today's pending list.
+      const isLive = !params.completedAt;
+      if (prevTasks && isLive) {
         queryClient.setQueryData<TaskWithDimensions[]>(
           taskKeys.pending(),
           prevTasks.filter((t) => t.id !== params.taskId),
@@ -154,6 +162,7 @@ export function useCompleteTask() {
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
       queryClient.invalidateQueries({ queryKey: streakKeys.me() });
+      queryClient.invalidateQueries({ queryKey: historyKeys.all });
     },
   });
 }

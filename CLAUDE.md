@@ -69,7 +69,7 @@ This applies to **velocity and ceremony only** — security, RLS, secret hygiene
 
 ---
 
-## Database schema (6 migrations applied to cloud)
+## Database schema (7 migrations applied to cloud)
 
 Tables in `public`:
 
@@ -92,7 +92,7 @@ Tables in `public`:
 RLS on every table; "self-only" except catalog tables (dimension/skill/skill_tier are public-read for authenticated users).
 
 RPCs:
-- `complete_task(p_task_id uuid) → json` — atomic: validates ownership, computes XP/coins from difficulty, writes `task_completion`, bumps `character.total_xp` + `coins`, bumps `character_dimension.xp` for linked dims. Returns granted amounts.
+- `complete_task(p_task_id uuid, p_completed_at timestamptz default null) → json` — atomic: validates ownership, computes XP/coins from difficulty, writes `task_completion`, bumps `character.total_xp` + `coins`, bumps `character_dimension.xp` for linked dims. Optional `p_completed_at` (≤ now) supports retroactive logging from the History tab; defaults to `now()` for live taps.
 - `redeem_reward(p_reward_id uuid) → json` — atomic balance debit with insufficient-funds error.
 
 Trigger `handle_new_user()` on `auth.users` insert:
