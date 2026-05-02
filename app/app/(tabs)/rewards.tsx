@@ -20,9 +20,11 @@ import {
   useAddTemplateToShop,
   useArchiveReward,
   useRedeemReward,
+  useRedemptionHistory,
   useRewardTemplates,
   useRewards,
 } from '@/lib/api/rewards';
+import { timeAgo } from '@/lib/time';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
@@ -36,6 +38,7 @@ export default function RewardsScreen() {
   const redeem = useRedeemReward();
   const addTemplate = useAddTemplateToShop();
   const archiveReward = useArchiveReward();
+  const redemptions = useRedemptionHistory(15);
 
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
@@ -235,6 +238,47 @@ export default function RewardsScreen() {
           </View>
         )}
 
+        {/* RECENT REDEMPTIONS */}
+        {(redemptions.data?.length ?? 0) > 0 && (
+          <>
+            <View style={[styles.sectionHeader, { marginTop: tokens.space[6] }]}>
+              <View style={styles.inspirationLabel}>
+                <Ionicons name="receipt-outline" size={14} color={tokens.text.mid} />
+                <Text style={styles.sectionTitle}>Recently redeemed</Text>
+              </View>
+              <Text style={styles.sectionMeta}>
+                {redemptions.data!.length} {redemptions.data!.length === 1 ? 'item' : 'items'}
+              </Text>
+            </View>
+
+            <View style={styles.historyList}>
+              {redemptions.data!.map((r) => (
+                <View key={r.id} style={styles.historyRow}>
+                  <View style={styles.historyIconWrap}>
+                    <Ionicons
+                      name={r.reward_icon as never}
+                      size={16}
+                      color={tokens.semantic.coin}
+                    />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.historyTitle} numberOfLines={1}>
+                      {r.reward_title}
+                    </Text>
+                    <Text style={styles.historyMeta}>{timeAgo(r.redeemed_at)}</Text>
+                  </View>
+                  <View style={styles.historyCost}>
+                    <Ionicons name="ellipse" size={9} color={tokens.semantic.coin} />
+                    <Text style={styles.historyCostText}>
+                      −{r.cost_paid.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         {/* INSPIRATION */}
         {tmplList.length > 0 && (
           <>
@@ -380,6 +424,50 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: tokens.space[3],
+  },
+  historyList: {
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    overflow: 'hidden',
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.border.base,
+  },
+  historyIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: 'rgba(255, 200, 61, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyTitle: {
+    ...tokens.type.body,
+    color: tokens.text.hi,
+    fontFamily: 'Manrope_700Bold',
+  },
+  historyMeta: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+    marginTop: 2,
+  },
+  historyCost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  historyCostText: {
+    ...tokens.type.caption,
+    color: tokens.semantic.coin,
+    fontFamily: 'Manrope_700Bold',
   },
   fab: {
     position: 'absolute',

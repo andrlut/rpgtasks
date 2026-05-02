@@ -10,7 +10,55 @@ export const rewardKeys = {
   active: () => [...rewardKeys.all, 'active'] as const,
   detail: (id: string) => [...rewardKeys.all, 'detail', id] as const,
   templates: () => [...rewardKeys.all, 'templates'] as const,
+  redemptions: () => [...rewardKeys.all, 'redemptions'] as const,
 };
+
+export interface RedemptionHistoryEntry {
+  id: string;
+  reward_id: string;
+  redeemed_at: string;
+  cost_paid: number;
+  reward_title: string;
+  reward_icon: string;
+  reward_category: RewardCategory | null;
+}
+
+interface RedemptionRow {
+  id: string;
+  reward_id: string;
+  redeemed_at: string;
+  cost_paid: number;
+  reward:
+    | { title: string; icon: string; category: RewardCategory | null }
+    | { title: string; icon: string; category: RewardCategory | null }[]
+    | null;
+}
+
+export function useRedemptionHistory(limit: number = 50) {
+  return useQuery({
+    queryKey: rewardKeys.redemptions(),
+    queryFn: async (): Promise<RedemptionHistoryEntry[]> => {
+      const { data, error } = await supabase
+        .from('reward_redemption')
+        .select('id, reward_id, redeemed_at, cost_paid, reward:reward_id ( title, icon, category )')
+        .order('redeemed_at', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return ((data ?? []) as RedemptionRow[]).map((r) => {
+        const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward;
+        return {
+          id: r.id,
+          reward_id: r.reward_id,
+          redeemed_at: r.redeemed_at,
+          cost_paid: r.cost_paid,
+          reward_title: reward?.title ?? '(removed reward)',
+          reward_icon: reward?.icon ?? 'gift',
+          reward_category: reward?.category ?? null,
+        };
+      });
+    },
+  });
+}
 
 export interface RewardFormInput {
   title: string;
@@ -199,7 +247,9 @@ export function useRedeemReward() {
           ...prevChar,
           character: {
             ...prevChar.character,
-            coins: Math.max(0, prevChar.character.coins - params.cost),
+            // Allow optimistic balance to go negative — mirrors server behaviour
+            // since migration 0011 removed the >= 0 clamp on coins.
+            coins: prevChar.character.coins - params.cost,
           },
         });
       }
@@ -210,6 +260,7 @@ export function useRedeemReward() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.redemptions() });
     },
   });
 }

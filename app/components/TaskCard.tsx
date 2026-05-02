@@ -172,6 +172,10 @@ const styles = StyleSheet.create({
   completeButtonWrap: {
     ...tokens.shadow.violetGlow,
     borderRadius: 24,
+    // Make the elevation glow paint *above* the sibling body Pressable on Android.
+    // Without this, the body's background (and the card's surface) clip the
+    // left half of the violet halo, leaving a visibly cut shadow.
+    zIndex: 1,
   },
   completeButton: {
     width: 48,
