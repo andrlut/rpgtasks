@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeroCard } from '@/components/HeroCard';
 import { QuestChip } from '@/components/QuestChip';
-import { StreakChip } from '@/components/StreakChip';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { useCharacter } from '@/lib/api/character';
@@ -135,16 +134,7 @@ export default function HomeScreen() {
               />
             )}
 
-            <View style={styles.chipsRow}>
-              {streak.data && (
-                <StreakChip
-                  days={streak.data.currentStreak}
-                  doneToday={streak.data.hasCompletionToday}
-                  multiplier={streak.data.multiplier}
-                />
-              )}
-              <QuestChip quests={quests.data} />
-            </View>
+            <QuestChip quests={quests.data} />
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Today</Text>
@@ -248,12 +238,6 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     textAlign: 'center',
     paddingHorizontal: tokens.space[5],
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.space[2],
-    marginTop: tokens.space[3],
   },
   sectionHeader: {
     flexDirection: 'row',
