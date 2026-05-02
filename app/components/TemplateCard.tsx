@@ -39,8 +39,16 @@ export function TemplateCard({ template, onAdd, isAdding }: Props) {
           <Text style={styles.cost}>{template.cost.toLocaleString()}</Text>
         </View>
       </View>
-      <View style={[styles.addButton, { borderColor: cat.color }]}>
-        <Ionicons name="add" size={18} color={cat.color} />
+      <View
+        style={[
+          styles.addButton,
+          {
+            borderColor: cat.color,
+            shadowColor: cat.color,
+          },
+        ]}
+      >
+        <Ionicons name="add" size={20} color={cat.color} />
       </View>
     </Pressable>
   );
@@ -97,5 +105,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 3,
   },
 });

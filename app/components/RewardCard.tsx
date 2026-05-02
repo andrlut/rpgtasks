@@ -1,5 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import type { Reward } from '@/lib/db/types';
 import { tokens } from '@/theme';
@@ -23,6 +29,19 @@ export function RewardCard({
   isRedeeming,
 }: Props) {
   const cat = REWARD_CATEGORY_META[reward.category];
+  const scale = useSharedValue(1);
+
+  const handlePressIn = () => {
+    if (!affordable) return;
+    scale.value = withSpring(0.9, tokens.motion.springSnappy);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, tokens.motion.springBouncy);
+  };
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
     <View style={[styles.container, !affordable && styles.containerLocked]}>
       <Pressable
@@ -50,22 +69,38 @@ export function RewardCard({
         </View>
       </Pressable>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.redeemButton,
-          !affordable && styles.redeemButtonDisabled,
-          (pressed || isRedeeming) && affordable && styles.redeemButtonPressed,
+      <Animated.View
+        style={[
+          styles.redeemWrap,
+          affordable && tokens.shadow.coinGlow,
+          buttonStyle,
         ]}
-        onPress={onRedeem}
-        disabled={!affordable || isRedeeming}
-        hitSlop={6}
       >
-        <Ionicons
-          name={affordable ? 'gift' : 'lock-closed'}
-          size={20}
-          color={affordable ? tokens.text.hi : tokens.text.dim}
-        />
-      </Pressable>
+        <Pressable
+          onPress={onRedeem}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={!affordable || isRedeeming}
+          hitSlop={6}
+          style={[styles.redeemButton, !affordable && styles.redeemButtonDisabled]}
+        >
+          {affordable ? (
+            <>
+              <LinearGradient
+                colors={tokens.gradient.coinBtn}
+                locations={tokens.gradient.coinBtnLocations}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.redeemButtonShine} />
+              <Ionicons name="gift" size={20} color="#3D2A00" />
+            </>
+          ) : (
+            <Ionicons name="lock-closed" size={20} color={tokens.text.dim} />
+          )}
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -118,26 +153,31 @@ const styles = StyleSheet.create({
     color: tokens.semantic.coin,
     fontFamily: 'Manrope_700Bold',
   },
+  redeemWrap: {
+    borderRadius: 22,
+  },
   redeemButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: tokens.semantic.coin,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: tokens.semantic.coin,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  redeemButtonShine: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    right: 1,
+    height: 10,
+    borderTopLeftRadius: 21,
+    borderTopRightRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
   redeemButtonDisabled: {
     backgroundColor: tokens.bg.surface2,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  redeemButtonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }],
+    borderColor: tokens.border.base,
   },
 });
