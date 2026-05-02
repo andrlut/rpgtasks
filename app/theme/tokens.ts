@@ -93,6 +93,14 @@ export const tokens = {
     9: 48,
     10: 64,
   },
+  layout: {
+    /**
+     * Bottom padding tab screens must reserve so the floating glass nav bar
+     * (BottomNavBar) doesn't cover the last items when scrolled to the end.
+     * Bar is 64h + 12 bottom margin + ~min safe-area padding.
+     */
+    bottomNavClearance: 100,
+  },
   font: {
     family: 'Manrope_500Medium',
     familyBold: 'Manrope_700Bold',

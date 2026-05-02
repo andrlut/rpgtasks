@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.base },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.space[10],
+    paddingBottom: tokens.layout.bottomNavClearance,
   },
   balanceCard: {
     alignItems: 'center',
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: tokens.space[5],
-    bottom: tokens.space[5],
+    bottom: tokens.layout.bottomNavClearance + tokens.space[3],
     width: 56,
     height: 56,
     borderRadius: 28,

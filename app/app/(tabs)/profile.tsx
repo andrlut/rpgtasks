@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.base },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.space[8],
+    paddingBottom: tokens.layout.bottomNavClearance,
   },
   header: {
     alignItems: 'center',

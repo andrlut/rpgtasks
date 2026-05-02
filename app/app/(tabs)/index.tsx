@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: tokens.space[4],
-    paddingBottom: tokens.space[8],
+    paddingBottom: tokens.layout.bottomNavClearance,
   },
   header: {
     paddingTop: tokens.space[2],
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: tokens.space[5],
-    bottom: tokens.space[5],
+    bottom: tokens.layout.bottomNavClearance + tokens.space[3],
     width: 56,
     height: 56,
     borderRadius: 28,

@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.base },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.space[8],
+    paddingBottom: tokens.layout.bottomNavClearance,
   },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { ...tokens.type.body, color: tokens.text.mid },
