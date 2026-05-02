@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { markOnboardingSeen } from '@/lib/onboarding';
+import { useOnboardingStore } from '@/lib/onboarding';
 import { tokens } from '@/theme';
 
 interface Slide {
@@ -48,9 +48,10 @@ export default function OnboardingScreen() {
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index]!;
   const isLast = index === SLIDES.length - 1;
+  const markSeen = useOnboardingStore((s) => s.markSeen);
 
   const finish = async () => {
-    await markOnboardingSeen();
+    await markSeen();
     router.replace('/login');
   };
 
