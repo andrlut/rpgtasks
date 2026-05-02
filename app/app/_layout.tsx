@@ -14,7 +14,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSession } from '@/lib/auth';
-import { getOnboardingSeen } from '@/lib/onboarding';
+import { useLoadOnboarding } from '@/lib/onboarding';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -24,20 +24,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useSession();
   const segments = useSegments();
   const router = useRouter();
-  const [onboardingState, setOnboardingState] = useState<'unknown' | 'seen' | 'unseen'>('unknown');
+  const onboardingStatus = useLoadOnboarding();
 
   useEffect(() => {
-    let cancelled = false;
-    getOnboardingSeen().then((seen) => {
-      if (!cancelled) setOnboardingState(seen ? 'seen' : 'unseen');
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isLoading || onboardingState === 'unknown') return;
+    if (isLoading || onboardingStatus === 'unknown') return;
     const top = segments[0];
     const onLogin = top === 'login';
     const onOnboarding = top === 'onboarding';
@@ -48,12 +38,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     // not authenticated
-    if (onboardingState === 'unseen') {
+    if (onboardingStatus === 'unseen') {
       if (!onOnboarding) router.replace('/onboarding');
     } else {
       if (!onLogin) router.replace('/login');
     }
-  }, [isAuthenticated, isLoading, onboardingState, segments, router]);
+  }, [isAuthenticated, isLoading, onboardingStatus, segments, router]);
 
   return <>{children}</>;
 }

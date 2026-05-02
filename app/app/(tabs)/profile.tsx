@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCharacter } from '@/lib/api/character';
+import { useOnboardingStore } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const character = useCharacter();
+  const resetOnboarding = useOnboardingStore((s) => s.reset);
   const profile = character.data?.profile;
 
   const handleSignOut = async () => {
@@ -27,11 +28,7 @@ export default function ProfileScreen() {
   };
 
   const handleReplayOnboarding = async () => {
-    try {
-      await AsyncStorage.removeItem('rpgtasks.onboardingSeen.v1');
-    } catch {
-      // best-effort
-    }
+    await resetOnboarding();
     router.push('/onboarding');
   };
 
