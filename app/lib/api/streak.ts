@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
+import { streakMultiplier } from '@/lib/xp';
 
 export const streakKeys = {
   all: ['streak'] as const,
@@ -12,6 +13,8 @@ export interface StreakState {
   currentStreak: number;
   /** True if the user has completed at least one daily task today. */
   hasCompletionToday: boolean;
+  /** XP/coin multiplier earned from the current streak. 1.0 = no bonus. */
+  multiplier: number;
 }
 
 interface CompletionRow {
@@ -64,7 +67,11 @@ export function useStreak() {
         cursor.setDate(cursor.getDate() - 1);
       }
 
-      return { currentStreak: streak, hasCompletionToday: hasToday };
+      return {
+        currentStreak: streak,
+        hasCompletionToday: hasToday,
+        multiplier: streakMultiplier(streak),
+      };
     },
   });
 }

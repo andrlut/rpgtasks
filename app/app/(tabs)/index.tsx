@@ -25,7 +25,7 @@ import { useStreak } from '@/lib/api/streak';
 import { useCompleteTask, useTasks } from '@/lib/api/tasks';
 import type { TaskWithDimensions } from '@/lib/db/types';
 import { formatLongDate, timeOfDayGreeting } from '@/lib/time';
-import { rewardForDifficulty } from '@/lib/xp';
+import { applyStreakMultiplier, rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
 interface FloatItem {
@@ -47,7 +47,8 @@ export default function HomeScreen() {
     if (completeTask.isPending) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
-    const reward = rewardForDifficulty(task.difficulty);
+    const baseReward = rewardForDifficulty(task.difficulty);
+    const reward = applyStreakMultiplier(baseReward, streak.data?.currentStreak ?? 0);
     const fid = Date.now();
     setFloats((prev) => [...prev, { id: fid, xp: reward.xp, coins: reward.coins }]);
 
@@ -134,6 +135,7 @@ export default function HomeScreen() {
                 <StreakChip
                   days={streak.data.currentStreak}
                   doneToday={streak.data.hasCompletionToday}
+                  multiplier={streak.data.multiplier}
                 />
               )}
               <QuestChip quests={quests.data} />

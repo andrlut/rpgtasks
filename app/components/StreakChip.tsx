@@ -6,10 +6,13 @@ import { tokens } from '@/theme';
 interface Props {
   days: number;
   doneToday: boolean;
+  multiplier?: number;
 }
 
-export function StreakChip({ days, doneToday }: Props) {
+export function StreakChip({ days, doneToday, multiplier = 1 }: Props) {
   const isDormant = days === 0;
+  const showBonus = multiplier > 1;
+  const bonusPct = Math.round((multiplier - 1) * 100);
   const flameColor = isDormant
     ? tokens.text.dim
     : doneToday
@@ -43,6 +46,11 @@ export function StreakChip({ days, doneToday }: Props) {
             : 'Complete a daily quest to keep it alive.'}
         </Text>
       </View>
+      {showBonus ? (
+        <View style={styles.bonusBadge}>
+          <Text style={styles.bonusText}>+{bonusPct}%</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -72,5 +80,18 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     color: tokens.text.mid,
     marginTop: 2,
+  },
+  bonusBadge: {
+    paddingHorizontal: tokens.space[2],
+    paddingVertical: 2,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: 'rgba(255, 159, 67, 0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 159, 67, 0.35)',
+  },
+  bonusText: {
+    ...tokens.type.caption,
+    color: tokens.semantic.coin,
+    fontFamily: 'Manrope_800ExtraBold',
   },
 });

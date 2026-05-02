@@ -25,6 +25,30 @@ export function rewardForDifficulty(difficulty: Difficulty) {
   return REWARD_BY_DIFFICULTY[difficulty];
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// Streak multiplier (mirrors supabase/migrations/..._streak_multiplier.sql)
+//
+// +0.01 per consecutive day, capped at 2.0x (100 days). Apply to base
+// XP/coins and round to the nearest integer.
+// ──────────────────────────────────────────────────────────────────────────
+
+export const STREAK_MULTIPLIER_CAP = 2.0;
+
+export function streakMultiplier(streakDays: number): number {
+  return Math.min(STREAK_MULTIPLIER_CAP, 1 + 0.01 * Math.max(0, streakDays));
+}
+
+export function applyStreakMultiplier(
+  baseReward: { xp: number; coins: number },
+  streakDays: number,
+): { xp: number; coins: number } {
+  const m = streakMultiplier(streakDays);
+  return {
+    xp: Math.round(baseReward.xp * m),
+    coins: Math.round(baseReward.coins * m),
+  };
+}
+
 /**
  * Quadratic curve: each level requires more XP than the last.
  * level 1 = 0, level 2 = 100, level 3 = 400, level 4 = 900, level 5 = 1600...
