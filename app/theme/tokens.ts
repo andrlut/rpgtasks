@@ -123,6 +123,79 @@ export const tokens = {
     durFast: 140,
     dur: 240,
     durSlow: 480,
+    /**
+     * Reanimated `withSpring` config presets. Apply by spreading:
+     *   withSpring(target, tokens.motion.springSnappy)
+     */
+    springSnappy: { damping: 18, stiffness: 220, mass: 1 },
+    springBouncy: { damping: 12, stiffness: 180, mass: 1 },
+    springSlow: { damping: 22, stiffness: 120, mass: 1 },
+  },
+  /**
+   * Pre-baked elevation/glow shadow recipes. Spread into a style object —
+   *   ...tokens.shadow.violetGlow
+   * Each maps to RN's iOS `shadow*` props plus Android `elevation`.
+   */
+  shadow: {
+    violetGlow: {
+      shadowColor: '#7B5CFF',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.55,
+      shadowRadius: 14,
+      elevation: 10,
+    },
+    violetGlowSoft: {
+      shadowColor: '#7B5CFF',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    coinGlow: {
+      shadowColor: '#FFC83D',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    coinGlowSoft: {
+      shadowColor: '#FFC83D',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    xpGlow: {
+      shadowColor: '#3DD68C',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    deep: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.45,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+  },
+  /**
+   * Color tuples for `expo-linear-gradient`. Spread into the `colors` prop:
+   *   <LinearGradient colors={tokens.gradient.heroCard} ... />
+   * `Locations` arrays are exported alongside when a non-uniform stop matters.
+   */
+  gradient: {
+    heroCard: ['rgba(123, 92, 255, 0.18)', 'rgba(36, 42, 88, 0.6)'] as const,
+    heroCardLocations: [0, 1] as const,
+    coinPill: ['#FFE08A', '#FFC83D', '#C8881C'] as const,
+    coinPillLocations: [0, 0.5, 1] as const,
+    completeBtn: ['#9B82FF', '#5B3CE0'] as const,
+    completeBtnLocations: [0, 1] as const,
+    coinBtn: ['#FFE08A', '#FFC83D', '#C8881C'] as const,
+    coinBtnLocations: [0, 0.5, 1] as const,
+    questBoard: ['rgba(155, 130, 255, 0.18)', 'rgba(77, 208, 255, 0.08)'] as const,
+    questBoardLocations: [0, 1] as const,
   },
 } as const;
 
