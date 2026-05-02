@@ -3,7 +3,6 @@ import * as Haptics from 'expo-haptics';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +17,7 @@ import { DimensionChip } from '@/components/DimensionChip';
 import { XpHeatmap } from '@/components/XpHeatmap';
 import { useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
+import { confirmAction, showInfo } from '@/lib/util/confirm';
 import type { TaskWithDimensions } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
@@ -82,67 +82,54 @@ export default function HistoryScreen() {
     if (canGoNext) setSelected((d) => addDays(d, 1));
   };
 
-  const handleUndoCompletion = (
+  const handleUndoCompletion = async (
     completionId: string,
     title: string,
     xp: number,
     coins: number,
   ) => {
-    Alert.alert(
+    const ok = await confirmAction(
       'Undo this completion?',
       `"${title}" — you'll lose +${xp} XP and +${coins} coins.`,
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Undo',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            undoCompletion.mutate(completionId, {
-              onError: (err) => {
-                const e = err as { message?: string };
-                Alert.alert('Could not undo', e.message ?? 'Unknown error.');
-              },
-            });
-          },
-        },
-      ],
+      { okText: 'Undo', cancelText: 'Keep it', destructive: true },
     );
+    if (!ok) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    undoCompletion.mutate(completionId, {
+      onError: (err) => {
+        const e = err as { message?: string };
+        showInfo('Could not undo', e.message ?? 'Unknown error.');
+      },
+    });
   };
 
-  const handleRetroComplete = (task: TaskWithDimensions) => {
+  const handleRetroComplete = async (task: TaskWithDimensions) => {
     const reward = rewardForDifficulty(task.difficulty);
-    Alert.alert(
+    const ok = await confirmAction(
       'Log retroactively?',
       `Mark "${task.title}" as done on ${formatDay(selected)}? You'll earn +${reward.xp} XP and +${reward.coins} coins.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log it',
-          onPress: () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-            // Stamp at noon local time on the selected day — avoids
-            // ambiguity at day boundaries.
-            const stamp = new Date(selected);
-            stamp.setHours(12, 0, 0, 0);
-            completeTask.mutate(
-              {
-                taskId: task.id,
-                expectedXp: reward.xp,
-                expectedCoins: reward.coins,
-                dimensions: task.dimensions,
-                completedAt: stamp.toISOString(),
-              },
-              {
-                onError: (err) => {
-                  const e = err as { message?: string };
-                  Alert.alert('Could not log', e.message ?? 'Unknown error.');
-                },
-              },
-            );
-          },
+      { okText: 'Log it', cancelText: 'Cancel' },
+    );
+    if (!ok) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    // Stamp at noon local time on the selected day — avoids ambiguity
+    // at day boundaries.
+    const stamp = new Date(selected);
+    stamp.setHours(12, 0, 0, 0);
+    completeTask.mutate(
+      {
+        taskId: task.id,
+        expectedXp: reward.xp,
+        expectedCoins: reward.coins,
+        dimensions: task.dimensions,
+        completedAt: stamp.toISOString(),
+      },
+      {
+        onError: (err) => {
+          const e = err as { message?: string };
+          showInfo('Could not log', e.message ?? 'Unknown error.');
         },
-      ],
+      },
     );
   };
 

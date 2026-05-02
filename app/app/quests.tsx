@@ -4,7 +4,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,6 +22,7 @@ import {
   useQuests,
   useStartQuestFromTemplate,
 } from '@/lib/api/quests';
+import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
 export default function QuestBoardScreen() {
@@ -61,7 +61,7 @@ export default function QuestBoardScreen() {
       await startTemplate.mutateAsync(templateId);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not start quest', msg);
+      showInfo('Could not start quest', msg);
     } finally {
       setBusyId(null);
     }
@@ -74,41 +74,34 @@ export default function QuestBoardScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
         () => {},
       );
-      Alert.alert(
+      showInfo(
         'Quest complete!',
         `+${result.reward_xp} XP and +${result.reward_coins} coins.`,
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not claim', msg);
+      showInfo('Could not claim', msg);
     } finally {
       setBusyId(null);
     }
   };
 
-  const handleAbandon = (questId: string, title: string) => {
-    Alert.alert(
+  const handleAbandon = async (questId: string, title: string) => {
+    const ok = await confirmAction(
       'Abandon quest?',
       `"${title}" will be marked as abandoned. No reward.`,
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Abandon',
-          style: 'destructive',
-          onPress: async () => {
-            setBusyId(questId);
-            try {
-              await abandonQuest.mutateAsync(questId);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : 'Unknown error';
-              Alert.alert('Could not abandon', msg);
-            } finally {
-              setBusyId(null);
-            }
-          },
-        },
-      ],
+      { okText: 'Abandon', cancelText: 'Keep it', destructive: true },
     );
+    if (!ok) return;
+    setBusyId(questId);
+    try {
+      await abandonQuest.mutateAsync(questId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo('Could not abandon', msg);
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
