@@ -40,37 +40,49 @@ const LEVEL_COLOR: Record<0 | 1 | 2 | 3 | 4, string> = {
   4: tokens.brand.violet,
 };
 
+const CELL = 14;
+const GAP = 4;
+const COL_STRIDE = CELL + GAP;
+const WEEKDAY_COL_WIDTH = 20;
+
 export function XpHeatmap({ data, weeks = 13, selected, onSelect }: Props) {
   const grid = useMemo(() => buildGrid(weeks), [weeks]);
   const todayKey = dateKeyFromLocal(new Date());
   const selectedKey = dateKeyFromLocal(selected);
 
-  // 7 rows (weekdays), N columns (weeks). We render row-major.
+  // For each week column, decide if it should print a month label —
+  // true if this week contains the 1st of a month, OR it's the very
+  // first column of the grid.
+  const monthLabels = useMemo(() => {
+    return grid.weekColumns.map((week, colIdx) => {
+      const firstDayOfMonth = week.find((d) => d.getDate() === 1);
+      if (firstDayOfMonth) {
+        return firstDayOfMonth.toLocaleString(undefined, { month: 'short' });
+      }
+      if (colIdx === 0 && week[0]) {
+        return week[0].toLocaleString(undefined, { month: 'short' });
+      }
+      return null;
+    });
+  }, [grid.weekColumns]);
+
   return (
     <View>
-      {/* month-strip above the grid: shows month label at the column where
-          a new month starts. */}
+      {/* Month strip: aligned with the grid columns via the same left
+          offset (weekday column + small gap). */}
       <View style={styles.monthRow}>
-        {grid.weekColumns.map((week, colIdx) => {
-          const first = week[0]!;
-          const showLabel =
-            first &&
-            (colIdx === 0 || (week[0] && week[0].getDate() <= 7));
-          return (
-            <View key={colIdx} style={styles.monthCell}>
-              {showLabel && first ? (
-                <Text style={styles.monthLabel}>{monthShort(first)}</Text>
-              ) : null}
-            </View>
-          );
-        })}
+        {monthLabels.map((label, colIdx) => (
+          <View key={colIdx} style={styles.monthCell}>
+            {label ? <Text style={styles.monthLabel}>{label}</Text> : null}
+          </View>
+        ))}
       </View>
 
       <View style={styles.gridRow}>
         <View style={styles.weekdayColumn}>
           {WEEKDAY_LABELS.map((l, i) => (
             <Text key={i} style={styles.weekdayLabel}>
-              {i % 2 === 1 ? l : ''}
+              {l}
             </Text>
           ))}
         </View>
@@ -79,9 +91,6 @@ export function XpHeatmap({ data, weeks = 13, selected, onSelect }: Props) {
           {grid.weekColumns.map((week, colIdx) => (
             <View key={colIdx} style={styles.weekCol}>
               {week.map((d, rowIdx) => {
-                if (!d) {
-                  return <View key={rowIdx} style={styles.cellPlaceholder} />;
-                }
                 const key = dateKeyFromLocal(d);
                 const xp = data?.get(key)?.totalXp ?? 0;
                 const lvl = intensity(xp);
@@ -134,9 +143,8 @@ export function XpHeatmap({ data, weeks = 13, selected, onSelect }: Props) {
 
 /**
  * Build a grid of `weeks` columns × 7 rows ending on the current week.
- * Row 0 = Sunday, row 6 = Saturday. Cells are local Date or null for
- * positions outside the requested window (none, since we always end on
- * the current week's Saturday).
+ * Row 0 = Sunday, row 6 = Saturday. Always returns full weeks (every
+ * cell is a real Date — no nulls for the requested window).
  */
 function buildGrid(weeks: number) {
   const today = new Date();
@@ -148,10 +156,10 @@ function buildGrid(weeks: number) {
   const start = new Date(endSaturday);
   start.setDate(endSaturday.getDate() - (weeks * 7 - 1));
 
-  const weekColumns: (Date | null)[][] = [];
+  const weekColumns: Date[][] = [];
   const cursor = new Date(start);
   for (let w = 0; w < weeks; w++) {
-    const col: (Date | null)[] = [];
+    const col: Date[] = [];
     for (let r = 0; r < 7; r++) {
       col.push(new Date(cursor));
       cursor.setDate(cursor.getDate() + 1);
@@ -161,42 +169,44 @@ function buildGrid(weeks: number) {
   return { weekColumns };
 }
 
-function monthShort(d: Date): string {
-  return d.toLocaleString(undefined, { month: 'short' });
-}
-
-const CELL = 14;
-const GAP = 3;
-
 const styles = StyleSheet.create({
   monthRow: {
     flexDirection: 'row',
-    marginLeft: 18,
-    marginBottom: 4,
+    // Match the grid's left offset so labels line up over their column.
+    marginLeft: WEEKDAY_COL_WIDTH,
+    marginBottom: 6,
+    height: 12,
   },
   monthCell: {
-    width: CELL + GAP,
+    width: COL_STRIDE,
     alignItems: 'flex-start',
+    overflow: 'visible',
   },
   monthLabel: {
     ...tokens.type.caption,
-    color: tokens.text.dim,
-    fontSize: 9,
+    color: tokens.text.mid,
+    fontSize: 10,
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.3,
+    // Allow longer month names (e.g. "Sept") to bleed into the next
+    // column without clipping — the next column doesn't have a label.
+    width: COL_STRIDE * 2,
   },
   gridRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   weekdayColumn: {
-    width: 18,
-    marginRight: 2,
+    width: WEEKDAY_COL_WIDTH,
   },
   weekdayLabel: {
     ...tokens.type.caption,
     color: tokens.text.dim,
     fontSize: 9,
-    height: CELL + GAP,
-    lineHeight: CELL + GAP,
+    height: COL_STRIDE,
+    lineHeight: COL_STRIDE,
+    textAlign: 'center',
+    width: WEEKDAY_COL_WIDTH - 4,
   },
   weeksWrap: {
     flexDirection: 'row',
@@ -210,11 +220,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     marginBottom: GAP,
     borderWidth: 1,
-  },
-  cellPlaceholder: {
-    width: CELL,
-    height: CELL,
-    marginBottom: GAP,
   },
   cellToday: {
     borderColor: tokens.text.hi,
@@ -232,7 +237,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     gap: 4,
-    marginTop: 8,
+    marginTop: 10,
+    paddingRight: 2,
   },
   legendText: {
     ...tokens.type.caption,
