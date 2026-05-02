@@ -62,6 +62,10 @@ export default function RootLayout() {
               name="task-form"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="reward-form"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>

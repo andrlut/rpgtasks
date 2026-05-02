@@ -1,0 +1,162 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import type { Reward } from '@/lib/db/types';
+import { supabase } from '@/lib/supabase';
+
+import { characterKeys, type CharacterWithProfile } from './character';
+
+export const rewardKeys = {
+  all: ['rewards'] as const,
+  active: () => [...rewardKeys.all, 'active'] as const,
+  detail: (id: string) => [...rewardKeys.all, 'detail', id] as const,
+};
+
+export interface RewardFormInput {
+  title: string;
+  description: string | null;
+  cost: number;
+  icon: string;
+}
+
+async function fetchActiveRewards(): Promise<Reward[]> {
+  const { data, error } = await supabase
+    .from('reward')
+    .select('*')
+    .eq('is_archived', false)
+    .order('cost', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as Reward[];
+}
+
+export function useRewards() {
+  return useQuery({
+    queryKey: rewardKeys.active(),
+    queryFn: fetchActiveRewards,
+  });
+}
+
+export function useReward(id: string | null | undefined) {
+  return useQuery({
+    queryKey: id ? rewardKeys.detail(id) : ['rewards', 'detail', 'none'],
+    enabled: !!id,
+    queryFn: async (): Promise<Reward | null> => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from('reward')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      return data as Reward;
+    },
+  });
+}
+
+export function useCreateReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RewardFormInput): Promise<string> => {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('reward')
+        .insert({
+          character_id: userId,
+          title: input.title,
+          description: input.description,
+          cost: input.cost,
+          icon: input.icon,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      return (data as { id: string }).id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+    },
+  });
+}
+
+export function useUpdateReward(rewardId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RewardFormInput) => {
+      const { error } = await supabase
+        .from('reward')
+        .update({
+          title: input.title,
+          description: input.description,
+          cost: input.cost,
+          icon: input.icon,
+        })
+        .eq('id', rewardId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.detail(rewardId) });
+    },
+  });
+}
+
+export function useArchiveReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rewardId: string) => {
+      const { error } = await supabase
+        .from('reward')
+        .update({ is_archived: true })
+        .eq('id', rewardId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, rewardId) => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.detail(rewardId) });
+    },
+  });
+}
+
+export interface RedeemResult {
+  cost_paid: number;
+}
+
+/**
+ * Calls redeem_reward() RPC. Optimistically deducts coins from the cached
+ * character; rolls back on error.
+ */
+export function useRedeemReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { rewardId: string; cost: number }): Promise<RedeemResult> => {
+      const { data, error } = await supabase.rpc('redeem_reward', {
+        p_reward_id: params.rewardId,
+      });
+      if (error) throw error;
+      return data as RedeemResult;
+    },
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey: characterKeys.me() });
+      const prevChar = queryClient.getQueryData<CharacterWithProfile>(characterKeys.me());
+      if (prevChar) {
+        queryClient.setQueryData<CharacterWithProfile>(characterKeys.me(), {
+          ...prevChar,
+          character: {
+            ...prevChar.character,
+            coins: Math.max(0, prevChar.character.coins - params.cost),
+          },
+        });
+      }
+      return { prevChar };
+    },
+    onError: (_err, _params, ctx) => {
+      if (ctx?.prevChar) queryClient.setQueryData(characterKeys.me(), ctx.prevChar);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: characterKeys.me() });
+    },
+  });
+}

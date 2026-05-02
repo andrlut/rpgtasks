@@ -69,3 +69,23 @@ export interface TaskCompletion {
   xp_granted: number;
   coins_granted: number;
 }
+
+export interface Reward {
+  id: string;
+  character_id: string;
+  title: string;
+  description: string | null;
+  cost: number;
+  icon: string;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RewardRedemption {
+  id: string;
+  reward_id: string;
+  character_id: string;
+  redeemed_at: string;
+  cost_paid: number;
+}
