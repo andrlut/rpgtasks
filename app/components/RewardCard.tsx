@@ -10,17 +10,26 @@ interface Props {
   affordable: boolean;
   onRedeem: () => void;
   onEdit?: () => void;
+  onLongPress?: () => void;
   isRedeeming?: boolean;
 }
 
-export function RewardCard({ reward, affordable, onRedeem, onEdit, isRedeeming }: Props) {
+export function RewardCard({
+  reward,
+  affordable,
+  onRedeem,
+  onEdit,
+  onLongPress,
+  isRedeeming,
+}: Props) {
   const cat = REWARD_CATEGORY_META[reward.category];
   return (
     <View style={[styles.container, !affordable && styles.containerLocked]}>
       <Pressable
         style={({ pressed }) => [styles.body, pressed && onEdit && { opacity: 0.7 }]}
         onPress={onEdit}
-        disabled={!onEdit}
+        onLongPress={onLongPress}
+        disabled={!onEdit && !onLongPress}
       >
         <View style={[styles.iconWrap, { backgroundColor: cat.bg }]}>
           <Ionicons name={reward.icon as never} size={20} color={cat.color} />

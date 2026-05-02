@@ -19,6 +19,7 @@ import { TemplateCard } from '@/components/TemplateCard';
 import { useCharacter } from '@/lib/api/character';
 import {
   useAddTemplateToShop,
+  useArchiveReward,
   useRedeemReward,
   useRewardTemplates,
   useRewards,
@@ -34,6 +35,7 @@ export default function RewardsScreen() {
   const templates = useRewardTemplates();
   const redeem = useRedeemReward();
   const addTemplate = useAddTemplateToShop();
+  const archiveReward = useArchiveReward();
 
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
@@ -80,6 +82,45 @@ export default function RewardsScreen() {
   const meta = REWARD_CATEGORY_META[activeCategory];
   const myList = myRewardsByCategory[activeCategory];
   const tmplList = templatesByCategory[activeCategory];
+
+  const handleRewardActions = (reward: Reward) => {
+    Alert.alert(reward.title, undefined, [
+      {
+        text: 'Edit',
+        onPress: () =>
+          router.push({ pathname: '/reward-form', params: { id: reward.id } }),
+      },
+      {
+        text: 'Remove from shop',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert(
+            'Remove this reward?',
+            'It stops appearing on Rewards. Past redemptions stay in your history.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: async () => {
+                  Haptics.notificationAsync(
+                    Haptics.NotificationFeedbackType.Warning,
+                  ).catch(() => {});
+                  try {
+                    await archiveReward.mutateAsync(reward.id);
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Unknown error';
+                    Alert.alert('Could not remove', msg);
+                  }
+                },
+              },
+            ],
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const handleRedeem = (reward: Reward) => {
     Alert.alert(
@@ -208,9 +249,8 @@ export default function RewardsScreen() {
                 reward={reward}
                 affordable={coins >= reward.cost}
                 onRedeem={() => handleRedeem(reward)}
-                onEdit={() =>
-                  router.push({ pathname: '/reward-form', params: { id: reward.id } })
-                }
+                onEdit={() => handleRewardActions(reward)}
+                onLongPress={() => handleRewardActions(reward)}
                 isRedeeming={redeemingId === reward.id}
               />
             ))}
