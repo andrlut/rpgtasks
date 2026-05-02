@@ -11,15 +11,20 @@ import { DimensionChip } from './DimensionChip';
 interface Props {
   task: TaskWithDimensions;
   onComplete: () => void;
+  onEdit?: () => void;
   isCompleting?: boolean;
 }
 
-export function TaskCard({ task, onComplete, isCompleting }: Props) {
+export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
   const reward = rewardForDifficulty(task.difficulty);
 
   return (
     <View style={styles.container}>
-      <View style={styles.body}>
+      <Pressable
+        style={({ pressed }) => [styles.body, pressed && onEdit && { opacity: 0.7 }]}
+        onPress={onEdit}
+        disabled={!onEdit}
+      >
         <Text style={styles.title} numberOfLines={2}>
           {task.title}
         </Text>
@@ -45,7 +50,7 @@ export function TaskCard({ task, onComplete, isCompleting }: Props) {
             </Text>
           </View>
         </View>
-      </View>
+      </Pressable>
 
       <Pressable
         style={({ pressed }) => [

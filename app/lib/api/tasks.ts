@@ -8,7 +8,16 @@ import { characterKeys, type CharacterWithProfile } from './character';
 export const taskKeys = {
   all: ['tasks'] as const,
   pending: () => [...taskKeys.all, 'pending'] as const,
+  detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
 };
+
+export interface TaskFormInput {
+  title: string;
+  description: string | null;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  task_type: 'one_shot' | 'daily' | 'weekly';
+  dimensions: DimensionId[];
+}
 
 interface TaskRow {
   id: string;
@@ -143,6 +152,127 @@ export function useCompleteTask() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRUD: useTask, useCreateTask, useUpdateTask, useArchiveTask
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useTask(id: string | null | undefined) {
+  return useQuery({
+    queryKey: id ? taskKeys.detail(id) : ['tasks', 'detail', 'none'],
+    enabled: !!id,
+    queryFn: async (): Promise<TaskWithDimensions | null> => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from('task')
+        .select('*, task_dimension(dimension_id)')
+        .eq('id', id)
+        .single();
+      if (error) throw error;
+      const t = data as TaskRow;
+      return {
+        id: t.id,
+        character_id: t.character_id,
+        title: t.title,
+        description: t.description,
+        difficulty: t.difficulty,
+        task_type: t.task_type,
+        is_archived: t.is_archived,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+        dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
+      };
+    },
+  });
+}
+
+async function setTaskDimensions(taskId: string, dimensions: DimensionId[]) {
+  // simple approach for V0: wipe and re-insert
+  const { error: delErr } = await supabase
+    .from('task_dimension')
+    .delete()
+    .eq('task_id', taskId);
+  if (delErr) throw delErr;
+
+  if (dimensions.length === 0) return;
+
+  const rows = dimensions.map((d) => ({ task_id: taskId, dimension_id: d }));
+  const { error: insErr } = await supabase.from('task_dimension').insert(rows);
+  if (insErr) throw insErr;
+}
+
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TaskFormInput): Promise<string> => {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('task')
+        .insert({
+          character_id: userId,
+          title: input.title,
+          description: input.description,
+          difficulty: input.difficulty,
+          task_type: input.task_type,
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      const taskId = (data as { id: string }).id;
+
+      await setTaskDimensions(taskId, input.dimensions);
+      return taskId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+    },
+  });
+}
+
+export function useUpdateTask(taskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TaskFormInput) => {
+      const { error } = await supabase
+        .from('task')
+        .update({
+          title: input.title,
+          description: input.description,
+          difficulty: input.difficulty,
+          task_type: input.task_type,
+        })
+        .eq('id', taskId);
+      if (error) throw error;
+
+      await setTaskDimensions(taskId, input.dimensions);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+    },
+  });
+}
+
+export function useArchiveTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from('task')
+        .update({ is_archived: true })
+        .eq('id', taskId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, taskId) => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
     },
   });
 }

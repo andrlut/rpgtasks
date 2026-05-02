@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeroCard } from '@/components/HeroCard';
@@ -20,6 +21,7 @@ interface FloatItem {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const character = useCharacter();
   const tasks = useTasks();
   const completeTask = useCompleteTask();
@@ -95,7 +97,14 @@ export default function HomeScreen() {
             ) : (
               <View style={styles.taskList}>
                 {tasks.data?.map((task) => (
-                  <TaskCard key={task.id} task={task} onComplete={() => handleComplete(task)} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onComplete={() => handleComplete(task)}
+                    onEdit={() =>
+                      router.push({ pathname: '/task-form', params: { id: task.id } })
+                    }
+                  />
                 ))}
               </View>
             )}
@@ -111,6 +120,14 @@ export default function HomeScreen() {
           onDone={() => setFloats((prev) => prev.filter((x) => x.id !== f.id))}
         />
       ))}
+
+      <Pressable
+        onPress={() => router.push('/task-form')}
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        hitSlop={8}
+      >
+        <Ionicons name="add" size={28} color={tokens.text.hi} />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -188,5 +205,25 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     textAlign: 'center',
     paddingHorizontal: tokens.space[6],
+  },
+  fab: {
+    position: 'absolute',
+    right: tokens.space[5],
+    bottom: tokens.space[5],
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: tokens.brand.violet,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: tokens.brand.violet,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  fabPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
   },
 });
