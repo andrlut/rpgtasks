@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { levelProgress } from '@/lib/xp';
@@ -16,42 +17,83 @@ export function HeroCard({ displayName, totalXp, coins }: Props) {
   const { level, xpInLevel, xpNeededForLevel } = levelProgress(totalXp);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarLevel}>{level}</Text>
-      </View>
-      <View style={styles.body}>
-        <Text style={styles.name} numberOfLines={1}>
-          {displayName}
-        </Text>
-        <Text style={styles.subline}>
-          {xpInLevel} / {xpNeededForLevel} XP to LV {level + 1}
-        </Text>
-        <View style={{ marginTop: tokens.space[2] }}>
-          <ProgressBar value={xpInLevel} max={xpNeededForLevel} color={tokens.brand.violet} />
-        </View>
-        <View style={styles.bottomRow}>
-          <View style={styles.coinPill}>
-            <Ionicons name="ellipse" size={12} color={tokens.semantic.coin} />
-            <Text style={styles.coinText}>{coins.toLocaleString()}</Text>
+    <View style={styles.outer}>
+      <LinearGradient
+        colors={tokens.gradient.heroCard}
+        locations={tokens.gradient.heroCardLocations}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <View style={styles.avatarWrap}>
+          <View style={styles.avatarGlow} />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarLevel}>{level}</Text>
           </View>
-          <Text style={styles.xpTotal}>{totalXp.toLocaleString()} XP total</Text>
         </View>
-      </View>
+
+        <View style={styles.body}>
+          <Text style={styles.name} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={styles.subline}>
+            {xpInLevel} / {xpNeededForLevel} XP to LV {level + 1}
+          </Text>
+          <View style={styles.barWrap}>
+            <ProgressBar
+              value={xpInLevel}
+              max={xpNeededForLevel}
+              color={tokens.brand.violet}
+              height={7}
+            />
+          </View>
+          <View style={styles.bottomRow}>
+            <LinearGradient
+              colors={tokens.gradient.coinPill}
+              locations={tokens.gradient.coinPillLocations}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.coinPill}
+            >
+              <Ionicons name="ellipse" size={11} color="#3D2A00" />
+              <Text style={styles.coinText}>{coins.toLocaleString()}</Text>
+            </LinearGradient>
+            <Text style={styles.xpTotal}>{totalXp.toLocaleString()} XP total</Text>
+          </View>
+        </View>
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: {
+    borderRadius: tokens.radius.xl,
+    ...tokens.shadow.deep,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[4],
     padding: tokens.space[4],
-    backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.base,
+    borderColor: tokens.border.strong,
+    overflow: 'hidden',
+  },
+  avatarWrap: {
+    width: 68,
+    height: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarGlow: {
+    position: 'absolute',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: tokens.brand.violet,
+    opacity: 0.35,
   },
   avatar: {
     width: 64,
@@ -62,6 +104,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.brand.violet2,
     alignItems: 'center',
     justifyContent: 'center',
+    ...tokens.shadow.violetGlowSoft,
   },
   avatarLevel: {
     ...tokens.type.h2,
@@ -80,27 +123,31 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     marginTop: 2,
   },
+  barWrap: {
+    marginTop: tokens.space[2],
+  },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: tokens.space[2],
+    marginTop: tokens.space[3],
   },
   coinPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingHorizontal: tokens.space[3],
     paddingVertical: 4,
-    backgroundColor: 'rgba(255, 200, 61, 0.12)',
     borderRadius: tokens.radius.pill,
+    ...tokens.shadow.coinGlowSoft,
   },
   coinText: {
     ...tokens.type.caption,
-    color: tokens.semantic.coin,
+    color: '#3D2A00',
+    fontFamily: 'Manrope_800ExtraBold',
   },
   xpTotal: {
     ...tokens.type.caption,
-    color: tokens.text.dim,
+    color: tokens.text.mid,
   },
 });
