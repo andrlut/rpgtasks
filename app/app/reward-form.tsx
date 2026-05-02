@@ -23,6 +23,7 @@ import {
   type RewardFormInput,
 } from '@/lib/api/rewards';
 import type { RewardCategory } from '@/lib/db/types';
+import { confirmAction } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
@@ -108,25 +109,21 @@ export default function RewardFormScreen() {
     }
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!params.id) return;
-    Alert.alert('Archive reward?', 'It will no longer appear on Rewards.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          if (!params.id) return;
-          try {
-            await archiveReward.mutateAsync(params.id);
-            router.back();
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Unknown error';
-            Alert.alert('Archive failed', msg);
-          }
-        },
-      },
-    ]);
+    const ok = await confirmAction(
+      'Archive reward?',
+      'It will no longer appear on Rewards.',
+      { okText: 'Archive', cancelText: 'Cancel', destructive: true },
+    );
+    if (!ok) return;
+    try {
+      await archiveReward.mutateAsync(params.id);
+      router.back();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      Alert.alert('Archive failed', msg);
+    }
   };
 
   if (isEdit && existing.isLoading) {

@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,6 +24,7 @@ import {
   useRewards,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
+import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
@@ -83,68 +83,46 @@ export default function RewardsScreen() {
   const myList = myRewardsByCategory[activeCategory];
   const tmplList = templatesByCategory[activeCategory];
 
-  const handleRewardActions = (reward: Reward) => {
-    Alert.alert(reward.title, undefined, [
-      {
-        text: 'Edit',
-        onPress: () =>
-          router.push({ pathname: '/reward-form', params: { id: reward.id } }),
-      },
-      {
-        text: 'Remove from shop',
-        style: 'destructive',
-        onPress: () => {
-          Alert.alert(
-            'Remove this reward?',
-            'It stops appearing on Rewards. Past redemptions stay in your history.',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Remove',
-                style: 'destructive',
-                onPress: async () => {
-                  Haptics.notificationAsync(
-                    Haptics.NotificationFeedbackType.Warning,
-                  ).catch(() => {});
-                  try {
-                    await archiveReward.mutateAsync(reward.id);
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : 'Unknown error';
-                    Alert.alert('Could not remove', msg);
-                  }
-                },
-              },
-            ],
-          );
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+  const handleRewardActions = async (reward: Reward) => {
+    // 3-way action sheet: web doesn't have one out of the box, so split
+    // into a simpler "remove or cancel?" path. Edit is handled by the
+    // tap on the body (not long-press) so the split is fine.
+    const ok = await confirmAction(
+      `Remove "${reward.title}"?`,
+      'It stops appearing on Rewards. Past redemptions stay in your history.',
+      { okText: 'Remove', cancelText: 'Cancel', destructive: true },
+    );
+    if (!ok) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+      () => {},
+    );
+    try {
+      await archiveReward.mutateAsync(reward.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo('Could not remove', msg);
+    }
   };
 
-  const handleRedeem = (reward: Reward) => {
-    Alert.alert(
+  const handleRedeem = async (reward: Reward) => {
+    const ok = await confirmAction(
       'Redeem reward?',
       `Spend ${reward.cost} coins on "${reward.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Redeem',
-          onPress: async () => {
-            setRedeemingId(reward.id);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-            try {
-              await redeem.mutateAsync({ rewardId: reward.id, cost: reward.cost });
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : 'Unknown error';
-              Alert.alert('Could not redeem', msg);
-            } finally {
-              setRedeemingId(null);
-            }
-          },
-        },
-      ],
+      { okText: 'Redeem', cancelText: 'Cancel' },
     );
+    if (!ok) return;
+    setRedeemingId(reward.id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    try {
+      await redeem.mutateAsync({ rewardId: reward.id, cost: reward.cost });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo('Could not redeem', msg);
+    } finally {
+      setRedeemingId(null);
+    }
   };
 
   const handleAddTemplate = async (template: RewardTemplate) => {
@@ -154,7 +132,7 @@ export default function RewardsScreen() {
       await addTemplate.mutateAsync(template);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not add', msg);
+      showInfo('Could not add', msg);
     } finally {
       setAddingTemplateId(null);
     }

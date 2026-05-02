@@ -26,6 +26,7 @@ import {
   type TaskFormInput,
 } from '@/lib/api/tasks';
 import type { DimensionId, Recurrence } from '@/lib/db/types';
+import { confirmAction } from '@/lib/util/confirm';
 import type { Difficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -101,25 +102,21 @@ export default function TaskFormScreen() {
     }
   };
 
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!params.id) return;
-    Alert.alert('Archive quest?', 'Archived quests stop appearing on Home.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Archive',
-        style: 'destructive',
-        onPress: async () => {
-          if (!params.id) return;
-          try {
-            await archiveTask.mutateAsync(params.id);
-            router.back();
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Unknown error';
-            Alert.alert('Archive failed', msg);
-          }
-        },
-      },
-    ]);
+    const ok = await confirmAction(
+      'Archive quest?',
+      'Archived quests stop appearing on Home.',
+      { okText: 'Archive', cancelText: 'Cancel', destructive: true },
+    );
+    if (!ok) return;
+    try {
+      await archiveTask.mutateAsync(params.id);
+      router.back();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      Alert.alert('Archive failed', msg);
+    }
   };
 
   if (isEdit && existing.isLoading) {

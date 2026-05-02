@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCharacter } from '@/lib/api/character';
+import { confirmAction } from '@/lib/util/confirm';
 import { useOnboardingStore } from '@/lib/onboarding';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
@@ -61,16 +62,13 @@ export default function ProfileScreen() {
   };
 
   const handleSignOut = async () => {
-    Alert.alert('Sign out?', 'You can log back in with the same email.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-        },
-      },
-    ]);
+    const ok = await confirmAction(
+      'Sign out?',
+      'You can log back in with the same email.',
+      { okText: 'Sign out', cancelText: 'Cancel', destructive: true },
+    );
+    if (!ok) return;
+    await supabase.auth.signOut();
   };
 
   const handleReplayOnboarding = async () => {
