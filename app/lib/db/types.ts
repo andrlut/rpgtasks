@@ -89,3 +89,39 @@ export interface RewardRedemption {
   redeemed_at: string;
   cost_paid: number;
 }
+
+export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';
+
+export interface Skill {
+  id: string;
+  display_name: string;
+  unit: string;
+  dimension_id: DimensionId;
+  icon: string;
+  sort_order: number;
+}
+
+export interface SkillTier {
+  id: string;
+  skill_id: string;
+  tier_name: TierName;
+  threshold: number;
+  sort_order: number;
+}
+
+export interface SkillLog {
+  id: string;
+  character_id: string;
+  skill_id: string;
+  value: number;
+  logged_at: string;
+}
+
+export interface SkillState {
+  skill: Skill;
+  tiers: SkillTier[];
+  currentPr: number;
+  lastLoggedAt: string | null;
+  currentTier: SkillTier;
+  nextTier: SkillTier | null;
+}

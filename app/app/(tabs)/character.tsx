@@ -1,16 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
+import { SkillRow } from '@/components/SkillRow';
 import { useCharacter } from '@/lib/api/character';
+import { useSkillStates } from '@/lib/api/skills';
 import type { CharacterDimension, DimensionId } from '@/lib/db/types';
 import { levelForXp, levelProgress } from '@/lib/xp';
 import { tokens } from '@/theme';
 import { DIMENSION_META, DIMENSION_ORDER } from '@/theme/dimensions';
 
 export default function CharacterScreen() {
+  const router = useRouter();
   const character = useCharacter();
+  const skillStates = useSkillStates();
 
   if (character.isLoading) {
     return (
@@ -97,6 +102,23 @@ export default function CharacterScreen() {
             );
           })}
         </View>
+
+        <Text style={styles.sectionTitle}>Skills</Text>
+        {skillStates.isLoading ? (
+          <ActivityIndicator color={tokens.brand.violet2} />
+        ) : (
+          <View style={styles.skillList}>
+            {skillStates.data?.map((s) => (
+              <SkillRow
+                key={s.skill.id}
+                state={s}
+                onPress={() =>
+                  router.push({ pathname: '/skill/[id]', params: { id: s.skill.id } })
+                }
+              />
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Lifetime</Text>
         <View style={styles.statsRow}>
@@ -218,6 +240,10 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     color: tokens.text.dim,
     marginTop: 2,
+  },
+  skillList: {
+    gap: tokens.space[2],
+    marginBottom: tokens.space[2],
   },
   statsRow: {
     flexDirection: 'row',
