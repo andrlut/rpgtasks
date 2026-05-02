@@ -1,6 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
@@ -93,7 +101,11 @@ export default function CharacterScreen() {
             const xp = row?.xp ?? 0;
             const lp = levelProgress(xp);
             return (
-              <View key={id} style={styles.dimCard}>
+              <Pressable
+                key={id}
+                style={({ pressed }) => [styles.dimCard, pressed && styles.dimCardPressed]}
+                onPress={() => router.push({ pathname: '/dimension/[id]', params: { id } })}
+              >
                 <View style={[styles.dimIconWrap, { backgroundColor: meta.bg }]}>
                   <Ionicons name={meta.iconName as never} size={20} color={meta.color} />
                 </View>
@@ -108,7 +120,7 @@ export default function CharacterScreen() {
                   />
                 </View>
                 <Text style={styles.dimXp}>{xp} XP</Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -224,6 +236,10 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.base,
     padding: tokens.space[4],
     gap: 4,
+  },
+  dimCardPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
   },
   dimIconWrap: {
     width: 36,

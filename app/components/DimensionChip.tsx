@@ -1,28 +1,52 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { DimensionId } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { DIMENSION_META } from '@/theme/dimensions';
 
-export function DimensionChip({ id, size = 'md' }: { id: DimensionId; size?: 'sm' | 'md' }) {
+interface Props {
+  id: DimensionId;
+  size?: 'sm' | 'md';
+  // When false, renders as a static View (e.g. inside read-only summaries).
+  pressable?: boolean;
+}
+
+export function DimensionChip({ id, size = 'md', pressable = true }: Props) {
+  const router = useRouter();
   const meta = DIMENSION_META[id];
   const small = size === 'sm';
-  return (
-    <View
-      style={[
-        styles.chip,
-        {
-          backgroundColor: meta.bg,
-          paddingHorizontal: small ? tokens.space[2] : tokens.space[3],
-          paddingVertical: small ? 2 : 4,
-        },
-      ]}
-    >
+
+  const chipStyle = [
+    styles.chip,
+    {
+      backgroundColor: meta.bg,
+      paddingHorizontal: small ? tokens.space[2] : tokens.space[3],
+      paddingVertical: small ? 2 : 4,
+    },
+  ];
+
+  const inner = (
+    <>
       <View style={[styles.dot, { backgroundColor: meta.color }]} />
       <Text style={[styles.label, { color: meta.color, fontSize: small ? 10 : 11 }]}>
         {meta.label}
       </Text>
-    </View>
+    </>
+  );
+
+  if (!pressable) {
+    return <View style={chipStyle}>{inner}</View>;
+  }
+
+  return (
+    <Pressable
+      hitSlop={6}
+      onPress={() => router.push({ pathname: '/dimension/[id]', params: { id } })}
+      style={({ pressed }) => [...chipStyle, pressed && styles.chipPressed]}
+    >
+      {inner}
+    </Pressable>
   );
 }
 
@@ -33,6 +57,9 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: tokens.radius.pill,
     alignSelf: 'flex-start',
+  },
+  chipPressed: {
+    opacity: 0.7,
   },
   dot: {
     width: 6,
