@@ -166,7 +166,7 @@ export function QuestCard({ data, onClaim, onAbandon }: Props) {
                 locations={tokens.gradient.coinBtnLocations}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFill}
+                style={[StyleSheet.absoluteFill, styles.passthrough]}
               />
               <Ionicons name="trophy" size={18} color="#3D2A00" />
               <Text style={styles.claimText}>Claim reward</Text>
@@ -324,5 +324,8 @@ const styles = StyleSheet.create({
     ...tokens.type.body,
     color: tokens.text.mid,
     fontFamily: 'Manrope_700Bold',
+  },
+  passthrough: {
+    pointerEvents: 'none',
   },
 });

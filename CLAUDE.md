@@ -69,7 +69,7 @@ This applies to **velocity and ceremony only** — security, RLS, secret hygiene
 
 ---
 
-## Database schema (9 migrations applied to cloud)
+## Database schema (10 migrations applied to cloud)
 
 Tables in `public`:
 
@@ -100,6 +100,7 @@ RPCs:
 - `start_quest_from_template(p_template_id) → uuid` / `start_custom_quest(p_payload jsonb) → uuid` — clone a template (resolving `task_title` to the user's task by case-insensitive title match) or create a fully custom quest with explicit requirements. Both return the new quest id.
 - `complete_quest(p_quest_id) → json` — credits the quest's `reward_xp` + `reward_coins` and flips status to `completed`. Defense-in-depth ownership/active-status check; client computes "all requirements met?" before calling.
 - `expire_overdue_quests() → integer` — bulk-marks the user's overdue active quests as `expired`. Called from the client on each quest list fetch (idempotent and cheap).
+- `delete_task_completion(p_completion_id uuid) → json` — undo for a mis-tapped retro completion. Subtracts the row's xp/coins from the character + linked dimensions (clamped at 0), then deletes the row. Reachable via long-press on a completion in the History day detail.
 
 Trigger `handle_new_user()` on `auth.users` insert:
 - creates profile + character + 6 character_dimension rows

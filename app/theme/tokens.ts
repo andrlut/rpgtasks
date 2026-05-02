@@ -134,7 +134,11 @@ export const tokens = {
   /**
    * Pre-baked elevation/glow shadow recipes. Spread into a style object —
    *   ...tokens.shadow.violetGlow
-   * Each maps to RN's iOS `shadow*` props plus Android `elevation`.
+   *
+   * Each entry sets `shadow*` (iOS), `elevation` (Android), AND `boxShadow`
+   * (web + RN 0.79+ universal). RN-Web 0.21 deprecated the `shadow*` props
+   * and was misrendering them as inset/inner glows; the `boxShadow` value
+   * is what actually drives the visible drop-shadow on web.
    */
   shadow: {
     violetGlow: {
@@ -143,6 +147,7 @@ export const tokens = {
       shadowOpacity: 0.55,
       shadowRadius: 14,
       elevation: 10,
+      boxShadow: '0px 8px 18px rgba(123, 92, 255, 0.55)',
     },
     violetGlowSoft: {
       shadowColor: '#7B5CFF',
@@ -150,6 +155,7 @@ export const tokens = {
       shadowOpacity: 0.35,
       shadowRadius: 8,
       elevation: 5,
+      boxShadow: '0px 4px 12px rgba(123, 92, 255, 0.35)',
     },
     coinGlow: {
       shadowColor: '#FFC83D',
@@ -157,6 +163,7 @@ export const tokens = {
       shadowOpacity: 0.5,
       shadowRadius: 12,
       elevation: 8,
+      boxShadow: '0px 6px 16px rgba(255, 200, 61, 0.5)',
     },
     coinGlowSoft: {
       shadowColor: '#FFC83D',
@@ -164,6 +171,7 @@ export const tokens = {
       shadowOpacity: 0.3,
       shadowRadius: 6,
       elevation: 4,
+      boxShadow: '0px 3px 10px rgba(255, 200, 61, 0.3)',
     },
     xpGlow: {
       shadowColor: '#3DD68C',
@@ -171,6 +179,7 @@ export const tokens = {
       shadowOpacity: 0.45,
       shadowRadius: 10,
       elevation: 6,
+      boxShadow: '0px 4px 14px rgba(61, 214, 140, 0.45)',
     },
     deep: {
       shadowColor: '#000',
@@ -178,6 +187,7 @@ export const tokens = {
       shadowOpacity: 0.45,
       shadowRadius: 20,
       elevation: 12,
+      boxShadow: '0px 10px 28px rgba(0, 0, 0, 0.45)',
     },
   },
   /**

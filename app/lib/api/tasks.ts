@@ -309,6 +309,37 @@ export function useUpdateTask(taskId: string) {
   });
 }
 
+export interface UndoCompletionResult {
+  xp_returned: number;
+  coins_returned: number;
+}
+
+/**
+ * Reverses a task_completion row: subtracts its XP/coins from the
+ * character + dimensions, then deletes the row. Use sparingly — only
+ * for fixing mis-taps on the History tab. Active completions on
+ * "today" can also be undone (the UI exposes it on long-press).
+ */
+export function useUndoCompletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (completionId: string): Promise<UndoCompletionResult> => {
+      const { data, error } = await supabase.rpc('delete_task_completion', {
+        p_completion_id: completionId,
+      });
+      if (error) throw error;
+      return data as UndoCompletionResult;
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: characterKeys.me() });
+      queryClient.invalidateQueries({ queryKey: streakKeys.me() });
+      queryClient.invalidateQueries({ queryKey: historyKeys.all });
+      queryClient.invalidateQueries({ queryKey: questKeys.active() });
+    },
+  });
+}
+
 export function useArchiveTask() {
   const queryClient = useQueryClient();
   return useMutation({

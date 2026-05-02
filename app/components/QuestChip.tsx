@@ -50,7 +50,7 @@ export function QuestChip({ quests }: Props) {
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.6 }}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.passthrough]}
       />
       <View style={styles.row}>
         <Ionicons
@@ -94,5 +94,8 @@ const styles = StyleSheet.create({
   text: {
     ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
+  },
+  passthrough: {
+    pointerEvents: 'none',
   },
 });

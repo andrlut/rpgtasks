@@ -109,9 +109,9 @@ export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
             locations={tokens.gradient.completeBtnLocations}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, styles.passthrough]}
           />
-          <View style={styles.completeButtonInnerShine} />
+          <View style={[styles.completeButtonInnerShine, styles.passthrough]} />
           <Ionicons name="checkmark" size={28} color={tokens.text.hi} />
         </Pressable>
       </Animated.View>
@@ -192,5 +192,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  /**
+   * For decorative absolute-positioned overlays (gradients, shine strips)
+   * inside a Pressable: pass through pointer events so the Pressable
+   * receives the tap. RN-Web's absoluteFill children otherwise eat the
+   * click on web.
+   */
+  passthrough: {
+    pointerEvents: 'none',
   },
 });

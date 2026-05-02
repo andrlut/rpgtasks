@@ -91,9 +91,9 @@ export function RewardCard({
                 locations={tokens.gradient.coinBtnLocations}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={StyleSheet.absoluteFill}
+                style={[StyleSheet.absoluteFill, styles.passthrough]}
               />
-              <View style={styles.redeemButtonShine} />
+              <View style={[styles.redeemButtonShine, styles.passthrough]} />
               <Ionicons name="gift" size={20} color="#3D2A00" />
             </>
           ) : (
@@ -179,5 +179,8 @@ const styles = StyleSheet.create({
   redeemButtonDisabled: {
     backgroundColor: tokens.bg.surface2,
     borderColor: tokens.border.base,
+  },
+  passthrough: {
+    pointerEvents: 'none',
   },
 });

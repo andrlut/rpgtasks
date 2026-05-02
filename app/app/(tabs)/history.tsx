@@ -17,7 +17,7 @@ import { DifficultyStars } from '@/components/DifficultyStars';
 import { DimensionChip } from '@/components/DimensionChip';
 import { XpHeatmap } from '@/components/XpHeatmap';
 import { useDailySummary, useDayDetail } from '@/lib/api/history';
-import { useCompleteTask } from '@/lib/api/tasks';
+import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
 import type { TaskWithDimensions } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
@@ -72,6 +72,7 @@ export default function HistoryScreen() {
   const summary = useDailySummary(heatmapRange.from, heatmapRange.to);
   const day = useDayDetail(selected);
   const completeTask = useCompleteTask();
+  const undoCompletion = useUndoCompletion();
 
   const isToday = isSameDay(selected, new Date());
   const canGoNext = !isToday;
@@ -79,6 +80,34 @@ export default function HistoryScreen() {
   const handlePrev = () => setSelected((d) => addDays(d, -1));
   const handleNext = () => {
     if (canGoNext) setSelected((d) => addDays(d, 1));
+  };
+
+  const handleUndoCompletion = (
+    completionId: string,
+    title: string,
+    xp: number,
+    coins: number,
+  ) => {
+    Alert.alert(
+      'Undo this completion?',
+      `"${title}" — you'll lose +${xp} XP and +${coins} coins.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Undo',
+          style: 'destructive',
+          onPress: () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            undoCompletion.mutate(completionId, {
+              onError: (err) => {
+                const e = err as { message?: string };
+                Alert.alert('Could not undo', e.message ?? 'Unknown error.');
+              },
+            });
+          },
+        },
+      ],
+    );
   };
 
   const handleRetroComplete = (task: TaskWithDimensions) => {
@@ -214,11 +243,26 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Completed</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Completed</Text>
+              {day.data && day.data.completions.length > 0 && (
+                <Text style={styles.sectionMeta}>long-press to undo</Text>
+              )}
+            </View>
             {day.data && day.data.completions.length > 0 ? (
               <View style={styles.list}>
                 {day.data.completions.map((c) => (
-                  <View key={c.id} style={styles.completionCard}>
+                  <Pressable
+                    key={c.id}
+                    onLongPress={() =>
+                      handleUndoCompletion(c.id, c.taskTitle, c.xpGranted, c.coinsGranted)
+                    }
+                    delayLongPress={500}
+                    style={({ pressed }) => [
+                      styles.completionCard,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                  >
                     <View style={styles.completionIcon}>
                       <Ionicons name="checkmark" size={18} color={tokens.semantic.xp} />
                     </View>
@@ -257,7 +301,7 @@ export default function HistoryScreen() {
                         </Text>
                       </View>
                     </View>
-                  </View>
+                  </Pressable>
                 ))}
               </View>
             ) : (
