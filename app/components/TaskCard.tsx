@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -95,29 +94,19 @@ export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
         </View>
       </Pressable>
 
-      <Animated.View style={[styles.completeButtonWrap, buttonAnimStyle]}>
-        {/* Painted halo — rendered as a translucent disc behind the button.
-            Replaces Android elevation, which got clipped by the sibling
-            body Pressable. Two layers create a soft falloff. */}
-        <View style={[styles.completeButtonHaloOuter, styles.passthrough]} />
-        <View style={[styles.completeButtonHaloInner, styles.passthrough]} />
+      <Animated.View style={buttonAnimStyle}>
         <Pressable
           onPress={onComplete}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           disabled={isCompleting}
           hitSlop={8}
-          style={styles.completeButton}
+          style={({ pressed }) => [
+            styles.completeButton,
+            pressed && styles.completeButtonPressed,
+          ]}
         >
-          <LinearGradient
-            colors={tokens.gradient.completeBtn}
-            locations={tokens.gradient.completeBtnLocations}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={[StyleSheet.absoluteFill, styles.passthrough]}
-          />
-          <View style={[styles.completeButtonInnerShine, styles.passthrough]} />
-          <Ionicons name="checkmark" size={28} color={tokens.text.hi} />
+          <Ionicons name="checkmark" size={26} color={tokens.text.hi} />
         </Pressable>
       </Animated.View>
     </View>
@@ -174,58 +163,15 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     fontStyle: 'italic',
   },
-  completeButtonWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Sit above the body Pressable so the halo discs render fully.
-    zIndex: 1,
-  },
-  completeButtonHaloOuter: {
-    position: 'absolute',
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: tokens.brand.violet,
-    opacity: 0.18,
-  },
-  completeButtonHaloInner: {
-    position: 'absolute',
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: tokens.brand.violet,
-    opacity: 0.32,
-  },
   completeButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: tokens.brand.violet,
   },
-  completeButtonInnerShine: {
-    position: 'absolute',
-    top: 1,
-    left: 1,
-    right: 1,
-    height: 12,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  /**
-   * For decorative absolute-positioned overlays (gradients, shine strips)
-   * inside a Pressable: pass through pointer events so the Pressable
-   * receives the tap. RN-Web's absoluteFill children otherwise eat the
-   * click on web.
-   */
-  passthrough: {
-    pointerEvents: 'none',
+  completeButtonPressed: {
+    opacity: 0.7,
   },
 });
