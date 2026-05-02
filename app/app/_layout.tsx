@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useSession } from '@/lib/auth';
+import { useAuthDeepLink, useSession } from '@/lib/auth';
 import { useLoadOnboarding } from '@/lib/onboarding';
 
 export const unstable_settings = {
@@ -25,6 +25,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
   const onboardingStatus = useLoadOnboarding();
+  useAuthDeepLink();
 
   useEffect(() => {
     if (isLoading || onboardingStatus === 'unknown') return;

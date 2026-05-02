@@ -174,7 +174,8 @@ The publishable key is safe in client (RLS protects). The service_role key has b
 
 - **Supabase CLI on Windows**: standalone binary at `%LOCALAPPDATA%\supabase\supabase.exe`. PATH set as user env var; new terminals see it. Smart App Control sometimes flags it — use absolute path if "term not recognized".
 - **Service_role key flagging**: Supabase blocks calls from "browser-like" User-Agents. Use `User-Agent: supabase-cli/2.95.4` if you ever need to fall back to direct admin REST.
-- **Email confirmation links** redirect to `localhost:3000` by default — bad for mobile. Reconfigure in Supabase dashboard → Auth → URL Configuration when this becomes a real signup flow.
+- **Auth redirect URL** is the deep link `rpgtasks://auth/callback` (computed via `expo-linking`'s `createURL`). The app handles incoming auth URLs in `lib/auth/deep-link.ts` and exchanges them for a session. **Manual dashboard config required** in Supabase → Auth → URL Configuration: set **Site URL** = `rpgtasks://auth/callback` and add it under **Redirect URLs**. Without this step, email-confirmation links still go to `localhost:3000`. Magic links / OTP / PKCE / fragment-based flows are all handled.
+- **Custom schemes need a dev/production build** — Expo Go strips them, so test the email-confirm flow in `eas build --profile development` (or `preview`/`production`), not in Expo Go.
 - **expo-updates not yet installed** — OTA hot-fixes via `eas update` require this. Build warned about it; not critical until first deploy.
 
 ---

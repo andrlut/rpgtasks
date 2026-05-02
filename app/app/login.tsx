@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { AUTH_REDIRECT_URL } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
@@ -37,7 +38,11 @@ export default function LoginScreen() {
       const { error } =
         mode === 'login'
           ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-          : await supabase.auth.signUp({ email: email.trim(), password });
+          : await supabase.auth.signUp({
+              email: email.trim(),
+              password,
+              options: { emailRedirectTo: AUTH_REDIRECT_URL },
+            });
 
       if (error) {
         Alert.alert(mode === 'login' ? 'Login failed' : 'Signup failed', error.message);
