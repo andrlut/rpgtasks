@@ -1,5 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 import type { TaskWithDimensions } from '@/lib/db/types';
 import { rewardForDifficulty } from '@/lib/xp';
@@ -17,6 +26,29 @@ interface Props {
 
 export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
   const reward = rewardForDifficulty(task.difficulty);
+  const scale = useSharedValue(1);
+
+  // Brief celebration pulse if the parent flips isCompleting briefly.
+  useEffect(() => {
+    if (isCompleting) {
+      scale.value = withSequence(
+        withTiming(0.92, { duration: 80 }),
+        withSpring(1.06, tokens.motion.springBouncy),
+        withSpring(1, tokens.motion.springSnappy),
+      );
+    }
+  }, [isCompleting, scale]);
+
+  const buttonAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.9, tokens.motion.springSnappy);
+  };
+  const handlePressOut = () => {
+    scale.value = withSpring(1, tokens.motion.springBouncy);
+  };
 
   return (
     <View style={styles.container}>
@@ -52,17 +84,26 @@ export function TaskCard({ task, onComplete, onEdit, isCompleting }: Props) {
         </View>
       </Pressable>
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.completeButton,
-          (pressed || isCompleting) && styles.completeButtonPressed,
-        ]}
-        onPress={onComplete}
-        disabled={isCompleting}
-        hitSlop={8}
-      >
-        <Ionicons name="checkmark" size={28} color={tokens.text.hi} />
-      </Pressable>
+      <Animated.View style={[styles.completeButtonWrap, buttonAnimStyle]}>
+        <Pressable
+          onPress={onComplete}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          disabled={isCompleting}
+          hitSlop={8}
+          style={styles.completeButton}
+        >
+          <LinearGradient
+            colors={tokens.gradient.completeBtn}
+            locations={tokens.gradient.completeBtnLocations}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.completeButtonInnerShine} />
+          <Ionicons name="checkmark" size={28} color={tokens.text.hi} />
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -112,21 +153,28 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
   },
+  completeButtonWrap: {
+    ...tokens.shadow.violetGlow,
+    borderRadius: 24,
+  },
   completeButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: tokens.brand.violet,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: tokens.brand.violet,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  completeButtonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }],
+  completeButtonInnerShine: {
+    position: 'absolute',
+    top: 1,
+    left: 1,
+    right: 1,
+    height: 12,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
 });

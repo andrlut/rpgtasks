@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -21,19 +22,22 @@ interface Props {
 export function XPCoinFloat({ xp, coins, onDone }: Props) {
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const scale = useSharedValue(0.6);
+  const scale = useSharedValue(0.4);
 
   useEffect(() => {
     opacity.value = withSequence(
-      withTiming(1, { duration: 160 }),
-      withDelay(700, withTiming(0, { duration: 350 }, (finished) => {
-        if (finished) runOnJS(onDone)();
-      })),
+      withTiming(1, { duration: 140 }),
+      withDelay(
+        780,
+        withTiming(0, { duration: 350 }, (finished) => {
+          if (finished) runOnJS(onDone)();
+        }),
+      ),
     );
-    translateY.value = withTiming(-80, { duration: 1200 });
+    translateY.value = withTiming(-90, { duration: 1300 });
     scale.value = withSequence(
-      withTiming(1.1, { duration: 160 }),
-      withTiming(1, { duration: 200 }),
+      withSpring(1.15, tokens.motion.springBouncy),
+      withSpring(1, tokens.motion.springSnappy),
     );
   }, [opacity, translateY, scale, onDone]);
 
@@ -44,11 +48,11 @@ export function XPCoinFloat({ xp, coins, onDone }: Props) {
 
   return (
     <Animated.View style={[styles.container, containerStyle]} pointerEvents="none">
-      <View style={[styles.badge, { backgroundColor: 'rgba(61, 214, 140, 0.15)' }]}>
+      <View style={[styles.badge, styles.xpBadge]}>
         <Ionicons name="flash" size={16} color={tokens.semantic.xp} />
         <Text style={[styles.text, { color: tokens.semantic.xp }]}>+{xp} XP</Text>
       </View>
-      <View style={[styles.badge, { backgroundColor: 'rgba(255, 200, 61, 0.18)' }]}>
+      <View style={[styles.badge, styles.coinBadge]}>
         <Ionicons name="ellipse" size={14} color={tokens.semantic.coin} />
         <Text style={[styles.text, { color: tokens.semantic.coin }]}>+{coins}</Text>
       </View>
@@ -73,6 +77,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[2],
     borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+  },
+  xpBadge: {
+    backgroundColor: 'rgba(61, 214, 140, 0.18)',
+    borderColor: 'rgba(61, 214, 140, 0.45)',
+    ...tokens.shadow.xpGlow,
+  },
+  coinBadge: {
+    backgroundColor: 'rgba(255, 200, 61, 0.20)',
+    borderColor: 'rgba(255, 200, 61, 0.5)',
+    ...tokens.shadow.coinGlowSoft,
   },
   text: {
     ...tokens.type.h3,
