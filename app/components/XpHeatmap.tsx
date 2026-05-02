@@ -11,7 +11,7 @@ interface Props {
   /** Map keyed by `YYYY-MM-DD` local-day → that day's totals. */
   data: Map<string, DailySummaryEntry> | undefined;
   /** Number of weeks to render, ending on the week containing today.
-   * Defaults to 5 (the last 4 weeks + the current week). */
+   * Defaults to 3 (the last 2 weeks + the current week). */
   weeks?: number;
   /** Currently selected day (local date). */
   selected: Date;
@@ -44,7 +44,7 @@ const LEVEL_COLOR: Record<0 | 1 | 2 | 3 | 4, string> = {
  * current week at the bottom). Cells flex to the available width so they
  * scale with the container.
  */
-export function XpHeatmap({ data, weeks = 5, selected, onSelect }: Props) {
+export function XpHeatmap({ data, weeks = 3, selected, onSelect }: Props) {
   const rows = useMemo(() => buildRows(weeks), [weeks]);
   const todayKey = dateKeyFromLocal(new Date());
   const selectedKey = dateKeyFromLocal(selected);

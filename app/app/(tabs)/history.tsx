@@ -24,7 +24,7 @@ import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
-const HEATMAP_WEEKS = 5;
+const HEATMAP_WEEKS = 3;
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
