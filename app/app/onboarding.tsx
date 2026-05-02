@@ -2,6 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useOnboardingStore } from '@/lib/onboarding';
@@ -50,6 +57,11 @@ export default function OnboardingScreen() {
   const isLast = index === SLIDES.length - 1;
   const markSeen = useOnboardingStore((s) => s.markSeen);
 
+  const ctaScale = useSharedValue(1);
+  const ctaStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: ctaScale.value }],
+  }));
+
   const finish = async () => {
     await markSeen();
     router.replace('/login');
@@ -76,12 +88,48 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.body}>
-        <View style={[styles.iconBubble, { backgroundColor: slide.iconBg }]}>
-          <Ionicons name={slide.icon} size={56} color={slide.iconColor} />
-        </View>
-        <Text style={styles.eyebrow}>{slide.eyebrow}</Text>
-        <Text style={styles.title}>{slide.title}</Text>
-        <Text style={styles.copy}>{slide.body}</Text>
+        <Animated.View
+          key={`art-${index}`}
+          entering={FadeIn.duration(420)}
+          style={styles.artWrap}
+        >
+          {/* Soft radial-ish backdrop: 2 stacked glow rings behind the bubble */}
+          <View
+            style={[
+              styles.glowOuter,
+              { backgroundColor: slide.iconColor, opacity: 0.10 },
+            ]}
+          />
+          <View
+            style={[
+              styles.glowInner,
+              { backgroundColor: slide.iconColor, opacity: 0.18 },
+            ]}
+          />
+          <View
+            style={[
+              styles.iconBubble,
+              {
+                backgroundColor: slide.iconBg,
+                shadowColor: slide.iconColor,
+              },
+            ]}
+          >
+            <Ionicons name={slide.icon} size={56} color={slide.iconColor} />
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          key={`text-${index}`}
+          entering={FadeInDown.duration(420).delay(120)}
+          style={styles.textWrap}
+        >
+          <Text style={[styles.eyebrow, { color: slide.iconColor }]}>
+            {slide.eyebrow}
+          </Text>
+          <Text style={styles.title}>{slide.title}</Text>
+          <Text style={styles.copy}>{slide.body}</Text>
+        </Animated.View>
       </View>
 
       <View style={styles.dots}>
@@ -91,19 +139,30 @@ export default function OnboardingScreen() {
             style={[
               styles.dot,
               i === index && styles.dotActive,
+              i === index && { shadowColor: slide.iconColor },
             ]}
           />
         ))}
       </View>
 
       <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
-          onPress={next}
-        >
-          <Text style={styles.ctaText}>{isLast ? 'Start your journey' : 'Continue'}</Text>
-          {isLast && <Ionicons name="arrow-forward" size={20} color={tokens.text.hi} />}
-        </Pressable>
+        <Animated.View style={[styles.ctaWrap, ctaStyle]}>
+          <Pressable
+            onPressIn={() => {
+              ctaScale.value = withSpring(0.97, tokens.motion.springSnappy);
+            }}
+            onPressOut={() => {
+              ctaScale.value = withSpring(1, tokens.motion.springBouncy);
+            }}
+            onPress={next}
+            style={styles.cta}
+          >
+            <Text style={styles.ctaText}>
+              {isLast ? 'Start your journey' : 'Continue'}
+            </Text>
+            {isLast && <Ionicons name="arrow-forward" size={20} color={tokens.text.hi} />}
+          </Pressable>
+        </Animated.View>
       </View>
     </SafeAreaView>
   );
@@ -140,17 +199,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: tokens.space[3],
   },
+  artWrap: {
+    width: 220,
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: tokens.space[5],
+  },
+  glowOuter: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+  },
+  glowInner: {
+    position: 'absolute',
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+  },
   iconBubble: {
     width: 140,
     height: 140,
     borderRadius: 70,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: tokens.space[5],
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  textWrap: {
+    alignItems: 'center',
+    gap: tokens.space[3],
   },
   eyebrow: {
     ...tokens.type.eyebrow,
-    color: tokens.brand.violet2,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
@@ -180,10 +264,18 @@ const styles = StyleSheet.create({
   dotActive: {
     width: 24,
     backgroundColor: tokens.brand.violet,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
   },
   actions: {
     paddingHorizontal: tokens.space[5],
     paddingBottom: tokens.space[4],
+  },
+  ctaWrap: {
+    ...tokens.shadow.violetGlow,
+    borderRadius: tokens.radius.md,
   },
   cta: {
     flexDirection: 'row',
@@ -193,6 +285,8 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.brand.violet,
     borderRadius: tokens.radius.md,
     paddingVertical: tokens.space[4],
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   ctaText: {
     ...tokens.type.h3,
