@@ -44,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8547f0af-52d5-4db2-a387-a062b91c46c0"
+      }
+    },
+    "owner": "rpgtasks"
   }
 }
