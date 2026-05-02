@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -55,7 +56,20 @@ export default function RewardsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={rewards.isRefetching || character.isRefetching}
+            onRefresh={() => {
+              rewards.refetch();
+              character.refetch();
+            }}
+            tintColor={tokens.brand.violet2}
+          />
+        }
+      >
         <View style={styles.balanceCard}>
           <Ionicons name="ellipse" size={28} color={tokens.semantic.coin} />
           <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
