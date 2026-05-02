@@ -1,0 +1,135 @@
+/* ============================================================
+   RPG Tasks — Design Tokens
+   Dark theme primary. All values exported in :root for the
+   style guide page and used directly in components.
+   ============================================================ */
+
+:root {
+  /* ── Surfaces ───────────────────────────────────────────── */
+  --bg-deep: #0A0E26;        /* canvas backdrop */
+  --bg-base: #0E1230;        /* page background */
+  --bg-surface: #1A1F44;     /* card surface */
+  --bg-surface-2: #232958;   /* elevated surface */
+  --bg-surface-3: #2D3470;   /* hover / active */
+  --bg-glass: rgba(36, 42, 88, 0.55);
+  --bg-glass-strong: rgba(36, 42, 88, 0.78);
+
+  /* ── Text ───────────────────────────────────────────────── */
+  --text-hi: #F2F3FF;
+  --text: #D9DBFA;
+  --text-mid: #9AA0D4;
+  --text-dim: #6E74A8;
+  --text-faint: #4A4F7A;
+
+  /* ── Borders / lines ────────────────────────────────────── */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --divider: rgba(255, 255, 255, 0.06);
+
+  /* ── Brand / system ─────────────────────────────────────── */
+  --violet: #7B5CFF;
+  --violet-2: #9B82FF;
+  --violet-deep: #4B2FCC;
+  --violet-glow: rgba(123, 92, 255, 0.45);
+
+  --xp: #3DD68C;
+  --xp-2: #6FE8AA;
+  --xp-glow: rgba(61, 214, 140, 0.4);
+
+  --coin: #FFC83D;
+  --coin-2: #FFE08A;
+  --coin-deep: #C8881C;
+  --coin-glow: rgba(255, 200, 61, 0.55);
+
+  --danger: #FF5C7A;
+  --warn: #FF9F43;
+
+  /* ── Dimensions ─────────────────────────────────────────── */
+  --dim-health: #FF6B7A;       /* coral */
+  --dim-strength: #FF8A3D;     /* orange */
+  --dim-mind: #B07BFF;         /* purple */
+  --dim-wealth: #FFC83D;       /* gold */
+  --dim-social: #4DD0FF;       /* cyan */
+  --dim-discipline: #2EC4B6;   /* teal */
+
+  /* tinted bgs (for chips) */
+  --dim-health-bg: rgba(255, 107, 122, 0.16);
+  --dim-strength-bg: rgba(255, 138, 61, 0.16);
+  --dim-mind-bg: rgba(176, 123, 255, 0.18);
+  --dim-wealth-bg: rgba(255, 200, 61, 0.16);
+  --dim-social-bg: rgba(77, 208, 255, 0.16);
+  --dim-discipline-bg: rgba(46, 196, 182, 0.16);
+
+  /* ── Tier metals ────────────────────────────────────────── */
+  --tier-beginner: #8E94C4;
+  --tier-bronze-1: #E69559;
+  --tier-bronze-2: #8C4B22;
+  --tier-silver-1: #E8ECFF;
+  --tier-silver-2: #7B85B8;
+  --tier-gold-1: #FFE08A;
+  --tier-gold-2: #C8881C;
+  --tier-master-1: #C2A1FF;
+  --tier-master-2: #4DD0FF;
+  --tier-master-3: #FFC83D;
+
+  /* ── Radii ──────────────────────────────────────────────── */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-2xl: 32px;
+  --r-pill: 999px;
+
+  /* ── Spacing scale ──────────────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 48px;
+  --s-10: 64px;
+
+  /* ── Shadows / elevation ────────────────────────────────── */
+  --el-1: 0 1px 2px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  --el-2: 0 4px 14px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  --el-3: 0 12px 30px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset;
+  --el-violet: 0 8px 28px rgba(123, 92, 255, 0.45), 0 0 0 1px rgba(155,130,255,0.3) inset;
+  --el-coin: 0 8px 30px rgba(255, 200, 61, 0.4), 0 0 0 1px rgba(255, 224, 138, 0.4) inset;
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font: 'Manrope', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --t-display: 800 36px/1.05 var(--font);
+  --t-h1: 800 28px/1.1 var(--font);
+  --t-h2: 700 22px/1.2 var(--font);
+  --t-h3: 700 17px/1.25 var(--font);
+  --t-body: 500 14px/1.45 var(--font);
+  --t-body-lg: 500 16px/1.45 var(--font);
+  --t-caption: 600 12px/1.3 var(--font);
+  --t-eyebrow: 700 11px/1.2 var(--font);
+  --t-num-xl: 800 56px/1 var(--font);
+  --t-num-lg: 800 32px/1 var(--font);
+  --t-num-md: 700 20px/1 var(--font);
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --ease: cubic-bezier(.2, .7, .3, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --dur-fast: 140ms;
+  --dur: 240ms;
+  --dur-slow: 480ms;
+}
+
+/* Resets */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, textarea, select { font: inherit; color: inherit; }
+
+/* Hide scrollbars inside phone screens */
+.rpg-screen::-webkit-scrollbar { width: 0; height: 0; }
+.rpg-screen { scrollbar-width: none; }

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPG Tasks — Android Habit Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./tokens.css">
+<style>
+  body {
+    margin: 0;
+    background: #f0eee9;
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: #2a251f;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="./design-canvas.jsx"></script>
+<script type="text/babel" src="./tweaks-panel.jsx"></script>
+<script type="text/babel" src="./primitives.jsx"></script>
+<script type="text/babel" src="./components.jsx"></script>
+<script type="text/babel" src="./screens-1.jsx"></script>
+<script type="text/babel" src="./screens-2.jsx"></script>
+<script type="text/babel" src="./overlays.jsx"></script>
+<script type="text/babel" src="./app.jsx"></script>
+<script type="text/babel" src="./library.jsx"></script>
+<script type="text/babel" src="./style-guide.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "primaryAccent": "#7b5cff",
+  "showEmpty": false,
+  "animSpeed": 1
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tw, setTw] = useTweaks(TWEAK_DEFAULTS);
+
+  // Apply tweak to css var
+  useEffect(() => {
+    document.documentElement.style.setProperty('--violet', tw.primaryAccent);
+  }, [tw.primaryAccent]);
+
+  return (
+    <>
+      <DesignCanvas>
+        <DCSection id="screens" title="Screens · Dark theme" subtitle="All 8 screens. Tap the bottom tabs in any phone to navigate.">
+          <DCArtboard id="onboarding" label="01 · Onboarding" width={392} height={804}>
+            <PhoneApp start="onboarding" label="01 Onboarding"/>
+          </DCArtboard>
+          <DCArtboard id="auth" label="02 · Login / Signup" width={392} height={804}>
+            <PhoneApp start="auth" label="02 Auth"/>
+          </DCArtboard>
+          <DCArtboard id="home" label="03 · Home / Today" width={392} height={804}>
+            <PhoneApp start="home" label="03 Home"/>
+          </DCArtboard>
+          <DCArtboard id="task-edit" label="04 · Task Create / Edit" width={392} height={804}>
+            <PhoneApp start="tasks" label="04 Task Edit"/>
+          </DCArtboard>
+          <DCArtboard id="character" label="05 · Character / Stats" width={392} height={804}>
+            <PhoneApp start="character" label="05 Character"/>
+          </DCArtboard>
+          <DCArtboard id="skill" label="06 · Skill Detail" width={392} height={804}>
+            <PhoneApp start="skill" label="06 Skill"/>
+          </DCArtboard>
+          <DCArtboard id="rewards" label="07 · Rewards" width={392} height={804}>
+            <PhoneApp start="rewards" label="07 Rewards"/>
+          </DCArtboard>
+          <DCArtboard id="profile" label="08 · Profile" width={392} height={804}>
+            <PhoneApp start="profile" label="08 Profile"/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="moments" title="Key moment interactions" subtitle="Tap the FAB on Home to complete a quest. Tap the streak chip to trigger Level Up. Tap 'Log new PR' on a Skill to trigger Tier Up.">
+          <DCArtboard id="moment-home" label="Coin gain · tap a quest's complete button" width={392} height={804}>
+            <PhoneApp start="home" label="Coin gain demo"/>
+          </DCArtboard>
+          <DCArtboard id="moment-levelup" label="Level up · tap streak chip on Home" width={392} height={804}>
+            <PhoneApp start="home" label="Level up demo"/>
+          </DCArtboard>
+          <DCArtboard id="moment-tierup" label="Tier up · open Push-ups, tap 'Log new PR'" width={392} height={804}>
+            <PhoneApp start="skill" label="Tier up demo"/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="empty-states" title="Empty states">
+          <DCArtboard id="empty-today" label="Home · all done" width={392} height={804}>
+            <PhoneApp start="home" label="Empty Home"/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="library" title="Component library" subtitle="Reusable parts across screens.">
+          <DCArtboard id="lib" label="Components" width={1044} height={2580}>
+            <ComponentLibrary/>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="tokens" title="Style guide · tokens" subtitle="Colors, type, spacing, radii, shadows, motion.">
+          <DCArtboard id="sg" label="Tokens" width={1044} height={2300}>
+            <StyleGuide/>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Theme">
+          <TweakColor label="Primary accent" value={tw.primaryAccent}
+            onChange={v => setTw('primaryAccent', v)}/>
+        </TweakSection>
+        <TweakSection title="Demo state">
+          <TweakToggle label="Empty state on Home" value={tw.showEmpty}
+            onChange={v => setTw('showEmpty', v)}/>
+        </TweakSection>
+        <TweakSection title="Hint">
+          <div style={{ font: '500 12px/1.4 Manrope', color: 'rgba(60,50,40,0.7)', padding: '4px 0' }}>
+            Tap any phone's complete button, streak chip, or "Log new PR" to trigger animated key moments.
+          </div>
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
