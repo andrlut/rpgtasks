@@ -12,6 +12,10 @@ import {
 import { HexChart } from '@/components/HexChart';
 import type { CharacterSubScore, SubId } from '@/lib/db/types';
 import { pickSubScores } from '@/lib/api/character';
+import {
+  daysSince,
+  useLastQuestionnaireSession,
+} from '@/lib/api/questionnaire';
 import { tokens } from '@/theme';
 import { SUB_META } from '@/theme/dimensions';
 
@@ -34,11 +38,21 @@ interface Props {
 export function AvaliacaoPanel({ subScores }: Props) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const lastSession = useLastQuestionnaireSession();
   // Match the old (pre-pillars) sizing: bleed slightly beyond page padding
   // for visual presence, capped so it doesn't blow up on tablets.
   const chartSize = Math.max(240, Math.min((screenWidth || 360) - 16, 360));
 
   const scores = useMemo(() => pickSubScores(subScores, 'self'), [subScores]);
+
+  const lastTaken = lastSession.data?.taken_at ?? null;
+  const sinceDays = daysSince(lastTaken);
+  const questionnaireLabel =
+    sinceDays === null
+      ? 'Fazer questionário (~10 min)'
+      : sinceDays === 0
+        ? 'Refazer questionário · feito hoje'
+        : `Refazer questionário · ${sinceDays}d atrás`;
 
   const weakest = useMemo<{ subId: SubId; score: number } | null>(() => {
     if (scores.size === 0) return null;
@@ -73,6 +87,18 @@ export function AvaliacaoPanel({ subScores }: Props) {
       >
         <Text style={styles.ctaText}>Atualizar self-assessment</Text>
         <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push('/questionnaire')}
+        style={({ pressed }) => [
+          styles.ctaSecondary,
+          pressed && { opacity: 0.85 },
+        ]}
+        hitSlop={4}
+      >
+        <Ionicons name="clipboard" size={14} color={tokens.brand.violet2} />
+        <Text style={styles.ctaSecondaryText}>{questionnaireLabel}</Text>
       </Pressable>
     </View>
   );
@@ -121,5 +147,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 0.3,
     color: tokens.brand.violet2,
+  },
+  ctaSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 130, 255, 0.22)',
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  ctaSecondaryText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    color: tokens.brand.violet2,
+    letterSpacing: 0.3,
   },
 });
