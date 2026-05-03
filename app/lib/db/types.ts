@@ -146,6 +146,12 @@ export interface Skill {
   dimension_id: DimensionId;
   icon: string;
   sort_order: number;
+  /** 1-3 sentence description shown on the skill detail screen. Catalog skills
+   * may have this populated; user-created skills are optional. */
+  description: string | null;
+  /** NULL = catalog skill (visible to everyone). Non-null = owned by that
+   * character (visible/editable only by them). */
+  character_id: string | null;
 }
 
 export interface SkillTier {
@@ -154,6 +160,11 @@ export interface SkillTier {
   tier_name: TierName;
   threshold: number;
   sort_order: number;
+  /** Optional plain-English description of what this tier means. */
+  description: string | null;
+  /** Optional 0-100 percentile of the adult population that achieves this
+   * tier. Used to show "Top X%" subtext on tier badges. */
+  percentile: number | null;
 }
 
 export interface SkillLog {
