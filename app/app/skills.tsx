@@ -66,6 +66,7 @@ export default function SkillsHubScreen() {
   const router = useRouter();
   const skillStates = useSkillStates();
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [activeDim, setActiveDim] = useState<DimensionId>('health');
 
   const summary = useMemo(
@@ -172,12 +173,9 @@ export default function SkillsHubScreen() {
             </View>
           </View>
 
-          {/* Category chip row — single active. Horizontal scroll so all 6 fit. */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsRow}
-          >
+          {/* Category chips — single row, all 6 visible, icon-only + medal
+              count badge. Search icon at the end toggles the input below. */}
+          <View style={styles.chipsRow}>
             {DIMENSION_ORDER.map((id) => {
               const meta = DIMENSION_META[id];
               const active = id === activeDim;
@@ -194,53 +192,75 @@ export default function SkillsHubScreen() {
                     },
                     pressed && { opacity: 0.85 },
                   ]}
-                  hitSlop={4}
+                  hitSlop={2}
+                  accessibilityLabel={meta.label}
                 >
                   <Ionicons
                     name={meta.iconName as never}
-                    size={14}
+                    size={16}
                     color={active ? meta.color : tokens.text.dim}
                   />
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: active ? meta.color : tokens.text.mid },
-                    ]}
-                  >
-                    {meta.label}
-                  </Text>
                   {medals > 0 && (
-                    <View style={styles.chipBadge}>
+                    <View
+                      style={[
+                        styles.chipBadge,
+                        active && { borderColor: meta.color },
+                      ]}
+                    >
                       <Text style={styles.chipBadgeText}>{medals}</Text>
                     </View>
                   )}
                 </Pressable>
               );
             })}
-          </ScrollView>
-
-          {/* Search inside the active dim */}
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={tokens.text.dim} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={`Search in ${activeMeta.label}...`}
-              placeholderTextColor={tokens.text.faint}
-              style={styles.searchInput}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Ionicons
-                  name="close-circle"
-                  size={16}
-                  color={tokens.text.dim}
-                />
-              </Pressable>
-            )}
+            <Pressable
+              onPress={() => {
+                if (searchOpen) setQuery('');
+                setSearchOpen((v) => !v);
+              }}
+              style={({ pressed }) => [
+                styles.searchIconBtn,
+                searchOpen && {
+                  backgroundColor: 'rgba(155,130,255,0.15)',
+                  borderColor: tokens.brand.violet2,
+                },
+                pressed && { opacity: 0.7 },
+              ]}
+              hitSlop={2}
+              accessibilityLabel="Search"
+            >
+              <Ionicons
+                name={searchOpen ? 'close' : 'search'}
+                size={16}
+                color={searchOpen ? tokens.brand.violet2 : tokens.text.dim}
+              />
+            </Pressable>
           </View>
+
+          {searchOpen && (
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={16} color={tokens.text.dim} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={`Search in ${activeMeta.label}...`}
+                placeholderTextColor={tokens.text.faint}
+                style={styles.searchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+                autoFocus
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={tokens.text.dim}
+                  />
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {/* Body */}
           {skillStates.isLoading ? (
@@ -430,32 +450,29 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.border.divider,
   },
   chipsRow: {
-    gap: tokens.space[2],
+    flexDirection: 'row',
+    gap: 6,
     paddingTop: tokens.space[4],
     paddingBottom: tokens.space[2],
-    paddingRight: tokens.space[2],
   },
   chip: {
+    flex: 1,
+    minWidth: 0,
+    height: 40,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.pill,
+    justifyContent: 'center',
+    gap: 4,
+    borderRadius: tokens.radius.md,
     borderWidth: 1,
     borderColor: tokens.border.base,
     backgroundColor: tokens.bg.surface,
   },
-  chipText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
-    letterSpacing: 0.4,
-  },
   chipBadge: {
-    minWidth: 20,
-    paddingHorizontal: 6,
-    height: 18,
-    borderRadius: 9,
+    minWidth: 16,
+    paddingHorizontal: 4,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: 'rgba(255, 200, 61, 0.15)',
     borderWidth: 1,
     borderColor: 'rgba(255, 200, 61, 0.30)',
@@ -464,8 +481,18 @@ const styles = StyleSheet.create({
   },
   chipBadgeText: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
+    fontSize: 9,
     color: tokens.semantic.coin,
+  },
+  searchIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: tokens.bg.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchWrap: {
     flexDirection: 'row',
