@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { HexChart } from '@/components/HexChart';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import type { CharacterSubScore, SubId } from '@/lib/db/types';
 import { pickSubScores } from '@/lib/api/character';
 import {
@@ -18,6 +19,10 @@ import {
 } from '@/lib/api/questionnaire';
 import { tokens } from '@/theme';
 import { SUB_META } from '@/theme/dimensions';
+
+type HexSource = 'self' | 'both' | 'questionnaire';
+
+const QUESTIONNAIRE_COLOR = '#4DD0FF';
 
 interface Props {
   subScores: CharacterSubScore[];
@@ -39,11 +44,32 @@ export function AvaliacaoPanel({ subScores }: Props) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const lastSession = useLastQuestionnaireSession();
+  const [hexSource, setHexSource] = useState<HexSource>('self');
   // Match the old (pre-pillars) sizing: bleed slightly beyond page padding
   // for visual presence, capped so it doesn't blow up on tablets.
   const chartSize = Math.max(240, Math.min((screenWidth || 360) - 16, 360));
 
-  const scores = useMemo(() => pickSubScores(subScores, 'self'), [subScores]);
+  const selfScores = useMemo(
+    () => pickSubScores(subScores, 'self'),
+    [subScores],
+  );
+  const questionnaireScores = useMemo(
+    () => pickSubScores(subScores, 'questionnaire'),
+    [subScores],
+  );
+  const hasQuestionnaire = questionnaireScores.size > 0;
+
+  // Map the segment selection to (primary, secondary) score maps.
+  const { primary, secondary } = useMemo(() => {
+    if (!hasQuestionnaire || hexSource === 'self') {
+      return { primary: selfScores, secondary: undefined };
+    }
+    if (hexSource === 'questionnaire') {
+      return { primary: questionnaireScores, secondary: undefined };
+    }
+    // both
+    return { primary: selfScores, secondary: questionnaireScores };
+  }, [hasQuestionnaire, hexSource, selfScores, questionnaireScores]);
 
   const lastTaken = lastSession.data?.taken_at ?? null;
   const sinceDays = daysSince(lastTaken);
@@ -55,18 +81,59 @@ export function AvaliacaoPanel({ subScores }: Props) {
         : `Refazer questionário · ${sinceDays}d atrás`;
 
   const weakest = useMemo<{ subId: SubId; score: number } | null>(() => {
-    if (scores.size === 0) return null;
+    if (selfScores.size === 0) return null;
     let pick: { subId: SubId; score: number } | null = null;
-    for (const [subId, score] of scores.entries()) {
+    for (const [subId, score] of selfScores.entries()) {
       if (!pick || score < pick.score) pick = { subId, score };
     }
     return pick;
-  }, [scores]);
+  }, [selfScores]);
 
   return (
     <View style={styles.wrap}>
+      {hasQuestionnaire && (
+        <View style={styles.toggleWrap}>
+          <SegmentedControl<HexSource>
+            value={hexSource}
+            onChange={setHexSource}
+            options={[
+              { value: 'self', label: 'Self' },
+              { value: 'both', label: 'Both' },
+              { value: 'questionnaire', label: 'Quiz' },
+            ]}
+          />
+          {hexSource === 'both' && (
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: tokens.brand.violet2 },
+                  ]}
+                />
+                <Text style={styles.legendText}>Self</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View
+                  style={[
+                    styles.legendDot,
+                    { backgroundColor: QUESTIONNAIRE_COLOR },
+                  ]}
+                />
+                <Text style={styles.legendText}>Questionário</Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       <View style={styles.hexWrap}>
-        <HexChart scores={scores} size={chartSize} />
+        <HexChart
+          scores={primary}
+          secondaryScores={secondary}
+          secondaryColor={QUESTIONNAIRE_COLOR}
+          size={chartSize}
+        />
       </View>
 
       {weakest && weakest.score < 5 && (
@@ -107,6 +174,30 @@ export function AvaliacaoPanel({ subScores }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     gap: tokens.space[3],
+  },
+  toggleWrap: {
+    gap: tokens.space[2],
+  },
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: tokens.space[4],
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.text.mid,
+    letterSpacing: 0.3,
   },
   hexWrap: {
     alignItems: 'center',

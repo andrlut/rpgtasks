@@ -9,7 +9,13 @@ import { DIMENSION_META, DIMENSION_ORDER, SUB_META, SUBS_BY_DIM } from '@/theme/
 interface HexChartProps {
   /** Map of sub_id → score (0-5). Missing keys render as 0. */
   scores: Map<SubId, number>;
+  /** Optional second series — rendered as an outline-only polygon in the
+   *  secondary color, no vertex discs. Used for "self vs questionnaire"
+   *  comparison without doubling up the visual weight. */
+  secondaryScores?: Map<SubId, number>;
   size?: number;
+  /** Color for the secondary polygon outline. Defaults to bonds teal. */
+  secondaryColor?: string;
 }
 
 const SUB_MAX = 5;
@@ -63,7 +69,12 @@ function Line({ x1, y1, x2, y2, color, width = 1, opacity = 1 }: LineProps) {
  * Trade-off: no filled polygon — only outline. The score shape comes
  * across via the outline + the 6 colored vertex discs at varying radii.
  */
-export function HexChart({ scores, size = 320 }: HexChartProps) {
+export function HexChart({
+  scores,
+  secondaryScores,
+  size = 320,
+  secondaryColor = '#4DD0FF',
+}: HexChartProps) {
   const cx = size / 2;
   const cy = size / 2;
   const R = size / 2 - PADDING;
@@ -91,6 +102,22 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
       };
     });
   }, [scores, cx, cy, R]);
+
+  const secondary = useMemo(() => {
+    if (!secondaryScores) return null;
+    return DIMENSION_ORDER.map((dim, j) => {
+      const [a, b] = SUBS_BY_DIM[dim];
+      const sa = secondaryScores.get(a) ?? 0;
+      const sb = secondaryScores.get(b) ?? 0;
+      const score = sa + sb;
+      const angle = angleAt(j);
+      const r = (score / DIM_MAX) * R;
+      return {
+        x: cx + Math.cos(angle) * r,
+        y: cy + Math.sin(angle) * r,
+      };
+    });
+  }, [secondaryScores, cx, cy, R]);
 
   const overall = useMemo(() => {
     const sum = mains.reduce((s, m) => s + m.score, 0);
@@ -151,6 +178,42 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
             />
           );
         })}
+
+        {/* Secondary polygon (questionnaire) — drawn below the primary so
+            the main score sits on top visually. Outline only, smaller dots. */}
+        {secondary &&
+          secondary.map((m, j) => {
+            const next = secondary[(j + 1) % 6];
+            return (
+              <Line
+                key={`sec-line-${j}`}
+                x1={m.x}
+                y1={m.y}
+                x2={next.x}
+                y2={next.y}
+                color={secondaryColor}
+                width={1.5}
+                opacity={0.85}
+              />
+            );
+          })}
+        {secondary &&
+          secondary.map((m, j) => (
+            <View
+              key={`sec-dot-${j}`}
+              style={{
+                position: 'absolute',
+                left: m.x - 4,
+                top: m.y - 4,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: secondaryColor,
+                borderWidth: 1,
+                borderColor: tokens.bg.deep,
+              }}
+            />
+          ))}
 
         {/* Score polygon outline */}
         {mains.map((m, j) => {

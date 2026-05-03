@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { InfoSheet } from '@/components/InfoSheet';
 import { LevelRing } from '@/components/LevelRing';
 import { PillarTabs, type PillarKey } from '@/components/PillarTabs';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -54,28 +54,20 @@ function formatXp(xp: number): string {
   return Math.floor(xp / 1000) + 'k';
 }
 
-function showStreakInfo() {
-  Alert.alert(
-    'Day streak',
-    'Conta os dias seguidos em que você completou pelo menos 1 task diária (recorrente daily).\n\n' +
-      '• Tasks one-shot e weekly não contam.\n' +
-      '• Grace day: se ainda não fez nada hoje, o streak conta a partir de ontem — você não perde só por abrir o app cedo.\n' +
-      '• Bônus: +1% XP e coins por dia, com cap em 2× aos 100 dias de streak.',
-  );
-}
+const STREAK_INFO_BODY =
+  'Conta os dias seguidos em que você completou pelo menos 1 task diária (recorrente daily).\n\n' +
+  '• Tasks one-shot e weekly não contam.\n' +
+  '• Grace day: se ainda não fez nada hoje, o streak conta a partir de ontem — você não perde só por abrir o app cedo.\n' +
+  '• Bônus: +1% XP e coins por dia, com cap em 2× aos 100 dias de streak.';
 
-function showTitleInfo() {
-  Alert.alert(
-    'Título',
-    'Derivado em runtime da sua dimensão mais forte (a com mais XP).\n\n' +
-      'O nível dessa dimensão define o rank:\n' +
-      '• Apprentice — nível 0 a 2\n' +
-      '• Builder — nível 3 a 5\n' +
-      '• Adept — nível 6 a 9\n' +
-      '• Master — nível 10+\n\n' +
-      'Muda sozinho conforme você ganha XP em outras dimensões.',
-  );
-}
+const TITLE_INFO_BODY =
+  'Derivado em runtime da sua dimensão mais forte (a com mais XP).\n\n' +
+  'O nível dessa dimensão define o rank:\n' +
+  '• Apprentice — nível 0 a 2\n' +
+  '• Builder — nível 3 a 5\n' +
+  '• Adept — nível 6 a 9\n' +
+  '• Master — nível 10+\n\n' +
+  'Muda sozinho conforme você ganha XP em outras dimensões.';
 
 /**
  * Hero tab — identity on top, then a 3-segment switcher between the pilares
@@ -92,6 +84,7 @@ export default function CharacterScreen() {
   const skillStates = useSkillStates();
   const streak = useStreak();
   const [activePillar, setActivePillar] = useState<PillarKey>('avaliacao');
+  const [infoOpen, setInfoOpen] = useState<null | 'streak' | 'title'>(null);
 
   const title = useMemo(
     () => deriveTitle(character.data?.dimensions ?? []),
@@ -199,7 +192,7 @@ export default function CharacterScreen() {
                 <View style={styles.chipRow}>
                   {title && titleDim && (
                     <Pressable
-                      onPress={showTitleInfo}
+                      onPress={() => setInfoOpen('title')}
                       style={({ pressed }) => [
                         styles.titleChip,
                         {
@@ -230,7 +223,7 @@ export default function CharacterScreen() {
                   )}
                   {(streak.data?.currentStreak ?? 0) > 0 && (
                     <Pressable
-                      onPress={showStreakInfo}
+                      onPress={() => setInfoOpen('streak')}
                       style={({ pressed }) => [
                         styles.streakChip,
                         pressed && { opacity: 0.7 },
@@ -298,6 +291,21 @@ export default function CharacterScreen() {
           </View>
         </ScrollView>
       </ScreenBackground>
+
+      <InfoSheet
+        visible={infoOpen === 'title'}
+        onClose={() => setInfoOpen(null)}
+        title="Título"
+        body={TITLE_INFO_BODY}
+        accent={titleDim?.color ?? tokens.brand.violet2}
+      />
+      <InfoSheet
+        visible={infoOpen === 'streak'}
+        onClose={() => setInfoOpen(null)}
+        title="Day streak"
+        body={STREAK_INFO_BODY}
+        accent={tokens.semantic.warn}
+      />
     </SafeAreaView>
   );
 }
