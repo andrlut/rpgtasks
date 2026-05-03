@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { levelProgress } from '@/lib/xp';
 import { tokens } from '@/theme';
 
+import { LevelRing } from './LevelRing';
 import { ProgressBar } from './ProgressBar';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 
 export function HeroCard({ displayName, totalXp, coins }: Props) {
   const { level, xpInLevel, xpNeededForLevel } = levelProgress(totalXp);
+  const progress = xpNeededForLevel === 0 ? 0 : xpInLevel / xpNeededForLevel;
 
   return (
     <View style={styles.outer}>
@@ -25,11 +27,10 @@ export function HeroCard({ displayName, totalXp, coins }: Props) {
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatarGlow} />
-          <View style={styles.avatar}>
-            <Text style={styles.avatarLevel}>{level}</Text>
-          </View>
+        <View style={styles.avatarSlot}>
+          <LevelRing size={72} level={level} progress={progress}>
+            <Ionicons name="person" size={36} color={tokens.brand.violet2} />
+          </LevelRing>
         </View>
 
         <View style={styles.body}>
@@ -81,34 +82,11 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.strong,
     overflow: 'hidden',
   },
-  avatarWrap: {
-    width: 68,
-    height: 68,
+  avatarSlot: {
+    width: 80,
+    height: 92,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarGlow: {
-    position: 'absolute',
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: tokens.brand.violet,
-    opacity: 0.35,
-  },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: tokens.brand.violetDeep,
-    borderWidth: 2,
-    borderColor: tokens.brand.violet2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...tokens.shadow.violetGlowSoft,
-  },
-  avatarLevel: {
-    ...tokens.type.h2,
-    color: tokens.text.hi,
+    justifyContent: 'flex-start',
   },
   body: {
     flex: 1,

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -208,19 +209,24 @@ export function TaskCard({
         </Animated.View>
       </GestureDetector>
 
-      <Animated.View style={buttonAnimStyle}>
+      <Animated.View style={[styles.completeShadow, buttonAnimStyle]}>
         <Pressable
           onPress={onComplete}
           onPressIn={handlePressIn}
           onPressOut={handlePressOut}
           disabled={isCompleting}
           hitSlop={8}
-          style={({ pressed }) => [
-            styles.completeButton,
-            pressed && styles.completeButtonPressed,
-          ]}
+          style={({ pressed }) => [pressed && styles.completeButtonPressed]}
         >
-          <Ionicons name="checkmark" size={26} color={tokens.text.hi} />
+          <LinearGradient
+            colors={tokens.gradient.completeBtn}
+            locations={tokens.gradient.completeBtnLocations}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.completeButton}
+          >
+            <Ionicons name="checkmark" size={26} color={tokens.text.hi} />
+          </LinearGradient>
         </Pressable>
       </Animated.View>
     </View>
@@ -282,16 +288,26 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     fontStyle: 'italic',
   },
+  completeShadow: {
+    borderRadius: 14,
+    shadowColor: tokens.brand.violet,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 8,
+  },
   completeButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.brand.violet,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   completeButtonPressed: {
-    opacity: 0.7,
+    opacity: 0.85,
+    transform: [{ scale: 0.96 }],
   },
   swipeHintLeft: {
     position: 'absolute',

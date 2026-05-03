@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { useCharacter } from '@/lib/api/character';
 import { confirmAction } from '@/lib/util/confirm';
 import { useOnboardingStore } from '@/lib/onboarding';
@@ -78,6 +79,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenBackground>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.avatar}>
@@ -130,12 +132,13 @@ export default function ProfileScreen() {
           {Updates.updateId ? `\nupdate ${Updates.updateId.slice(0, 8)}` : ''}
         </Text>
       </ScrollView>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,

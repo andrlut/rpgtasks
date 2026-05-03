@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -16,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HeroCard } from '@/components/HeroCard';
 import { QuestChip } from '@/components/QuestChip';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { useCharacter } from '@/lib/api/character';
@@ -92,7 +94,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView
+      <ScreenBackground>
+        <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -170,7 +173,8 @@ export default function HomeScreen() {
             )}
           </>
         )}
-      </ScrollView>
+        </ScrollView>
+      </ScreenBackground>
 
       {floats.map((f) => (
         <XPCoinFloat
@@ -183,10 +187,18 @@ export default function HomeScreen() {
 
       <Pressable
         onPress={() => router.push('/task-form')}
-        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        style={({ pressed }) => [styles.fabWrap, pressed && styles.fabPressed]}
         hitSlop={8}
       >
-        <Ionicons name="add" size={28} color={tokens.text.hi} />
+        <LinearGradient
+          colors={tokens.gradient.completeBtn}
+          locations={tokens.gradient.completeBtnLocations}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.fab}
+        >
+          <Ionicons name="add" size={28} color={tokens.text.hi} />
+        </LinearGradient>
       </Pressable>
     </SafeAreaView>
   );
@@ -195,7 +207,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: tokens.bg.base,
+    backgroundColor: tokens.bg.deep,
   },
   scroll: {
     flex: 1,
@@ -273,21 +285,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: tokens.space[6],
   },
-  fab: {
+  fabWrap: {
     position: 'absolute',
     right: tokens.space[5],
     bottom: tokens.layout.bottomNavClearance + tokens.space[3],
     width: 56,
     height: 56,
-    borderRadius: 28,
-    backgroundColor: tokens.brand.violet,
+    borderRadius: 18,
+    shadowColor: tokens.brand.violet,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.55,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: tokens.brand.violet,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   fabPressed: {
     opacity: 0.85,

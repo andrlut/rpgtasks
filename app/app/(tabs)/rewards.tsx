@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RewardCard } from '@/components/RewardCard';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { TemplateCard } from '@/components/TemplateCard';
 import { useCharacter } from '@/lib/api/character';
@@ -138,6 +139,7 @@ export default function RewardsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenBackground>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -327,6 +329,7 @@ export default function RewardsScreen() {
           </>
         )}
       </ScrollView>
+      </ScreenBackground>
 
       {view === 'shop' && (
         <Pressable
@@ -347,7 +350,7 @@ export default function RewardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,

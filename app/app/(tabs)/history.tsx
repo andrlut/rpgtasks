@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CalendarMonthModal } from '@/components/CalendarMonthModal';
 import { DifficultyStars } from '@/components/DifficultyStars';
 import { DimensionChip } from '@/components/DimensionChip';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { XpHeatmap } from '@/components/XpHeatmap';
 import { useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
@@ -137,6 +138,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenBackground>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -389,6 +391,7 @@ export default function HistoryScreen() {
           </>
         )}
       </ScrollView>
+      </ScreenBackground>
 
       <CalendarMonthModal
         visible={calendarOpen}
@@ -401,7 +404,7 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,

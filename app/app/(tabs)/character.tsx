@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillRow } from '@/components/SkillRow';
 import { useCharacter } from '@/lib/api/character';
 import { useSkillStates } from '@/lib/api/skills';
@@ -55,6 +56,7 @@ export default function CharacterScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScreenBackground>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -158,12 +160,13 @@ export default function CharacterScreen() {
           </View>
         </View>
       </ScrollView>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,

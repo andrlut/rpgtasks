@@ -196,6 +196,14 @@ export const tokens = {
    * `Locations` arrays are exported alongside when a non-uniform stop matters.
    */
   gradient: {
+    /**
+     * Ambient screen background — fakes a top-anchored radial gradient using a
+     * vertical linear gradient. Produces the "atmospheric" feel of the design
+     * mocks without needing a true radial. Apply by spreading into a full-bleed
+     * <LinearGradient> behind screen content.
+     */
+    screenAmbient: ['#1E2348', '#0E1230', '#0A0E26'] as const,
+    screenAmbientLocations: [0, 0.5, 1] as const,
     heroCard: ['rgba(123, 92, 255, 0.18)', 'rgba(36, 42, 88, 0.6)'] as const,
     heroCardLocations: [0, 1] as const,
     coinPill: ['#FFE08A', '#FFC83D', '#C8881C'] as const,
