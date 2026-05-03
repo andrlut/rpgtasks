@@ -40,6 +40,16 @@ const TIER_RANK: Record<TierName, number> = {
   master: 4,
 };
 
+/** 3-letter abbreviations for the compact RPG-stat-block category row. */
+const DIM_ABBREV: Record<DimensionId, string> = {
+  health: 'HEA',
+  strength: 'STR',
+  mind: 'MIN',
+  wealth: 'WEA',
+  social: 'SOC',
+  discipline: 'DIS',
+};
+
 /**
  * "Title" derived from the user's strongest dimension. Pure cosmetic flavor —
  * gives the avatar a personality without needing a separate titles table.
@@ -57,19 +67,6 @@ function deriveTitle(
   const dimLabel = DIMENSION_META[best.dimension_id].label;
   const rank = lvl >= 10 ? 'Master' : lvl >= 6 ? 'Adept' : lvl >= 3 ? 'Builder' : 'Apprentice';
   return { label: `${dimLabel} ${rank}`, dim: best.dimension_id };
-}
-
-/**
- * Featured skills: rank by tier achieved (descending), then by progress to next.
- * Caller takes the top N for display.
- */
-function rankSkills(states: SkillState[]): SkillState[] {
-  return [...states].sort((a, b) => {
-    const rankDiff =
-      TIER_RANK[b.currentTier.tier_name] - TIER_RANK[a.currentTier.tier_name];
-    if (rankDiff !== 0) return rankDiff;
-    return b.currentPr - a.currentPr;
-  });
 }
 
 /**
@@ -125,10 +122,15 @@ export default function CharacterScreen() {
     () => deriveTitle(character.data?.dimensions ?? []),
     [character.data?.dimensions],
   );
-  const featured = useMemo(
-    () => rankSkills(skillStates.data ?? []).slice(0, 4),
-    [skillStates.data],
-  );
+  const skillsByDim = useMemo(() => {
+    const map = new Map<DimensionId, SkillState[]>();
+    for (const s of skillStates.data ?? []) {
+      const arr = map.get(s.skill.dimension_id) ?? [];
+      arr.push(s);
+      map.set(s.skill.dimension_id, arr);
+    }
+    return map;
+  }, [skillStates.data]);
   const badges = useMemo(
     () => deriveBadges(skillStates.data ?? []),
     [skillStates.data],
@@ -139,7 +141,6 @@ export default function CharacterScreen() {
     [rewards.data, character.data?.character.coins],
   );
 
-  const states = skillStates.data ?? [];
   const rewardsList = rewards.data ?? [];
 
   if (character.isLoading) {
@@ -285,109 +286,138 @@ export default function CharacterScreen() {
             </View>
           </View>
 
-          {/* ── 2. CATEGORIES ─────────────────────────────────── */}
+          {/* ── 2. CATEGORIES (RPG stat block, 6 in a row) ────── */}
           <Text style={styles.sectionTitle}>Categories</Text>
-          <View style={styles.dimensionList}>
-            {DIMENSION_ORDER.map((id, idx) => {
+          <View style={styles.catStatBlock}>
+            {DIMENSION_ORDER.map((id) => {
               const meta = DIMENSION_META[id];
               const row = dimMap.get(id);
               const xp = row?.xp ?? 0;
               const lp = levelProgress(xp);
-              const pct = lp.xpNeededForLevel === 0
-                ? 0
-                : Math.round((lp.xpInLevel / lp.xpNeededForLevel) * 100);
               return (
                 <Pressable
                   key={id}
                   style={({ pressed }) => [
-                    styles.dimRow,
-                    idx > 0 && styles.dimRowDivider,
-                    pressed && { opacity: 0.7 },
+                    styles.statCol,
+                    pressed && { opacity: 0.65 },
                   ]}
                   onPress={() =>
                     router.push({ pathname: '/dimension/[id]', params: { id } })
                   }
                 >
-                  <View style={[styles.dimRowIcon, { backgroundColor: meta.bg }]}>
-                    <Ionicons name={meta.iconName as never} size={16} color={meta.color} />
-                  </View>
-                  <View style={styles.dimRowBody}>
-                    <View style={styles.dimRowTopRow}>
-                      <Text style={styles.dimRowLabel}>{meta.label}</Text>
-                      <View style={styles.dimRowLevel}>
-                        <Text style={styles.dimRowLevelLv}>LV</Text>
-                        <Text style={[styles.dimRowLevelNum, { color: meta.color }]}>
-                          {lp.level}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.dimRowBarWrap}>
-                      <ProgressBar
-                        value={lp.xpInLevel}
-                        max={lp.xpNeededForLevel}
-                        color={meta.color}
-                        height={6}
-                      />
-                    </View>
-                    <View style={styles.dimRowFooter}>
-                      <Text style={styles.dimRowXp}>
-                        {lp.xpInLevel.toLocaleString()} / {lp.xpNeededForLevel.toLocaleString()} XP
-                      </Text>
-                      <Text style={[styles.dimRowPct, { color: meta.color }]}>
-                        {pct}%
-                      </Text>
-                    </View>
+                  <Ionicons
+                    name={meta.iconName as never}
+                    size={16}
+                    color={meta.color}
+                  />
+                  <Text style={[styles.statAbbrev, { color: meta.color }]}>
+                    {DIM_ABBREV[id]}
+                  </Text>
+                  <Text style={styles.statBigLevel}>{lp.level}</Text>
+                  <View style={styles.statBarWrap}>
+                    <ProgressBar
+                      value={lp.xpInLevel}
+                      max={lp.xpNeededForLevel}
+                      color={meta.color}
+                      height={3}
+                    />
                   </View>
                 </Pressable>
               );
             })}
           </View>
 
-          {/* ── 3. FEATURED SKILLS ────────────────────────────── */}
+          {/* ── 3. SKILLS BY CATEGORY ─────────────────────────── */}
           {skillStates.isLoading ? (
             <View style={{ paddingVertical: tokens.space[5] }}>
               <ActivityIndicator color={tokens.brand.violet2} />
             </View>
-          ) : featured.length > 0 ? (
+          ) : skillsByDim.size > 0 ? (
             <>
-              <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>Top Skills</Text>
-                <Text style={styles.sectionMeta}>{states.length} total</Text>
-              </View>
-              <View style={styles.skillGrid}>
-                {featured.map((s) => (
-                  <Pressable
-                    key={s.skill.id}
-                    style={({ pressed }) => [
-                      styles.skillCard,
-                      pressed && { opacity: 0.7 },
-                    ]}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/skill/[id]',
-                        params: { id: s.skill.id },
-                      })
-                    }
-                  >
-                    <TierMedal tier={s.currentTier.tier_name} size={42} />
-                    <Text style={styles.skillName} numberOfLines={1}>
-                      {s.skill.display_name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.skillTier,
-                        s.currentTier.tier_name === 'beginner' && {
-                          color: tokens.text.dim,
-                        },
-                      ]}
-                    >
-                      {s.currentTier.tier_name.toUpperCase()}
-                    </Text>
-                    <Text style={styles.skillPr}>
-                      {s.currentPr} {s.skill.unit}
-                    </Text>
-                  </Pressable>
-                ))}
+              <Text style={styles.sectionTitle}>Skills</Text>
+              <View style={{ gap: tokens.space[3] }}>
+                {DIMENSION_ORDER.filter((id) => skillsByDim.has(id)).map((id) => {
+                  const meta = DIMENSION_META[id];
+                  const skills = skillsByDim.get(id) ?? [];
+                  return (
+                    <View key={id} style={styles.skillsGroupCard}>
+                      <View style={styles.skillsGroupHeader}>
+                        <View
+                          style={[
+                            styles.skillsGroupIcon,
+                            { backgroundColor: meta.bg },
+                          ]}
+                        >
+                          <Ionicons
+                            name={meta.iconName as never}
+                            size={14}
+                            color={meta.color}
+                          />
+                        </View>
+                        <Text style={styles.skillsGroupTitle}>
+                          {meta.label}
+                        </Text>
+                        <Text style={styles.skillsGroupCount}>
+                          {skills.length}
+                        </Text>
+                      </View>
+                      <View style={styles.skillsGroupBody}>
+                        {skills.map((s, i) => (
+                          <Pressable
+                            key={s.skill.id}
+                            style={({ pressed }) => [
+                              styles.skillItem,
+                              i > 0 && styles.skillItemDivider,
+                              pressed && { opacity: 0.7 },
+                            ]}
+                            onPress={() =>
+                              router.push({
+                                pathname: '/skill/[id]',
+                                params: { id: s.skill.id },
+                              })
+                            }
+                          >
+                            <TierMedal
+                              tier={s.currentTier.tier_name}
+                              size={32}
+                            />
+                            <View style={styles.skillItemBody}>
+                              <Text
+                                style={styles.skillItemName}
+                                numberOfLines={1}
+                              >
+                                {s.skill.display_name}
+                              </Text>
+                              <Text style={styles.skillItemTier}>
+                                {s.currentTier.tier_name.toUpperCase()}
+                                {s.nextTier && (
+                                  <Text style={styles.skillItemNext}>
+                                    {' '}
+                                    · {Math.max(0, s.nextTier.threshold - s.currentPr)}{' '}
+                                    to {s.nextTier.tier_name}
+                                  </Text>
+                                )}
+                              </Text>
+                            </View>
+                            <View style={styles.skillItemRight}>
+                              <Text style={styles.skillItemPr}>
+                                {s.currentPr}
+                              </Text>
+                              <Text style={styles.skillItemUnit}>
+                                {s.skill.unit}
+                              </Text>
+                            </View>
+                            <Ionicons
+                              name="chevron-forward"
+                              size={16}
+                              color={tokens.text.dim}
+                            />
+                          </Pressable>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
             </>
           ) : null}
@@ -586,119 +616,126 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_600SemiBold',
   },
 
-  // Categories — RPG sheet style: vertical rows in a single card
-  dimensionList: {
+  // Categories — compact stat block, 6 cols across, BG3-inspired
+  catStatBlock: {
+    flexDirection: 'row',
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[2],
+    paddingHorizontal: tokens.space[2],
+    paddingVertical: tokens.space[3],
+    gap: 2,
   },
-  dimRow: {
+  statCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: tokens.space[2],
+    paddingHorizontal: 2,
+  },
+  statAbbrev: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 1,
+    marginTop: 2,
+  },
+  statBigLevel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 22,
+    lineHeight: 24,
+    color: tokens.text.hi,
+    marginTop: 1,
+  },
+  statBarWrap: {
+    width: '85%',
+    marginTop: 4,
+  },
+
+  // Skills — grouped by category
+  skillsGroupCard: {
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    overflow: 'hidden',
+  },
+  skillsGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    borderBottomWidth: 1,
+    borderBottomColor: tokens.border.divider,
+  },
+  skillsGroupIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: tokens.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skillsGroupTitle: {
+    flex: 1,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.text.hi,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  skillsGroupCount: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.text.dim,
+  },
+  skillsGroupBody: {
+    paddingHorizontal: tokens.space[4],
+  },
+  skillItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
     paddingVertical: tokens.space[3],
   },
-  dimRowDivider: {
+  skillItemDivider: {
     borderTopWidth: 1,
     borderTopColor: tokens.border.divider,
   },
-  dimRowIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: tokens.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dimRowBody: {
+  skillItemBody: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
-  dimRowTopRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  dimRowLabel: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 13,
-    color: tokens.text.hi,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  dimRowLevel: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  dimRowLevelLv: {
+  skillItemName: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 9,
-    color: tokens.text.dim,
-    letterSpacing: 1,
-  },
-  dimRowLevelNum: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 18,
-    lineHeight: 18,
-  },
-  dimRowBarWrap: {
-    marginTop: 2,
-  },
-  dimRowFooter: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  dimRowXp: {
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 10,
-    color: tokens.text.dim,
-  },
-  dimRowPct: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 0.3,
-  },
-
-  // Skills
-  skillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.space[3],
-  },
-  skillCard: {
-    width: '48%',
-    flexGrow: 1,
-    alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    paddingVertical: tokens.space[4],
-    paddingHorizontal: tokens.space[3],
-    gap: 4,
-  },
-  skillName: {
-    ...tokens.type.body,
+    fontSize: 14,
     color: tokens.text.hi,
-    fontFamily: 'Manrope_700Bold',
-    marginTop: tokens.space[2],
   },
-  skillTier: {
+  skillItemTier: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
     color: tokens.semantic.coin,
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
-  skillPr: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    fontSize: 11,
+  skillItemNext: {
+    fontFamily: 'Manrope_500Medium',
+    color: tokens.text.dim,
+    letterSpacing: 0,
+  },
+  skillItemRight: {
+    alignItems: 'flex-end',
+  },
+  skillItemPr: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 16,
+    lineHeight: 18,
+    color: tokens.text.hi,
+  },
+  skillItemUnit: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 10,
+    color: tokens.text.dim,
   },
 
   // Badges
