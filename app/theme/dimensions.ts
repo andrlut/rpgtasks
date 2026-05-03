@@ -1,4 +1,4 @@
-import type { DimensionId } from '@/lib/db/types';
+import type { DimensionId, SubId } from '@/lib/db/types';
 
 import { tokens } from './tokens';
 
@@ -20,12 +20,12 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
     iconName: 'heart',
     tagline: 'Your body is the vessel.',
     description:
-      'The base layer. Sleep, hydration, nutrition, and recovery — everything else falls apart without this. Level it up by treating your body like the long-term asset it is.',
+      'The base layer: sleep + nutrition. Recovery and fuel are what every other dimension stands on. Without these, the rest crumbles.',
     examples: [
+      'Sleep 7+ hours',
       'Drink 2L of water',
-      'Sleep 8 hours',
       'Eat a real meal (no junk)',
-      'Stretch / mobility 10 min',
+      'No screens 1h before bed',
     ],
   },
   strength: {
@@ -35,12 +35,12 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
     iconName: 'fitness',
     tagline: 'Earned, not given.',
     description:
-      'Physical training. Anything that builds muscle, stamina, power, or athletic capacity. The visible proof of consistency over time.',
+      'Movement + dexterity. Cardio, lifting, sport, mobility. The visible proof of consistency over time.',
     examples: [
       '20 push-ups',
       'Run 5km',
-      'Lift weights',
       'Climb / sport / martial art',
+      'Mobility 10 min',
     ],
   },
   mind: {
@@ -50,12 +50,12 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
     iconName: 'sparkles',
     tagline: 'Sharpen the blade.',
     description:
-      'Learning, focus, and mental clarity. Reading, deep work, study, meditation. Every level here compounds — what you learn this year multiplies what you can do next year.',
+      'Learn + contemplate. Reading, deep work, study, meditation, journaling. What you compound here multiplies what you can do everywhere else.',
     examples: [
       'Read for 20 minutes',
       'Meditate 10 min',
       'Study or take a course',
-      '90 min of deep, distraction-free work',
+      '90 min of deep work',
     ],
   },
   wealth: {
@@ -65,42 +65,42 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
     iconName: 'cash',
     tagline: 'Future-you needs this.',
     description:
-      'Money habits — earning, saving, investing, tracking. Not about being rich, about being free. Small reps here are worth far more than big sporadic moves.',
+      'Money + career. Earning, saving, investing, shipping. Small reps here are worth far more than big sporadic moves.',
     examples: [
-      'Log today\'s expenses',
+      "Log today's expenses",
       'Review the budget',
       'Save / invest a fixed amount',
-      'Ship something that earns money',
+      '90 min on a side project',
     ],
   },
-  social: {
-    label: 'Social',
-    color: tokens.dimension.social,
-    bg: tokens.dimensionBg.social,
+  bonds: {
+    label: 'Bonds',
+    color: tokens.dimension.bonds,
+    bg: tokens.dimensionBg.bonds,
     iconName: 'people',
-    tagline: 'Don\'t solo this game.',
+    tagline: "Don't solo this game.",
     description:
-      'Relationships are the highest-yield long-term investment. Reaching out, showing up, listening, deepening bonds. Easy to skip; expensive to skip for years.',
+      'Friends, family + romance. Highest-yield long-term investment. Easy to skip; expensive to skip for years.',
     examples: [
-      'Call / message a friend',
-      'Have lunch with someone',
+      'Call / message family',
+      'Have lunch with a friend',
+      'Quality time with partner',
       'Show up to a gathering',
-      'Help someone unprompted',
     ],
   },
-  discipline: {
-    label: 'Discipline',
-    color: tokens.dimension.discipline,
-    bg: tokens.dimensionBg.discipline,
-    iconName: 'shield',
-    tagline: 'The meta-skill.',
+  craft: {
+    label: 'Craft',
+    color: tokens.dimension.craft,
+    bg: tokens.dimensionBg.craft,
+    iconName: 'color-palette',
+    tagline: 'Make something.',
     description:
-      'Showing up when you don\'t feel like it. Routines, consistency, doing the boring rep. Discipline isn\'t one habit — it\'s the muscle that keeps every other habit alive.',
+      'Play + build. Hobbies, creative work, side-projects. The dimension that makes life worth the grind everywhere else.',
     examples: [
-      'Wake up at the planned time',
-      'Stick to your routine',
-      'Do the hardest task first',
-      'No-screens hour before bed',
+      'Hobby session 30 min',
+      'Ship something on a side project',
+      'Practice an instrument',
+      'Finish a creative piece',
     ],
   },
 };
@@ -110,6 +110,37 @@ export const DIMENSION_ORDER: DimensionId[] = [
   'strength',
   'mind',
   'wealth',
-  'social',
-  'discipline',
+  'bonds',
+  'craft',
 ];
+
+interface SubMeta {
+  label: string;
+  iconName: string;
+  dimensionId: DimensionId;
+}
+
+export const SUB_META: Record<SubId, SubMeta> = {
+  sleep:       { label: 'Sleep',            iconName: 'moon',            dimensionId: 'health' },
+  nutrition:   { label: 'Nutrition',        iconName: 'restaurant',      dimensionId: 'health' },
+  movement:    { label: 'Movement',         iconName: 'walk',            dimensionId: 'strength' },
+  dexterity:   { label: 'Dexterity',        iconName: 'body',            dimensionId: 'strength' },
+  learn:       { label: 'Learn',            iconName: 'book',            dimensionId: 'mind' },
+  contemplate: { label: 'Contemplate',      iconName: 'leaf',            dimensionId: 'mind' },
+  money:       { label: 'Money',            iconName: 'wallet',          dimensionId: 'wealth' },
+  career:      { label: 'Career',           iconName: 'briefcase',       dimensionId: 'wealth' },
+  circle:      { label: 'Friends & Family', iconName: 'people',          dimensionId: 'bonds' },
+  romance:     { label: 'Romance',          iconName: 'heart',           dimensionId: 'bonds' },
+  play:        { label: 'Play',             iconName: 'game-controller', dimensionId: 'craft' },
+  build:       { label: 'Build',            iconName: 'construct',       dimensionId: 'craft' },
+};
+
+/** Subs grouped by their parent dim, in display order. */
+export const SUBS_BY_DIM: Record<DimensionId, SubId[]> = {
+  health:   ['sleep', 'nutrition'],
+  strength: ['movement', 'dexterity'],
+  mind:     ['learn', 'contemplate'],
+  wealth:   ['money', 'career'],
+  bonds:    ['circle', 'romance'],
+  craft:    ['play', 'build'],
+};

@@ -55,6 +55,7 @@ interface TaskRow {
   metric_label: string | null;
   base_value: number | string | null;
   increment_per_star: number | string | null;
+  sub_id: string | null;
   task_dimension: { dimension_id: DimensionId }[];
 }
 
@@ -82,6 +83,7 @@ function mapTaskRow(t: TaskRow): TaskWithDimensions {
     metric_label: t.metric_label,
     base_value: numericOrNull(t.base_value),
     increment_per_star: numericOrNull(t.increment_per_star),
+    sub_id: (t.sub_id ?? null) as TaskWithDimensions['sub_id'],
     dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
   };
 }

@@ -1,12 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { Character, CharacterDimension, Profile } from '@/lib/db/types';
+import type {
+  Character,
+  CharacterDimension,
+  CharacterSub,
+  Profile,
+} from '@/lib/db/types';
 import { supabase } from '@/lib/supabase';
 
 export interface CharacterWithProfile {
   profile: Profile;
   character: Character;
   dimensions: CharacterDimension[];
+  subs: CharacterSub[];
 }
 
 export const characterKeys = {
@@ -32,10 +38,16 @@ async function fetchCharacter(): Promise<CharacterWithProfile> {
     .select('*');
   if (dimErr) throw dimErr;
 
+  const { data: subs, error: subErr } = await supabase
+    .from('character_sub')
+    .select('*');
+  if (subErr) throw subErr;
+
   return {
     profile: profile as Profile,
     character: character as Character,
     dimensions: (dimensions ?? []) as CharacterDimension[],
+    subs: (subs ?? []) as CharacterSub[],
   };
 }
 

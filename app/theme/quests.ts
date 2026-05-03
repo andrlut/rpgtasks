@@ -36,17 +36,17 @@ export const QUEST_CATEGORY_META: Record<string, CategoryMeta> = {
     bg: 'rgba(255, 200, 61, 0.16)',
     icon: 'cash',
   },
-  social: {
-    label: 'Social',
-    color: tokens.dimension.social,
+  bonds: {
+    label: 'Bonds',
+    color: tokens.dimension.bonds,
     bg: 'rgba(77, 208, 255, 0.16)',
     icon: 'people',
   },
-  discipline: {
-    label: 'Discipline',
-    color: tokens.dimension.discipline,
+  craft: {
+    label: 'Craft',
+    color: tokens.dimension.craft,
     bg: 'rgba(46, 196, 182, 0.16)',
-    icon: 'shield',
+    icon: 'color-palette',
   },
 };
 

@@ -33,7 +33,7 @@ export const REWARD_CATEGORY_META: Record<RewardCategory, CategoryMeta> = {
     short: 'Experiences',
     tagline: 'Memories, not stuff.',
     icon: 'sparkles',
-    color: tokens.dimension.social,
+    color: tokens.dimension.bonds,
     bg: 'rgba(77, 208, 255, 0.16)',
   },
 };
