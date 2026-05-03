@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CoinIcon } from '@/components/CoinIcon';
 import { LevelRing } from '@/components/LevelRing';
 import { PillarTabs, type PillarKey } from '@/components/PillarTabs';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -172,26 +171,42 @@ export default function CharacterScreen() {
                 <Text style={styles.levelLine}>
                   Level {totalProgress.level}
                 </Text>
-                {title && titleDim && (
-                  <View
-                    style={[
-                      styles.titleChip,
-                      {
-                        backgroundColor: titleDim.bg,
-                        borderColor: `${titleDim.color}55`,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={titleDim.iconName as never}
-                      size={11}
-                      color={titleDim.color}
-                    />
-                    <Text style={[styles.titleText, { color: titleDim.color }]}>
-                      {title.label}
-                    </Text>
-                  </View>
-                )}
+                <View style={styles.chipRow}>
+                  {title && titleDim && (
+                    <View
+                      style={[
+                        styles.titleChip,
+                        {
+                          backgroundColor: titleDim.bg,
+                          borderColor: `${titleDim.color}55`,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={titleDim.iconName as never}
+                        size={11}
+                        color={titleDim.color}
+                      />
+                      <Text
+                        style={[styles.titleText, { color: titleDim.color }]}
+                      >
+                        {title.label}
+                      </Text>
+                    </View>
+                  )}
+                  {(streak.data?.currentStreak ?? 0) > 0 && (
+                    <View style={styles.streakChip}>
+                      <Ionicons
+                        name="flame"
+                        size={11}
+                        color={tokens.semantic.warn}
+                      />
+                      <Text style={styles.streakChipText}>
+                        {streak.data?.currentStreak}d
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <View style={styles.totalBar}>
                   <ProgressBar
                     value={totalProgress.xpInLevel}
@@ -211,49 +226,6 @@ export default function CharacterScreen() {
               </View>
             </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statBlock}>
-                <View style={styles.statTop}>
-                  <Ionicons
-                    name="flame"
-                    size={14}
-                    color={tokens.semantic.warn}
-                  />
-                  <Text
-                    style={[styles.statValue, { color: tokens.semantic.warn }]}
-                  >
-                    {streak.data?.currentStreak ?? 0}
-                  </Text>
-                </View>
-                <Text style={styles.statLabel}>Day streak</Text>
-              </View>
-              <View style={styles.statBlock}>
-                <View style={styles.statTop}>
-                  <Ionicons
-                    name="flash"
-                    size={14}
-                    color={tokens.semantic.xp}
-                  />
-                  <Text
-                    style={[styles.statValue, { color: tokens.semantic.xp }]}
-                  >
-                    {char.total_xp.toLocaleString()}
-                  </Text>
-                </View>
-                <Text style={styles.statLabel}>Total XP</Text>
-              </View>
-              <View style={styles.statBlock}>
-                <View style={styles.statTop}>
-                  <CoinIcon size={14} />
-                  <Text
-                    style={[styles.statValue, { color: tokens.semantic.coin }]}
-                  >
-                    {char.coins.toLocaleString()}
-                  </Text>
-                </View>
-                <Text style={styles.statLabel}>Coins</Text>
-              </View>
-            </View>
           </View>
 
           {/* ── PILLAR TABS ──────────────────────────────────── */}
@@ -318,6 +290,13 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     letterSpacing: 0.3,
   },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
   titleChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,12 +305,27 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: tokens.radius.pill,
     borderWidth: 1,
-    alignSelf: 'flex-start',
-    marginTop: 2,
   },
   titleText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  streakChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: 4,
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 159, 67, 0.12)',
+    borderColor: 'rgba(255, 159, 67, 0.35)',
+  },
+  streakChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    color: tokens.semantic.warn,
     letterSpacing: 0.3,
   },
   totalBar: {
@@ -342,38 +336,6 @@ const styles = StyleSheet.create({
     color: tokens.brand.violet2,
     fontFamily: 'Manrope_700Bold',
     marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: tokens.space[2],
-  },
-  statBlock: {
-    flex: 1,
-    backgroundColor: tokens.bg.glass,
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[3],
-    gap: 4,
-  },
-  statTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 16,
-    lineHeight: 18,
-    color: tokens.text.hi,
-  },
-  statLabel: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontSize: 10,
   },
 
   panelWrap: {
