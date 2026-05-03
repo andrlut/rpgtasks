@@ -43,6 +43,9 @@ import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
 type RewardView = 'shop' | 'bank' | 'used';
 
+/** Rewards with a deficit ≤ this go to "Almost there"; the rest, to "Big goals". */
+const ALMOST_THRESHOLD = 800;
+
 export default function RewardsScreen() {
   const router = useRouter();
   const character = useCharacter();
@@ -60,7 +63,11 @@ export default function RewardsScreen() {
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [usingId, setUsingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<RewardCategory>('indulgence');
+  // Multi-toggle category filter. Default all on; user can mute one or two
+  // but never all three (the last enabled chip is non-deactivatable).
+  const [enabledCategories, setEnabledCategories] = useState<Set<RewardCategory>>(
+    new Set(REWARD_CATEGORY_ORDER),
+  );
   const [view, setView] = useState<RewardView>('shop');
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -74,45 +81,78 @@ export default function RewardsScreen() {
     [trackedId.data, rewards.data],
   );
 
-  const myRewardsByCategory = useMemo(() => {
-    const map: Record<RewardCategory, Reward[]> = {
-      indulgence: [],
-      good: [],
-      experience: [],
-    };
-    (rewards.data ?? []).forEach((r) => map[r.category]?.push(r));
-    return map;
-  }, [rewards.data]);
-
-  const myTitlesByCategory = useMemo(() => {
-    const map: Record<RewardCategory, Set<string>> = {
-      indulgence: new Set(),
-      good: new Set(),
-      experience: new Set(),
-    };
-    (rewards.data ?? []).forEach((r) =>
-      map[r.category]?.add(r.title.trim().toLowerCase()),
+  // Reward set after applying the category multi-toggle filter, with the
+  // tracked reward removed (it gets its own hero card so we don't duplicate).
+  const filteredRewards = useMemo(() => {
+    return (rewards.data ?? []).filter(
+      (r) => enabledCategories.has(r.category) && r.id !== trackedId.data,
     );
-    return map;
-  }, [rewards.data]);
+  }, [rewards.data, enabledCategories, trackedId.data]);
 
-  const templatesByCategory = useMemo(() => {
-    const map: Record<RewardCategory, RewardTemplate[]> = {
-      indulgence: [],
-      good: [],
-      experience: [],
-    };
-    (templates.data ?? []).forEach((t) => {
-      if (!myTitlesByCategory[t.category].has(t.title.trim().toLowerCase())) {
-        map[t.category]?.push(t);
+  // Bucket every visible reward into exactly one section so the screen
+  // partitions cleanly with no overlap or orphans.
+  const sections = useMemo(() => {
+    const available: Reward[] = [];
+    const almost: Reward[] = [];
+    const bigGoals: Reward[] = [];
+
+    for (const r of filteredRewards) {
+      const deficit = r.cost - coins;
+      if (deficit <= 0) {
+        available.push(r);
+      } else if (deficit <= ALMOST_THRESHOLD) {
+        almost.push(r);
+      } else {
+        bigGoals.push(r);
       }
-    });
-    return map;
-  }, [templates.data, myTitlesByCategory]);
+    }
 
-  const meta = REWARD_CATEGORY_META[activeCategory];
-  const myList = myRewardsByCategory[activeCategory];
-  const tmplList = templatesByCategory[activeCategory];
+    almost.sort((a, b) => a.cost - coins - (b.cost - coins));
+    bigGoals.sort((a, b) => b.cost - a.cost);
+
+    return { available, almost, bigGoals };
+  }, [filteredRewards, coins]);
+
+  // Templates we don't already own (case-insensitive title match), filtered
+  // by the same enabled-categories set.
+  const visibleTemplates = useMemo(() => {
+    const owned = new Set(
+      (rewards.data ?? []).map((r) => r.title.trim().toLowerCase()),
+    );
+    return (templates.data ?? []).filter(
+      (t) =>
+        enabledCategories.has(t.category) &&
+        !owned.has(t.title.trim().toLowerCase()),
+    );
+  }, [templates.data, rewards.data, enabledCategories]);
+
+  // Headline for the hero. Mirrors the mock's narrative copy.
+  const headline = useMemo(() => {
+    if (trackedReward) {
+      const deficit = Math.max(0, trackedReward.cost - coins);
+      return deficit > 0
+        ? `${deficit.toLocaleString()} to go for ${trackedReward.title}`
+        : `${trackedReward.title} is yours to claim`;
+    }
+    const affordable = sections.available.length;
+    if (affordable === 0) return 'Earn some coins to unlock rewards';
+    return `You can buy ${affordable} ${affordable === 1 ? 'reward' : 'rewards'} now`;
+  }, [trackedReward, coins, sections.available.length]);
+
+  const toggleCategory = (cat: RewardCategory) => {
+    setEnabledCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) {
+        // Don't allow disabling the last active chip.
+        if (next.size === 1) return prev;
+        next.delete(cat);
+      } else {
+        next.add(cat);
+      }
+      return next;
+    });
+    Haptics.selectionAsync().catch(() => {});
+  };
 
   const handleRewardActions = async (reward: Reward) => {
     const ok = await confirmAction(
@@ -194,6 +234,30 @@ export default function RewardsScreen() {
     }
   };
 
+  const renderRewardGrid = (list: Reward[]) => (
+    <View style={styles.grid}>
+      {list.map((reward) => (
+        <View key={reward.id} style={styles.gridItem}>
+          <RewardCard
+            reward={reward}
+            affordable={coins >= reward.cost}
+            deficit={Math.max(0, reward.cost - coins)}
+            coins={coins}
+            tracked={trackedId.data === reward.id}
+            onRedeem={() => handleBuy(reward)}
+            onEdit={() => handleRewardActions(reward)}
+            onLongPress={() => handleRewardActions(reward)}
+            onTrack={() => handleTrack(reward.id)}
+            onUntrack={handleUntrack}
+            isRedeeming={redeemingId === reward.id}
+          />
+        </View>
+      ))}
+    </View>
+  );
+
+  const noRewardsAtAll = (rewards.data ?? []).length === 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
@@ -221,20 +285,19 @@ export default function RewardsScreen() {
         }
       >
         <View style={styles.balanceHero}>
-          <Text style={styles.balanceEyebrow}>Your balance</Text>
           <View style={styles.balanceRow}>
             <CoinIcon size={48} />
             <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
           </View>
-          {bankCount > 0 ? (
-            <Text style={styles.balanceSub}>
-              {bankCount} {bankCount === 1 ? 'reward' : 'rewards'} in your bank
-            </Text>
-          ) : character.data?.character.total_xp ? (
-            <Text style={styles.balanceSub}>
-              {character.data.character.total_xp.toLocaleString()} XP earned lifetime
-            </Text>
-          ) : null}
+          <Text style={styles.headline} numberOfLines={2}>
+            {view === 'shop'
+              ? headline
+              : view === 'bank'
+                ? bankCount > 0
+                  ? `${bankCount} ${bankCount === 1 ? 'reward' : 'rewards'} ready to use`
+                  : 'Your bank is waiting on a first buy'
+                : `${(used.data ?? []).length} redeemed lifetime`}
+          </Text>
         </View>
 
         <View style={styles.viewToggle}>
@@ -283,31 +346,30 @@ export default function RewardsScreen() {
               </Pressable>
             )}
 
-            <View style={styles.tabs}>
+            <View style={styles.chipsRow}>
               {REWARD_CATEGORY_ORDER.map((cat) => {
                 const m = REWARD_CATEGORY_META[cat];
-                const active = cat === activeCategory;
+                const active = enabledCategories.has(cat);
                 return (
                   <Pressable
                     key={cat}
-                    onPress={() => setActiveCategory(cat)}
+                    onPress={() => toggleCategory(cat)}
                     style={[
-                      styles.tab,
-                      active && {
-                        backgroundColor: m.bg,
-                        borderColor: m.color,
-                      },
+                      styles.chip,
+                      active
+                        ? { backgroundColor: m.bg, borderColor: m.color }
+                        : styles.chipMuted,
                     ]}
                   >
                     <Ionicons
                       name={m.icon as never}
-                      size={16}
-                      color={active ? m.color : tokens.text.mid}
+                      size={14}
+                      color={active ? m.color : tokens.text.dim}
                     />
                     <Text
                       style={[
-                        styles.tabText,
-                        { color: active ? m.color : tokens.text.mid },
+                        styles.chipText,
+                        { color: active ? m.color : tokens.text.dim },
                       ]}
                     >
                       {m.short}
@@ -317,77 +379,78 @@ export default function RewardsScreen() {
               })}
             </View>
 
-            <Text style={styles.tagline}>{meta.tagline}</Text>
-
-            {/* YOUR SHOP */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Your shop</Text>
-              {myList.length > 0 && (
-                <Text style={styles.sectionMeta}>{myList.length}</Text>
-              )}
-            </View>
-
             {rewards.isLoading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator color={tokens.brand.violet2} />
               </View>
-            ) : myList.length === 0 ? (
+            ) : noRewardsAtAll ? (
               <View style={styles.emptyBox}>
-                <Ionicons name={meta.icon as never} size={40} color={meta.color} />
-                <Text style={styles.emptyTitle}>Nothing here yet</Text>
+                <Ionicons name="gift-outline" size={40} color={tokens.brand.violet2} />
+                <Text style={styles.emptyTitle}>Your shop is empty</Text>
                 <Text style={styles.emptySub}>
                   Tap a suggestion below to add it, or create your own.
                 </Text>
               </View>
             ) : (
-              <View style={styles.grid}>
-                {myList.map((reward) => (
-                  <View key={reward.id} style={styles.gridItem}>
-                    <RewardCard
-                      reward={reward}
-                      affordable={coins >= reward.cost}
-                      deficit={Math.max(0, reward.cost - coins)}
-                      coins={coins}
-                      tracked={trackedId.data === reward.id}
-                      onRedeem={() => handleBuy(reward)}
-                      onEdit={() => handleRewardActions(reward)}
-                      onLongPress={() => handleRewardActions(reward)}
-                      onTrack={() => handleTrack(reward.id)}
-                      onUntrack={handleUntrack}
-                      isRedeeming={redeemingId === reward.id}
-                    />
+              <>
+                {sections.available.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>Available now</Text>
+                      <Text style={styles.sectionMeta}>
+                        {sections.available.length}
+                      </Text>
+                    </View>
+                    {renderRewardGrid(sections.available)}
                   </View>
-                ))}
-              </View>
+                )}
+
+                {sections.almost.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>Almost there</Text>
+                      <Text style={styles.sectionMeta}>
+                        {sections.almost.length}
+                      </Text>
+                    </View>
+                    {renderRewardGrid(sections.almost)}
+                  </View>
+                )}
+
+                {sections.bigGoals.length > 0 && (
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>Big goals</Text>
+                      <Text style={styles.sectionMeta}>
+                        {sections.bigGoals.length}
+                      </Text>
+                    </View>
+                    {renderRewardGrid(sections.bigGoals)}
+                  </View>
+                )}
+              </>
             )}
 
             <View style={styles.addCardWrap}>
               <AddCard
                 label="New reward"
-                sublabel={`Add a custom ${meta.short.toLowerCase()}`}
-                tint={meta.color}
-                onPress={() =>
-                  router.push({
-                    pathname: '/reward-form',
-                    params: { category: activeCategory },
-                  })
-                }
+                sublabel="Add a custom one"
+                tint={tokens.brand.violet2}
+                onPress={() => router.push('/reward-form')}
               />
             </View>
 
-            {/* INSPIRATION */}
-            {tmplList.length > 0 && (
-              <>
-                <View style={[styles.sectionHeader, { marginTop: tokens.space[6] }]}>
+            {visibleTemplates.length > 0 && (
+              <View style={[styles.section, { marginTop: tokens.space[6] }]}>
+                <View style={styles.sectionHeader}>
                   <View style={styles.inspirationLabel}>
                     <Ionicons name="bulb" size={14} color={tokens.text.mid} />
                     <Text style={styles.sectionTitle}>Inspiration</Text>
                   </View>
                   <Text style={styles.sectionMeta}>tap to add</Text>
                 </View>
-
                 <View style={styles.list}>
-                  {tmplList.map((t) => (
+                  {visibleTemplates.map((t) => (
                     <TemplateCard
                       key={t.id}
                       template={t}
@@ -396,7 +459,7 @@ export default function RewardsScreen() {
                     />
                   ))}
                 </View>
-              </>
+              </View>
             )}
           </>
         )}
@@ -553,21 +616,14 @@ const styles = StyleSheet.create({
   },
   balanceHero: {
     alignItems: 'center',
-    paddingTop: tokens.space[4],
-    paddingBottom: tokens.space[5],
+    paddingTop: tokens.space[3],
+    paddingBottom: tokens.space[4],
     gap: tokens.space[2],
-  },
-  balanceEyebrow: {
-    ...tokens.type.eyebrow,
-    color: tokens.semantic.coin2,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    marginTop: 4,
   },
   balanceValue: {
     fontFamily: 'Manrope_800ExtraBold',
@@ -576,43 +632,47 @@ const styles = StyleSheet.create({
     color: tokens.semantic.coin,
     letterSpacing: -1,
   },
-  balanceSub: {
-    ...tokens.type.caption,
+  headline: {
+    ...tokens.type.body,
     color: tokens.text.mid,
     fontFamily: 'Manrope_600SemiBold',
-    marginTop: 4,
+    textAlign: 'center',
+    marginTop: 2,
+    paddingHorizontal: tokens.space[4],
   },
   viewToggle: {
     marginBottom: tokens.space[5],
   },
-  tabs: {
+  chipsRow: {
     flexDirection: 'row',
     gap: tokens.space[2],
-    marginBottom: tokens.space[3],
+    marginBottom: tokens.space[5],
   },
-  tab: {
+  chip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: tokens.space[3],
-    borderRadius: tokens.radius.md,
+    paddingHorizontal: tokens.space[2],
+    borderRadius: tokens.radius.pill,
     borderWidth: 1,
     borderColor: tokens.border.base,
     backgroundColor: tokens.bg.surface,
   },
-  tabText: {
+  chipMuted: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderColor: tokens.border.base,
+    opacity: 0.7,
+  },
+  chipText: {
     ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
     letterSpacing: 0.3,
   },
-  tagline: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    fontStyle: 'italic',
+  section: {
     marginBottom: tokens.space[5],
-    paddingHorizontal: tokens.space[1],
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -789,10 +849,10 @@ const styles = StyleSheet.create({
   },
 
   addCardWrap: {
-    marginTop: tokens.space[4],
+    marginTop: tokens.space[2],
   },
 
-  // Tracked reward block (above category tabs on the Shop view)
+  // Tracked reward block
   trackedWrap: {
     marginBottom: tokens.space[4],
   },
