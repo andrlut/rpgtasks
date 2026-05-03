@@ -127,6 +127,10 @@ export function useSetSubScore() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: characterKeys.me() });
+      // assessment_log gets a new row on every set_sub_score; nudge the
+      // questionnaire-side hooks so sparklines and history views refresh.
+      // Prefix-match avoids a circular import on questionnaireKeys.
+      qc.invalidateQueries({ queryKey: ['questionnaire'] });
     },
   });
 }

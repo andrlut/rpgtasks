@@ -106,6 +106,39 @@ export function useQuestionnaireSessionDetail(sessionId: string | undefined) {
 }
 
 /**
+ * All assessment_log entries for the user under a given source, grouped by
+ * sub. Single round-trip variant of useAssessmentHistory — used by surfaces
+ * that need to render sparklines for many subs at once (self-assessment).
+ */
+export function useAssessmentHistoryAll(source: AssessmentSource) {
+  return useQuery({
+    queryKey: [...questionnaireKeys.all, 'history-all', source] as const,
+    queryFn: async (): Promise<
+      Map<SubId, Pick<AssessmentLogEntry, 'score' | 'recorded_at'>[]>
+    > => {
+      const { data, error } = await supabase
+        .from('assessment_log')
+        .select('sub_id, score, recorded_at')
+        .eq('source', source)
+        .order('recorded_at', { ascending: true })
+        .limit(2000);
+      if (error) throw error;
+      const map = new Map<
+        SubId,
+        Pick<AssessmentLogEntry, 'score' | 'recorded_at'>[]
+      >();
+      for (const r of data ?? []) {
+        const sub = r.sub_id as SubId;
+        const arr = map.get(sub) ?? [];
+        arr.push({ score: r.score, recorded_at: r.recorded_at });
+        map.set(sub, arr);
+      }
+      return map;
+    },
+  });
+}
+
+/**
  * Time-series of scores for one (sub, source) pair, oldest → newest, capped
  * at 180 entries. Powers the per-sub sparkline.
  */

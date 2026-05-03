@@ -12,11 +12,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
+import { Sparkline } from '@/components/Sparkline';
 import {
   pickSubScores,
   useCharacter,
   useSetSubScore,
 } from '@/lib/api/character';
+import { useAssessmentHistoryAll } from '@/lib/api/questionnaire';
 import type { SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import {
@@ -43,6 +45,7 @@ export default function SelfAssessmentScreen() {
     [character.data?.subScores],
   );
   const hasQuestionnaire = questionnaireScores.size > 0;
+  const history = useAssessmentHistoryAll('self');
 
   const handleSetScore = (subId: SubId, score: number) => {
     if (selfScores.get(subId) === score) return;
@@ -160,6 +163,12 @@ export default function SelfAssessmentScreen() {
                   const subMeta = SUB_META[subId];
                   const score = selfScores.get(subId) ?? 0;
                   const qScore = questionnaireScores.get(subId);
+                  const subHistory = history.data?.get(subId) ?? [];
+                  // Last ~20 entries — enough to spot trend, narrow enough
+                  // to plot at a tiny size without losing fidelity.
+                  const trendValues = subHistory
+                    .slice(-20)
+                    .map((h) => h.score);
                   return (
                     <View key={subId} style={styles.subBlock}>
                       <View style={styles.subHeader}>
@@ -169,6 +178,15 @@ export default function SelfAssessmentScreen() {
                           color={meta.color}
                         />
                         <Text style={styles.subLabel}>{subMeta.label}</Text>
+                        {trendValues.length >= 2 && (
+                          <Sparkline
+                            values={trendValues}
+                            max={5}
+                            width={56}
+                            height={16}
+                            color={meta.color}
+                          />
+                        )}
                         <Text
                           style={[styles.subScoreLabel, { color: meta.color }]}
                         >
