@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
-import type { CharacterSub, DimensionId } from '@/lib/db/types';
+import type { CharacterSub, SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { DIMENSION_META, DIMENSION_ORDER, SUB_META, SUBS_BY_DIM } from '@/theme/dimensions';
 
@@ -14,62 +14,83 @@ interface HexChartProps {
 }
 
 /**
- * Wheel-of-life inspired hex chart.
+ * Wheel-of-life chart with 12 axes (one per sub) plus a 6-ball overlay
+ * showing the per-dim average.
  *
- *   - 6 corners = 6 dimensions, value 0-10 (sum of the 2 sub scores).
- *   - Filled polygon shows the user's current shape.
- *   - Below the chart: 6 columns, each with 2 sub rows showing the 0-5 score
- *     that fed into the dim's total.
+ *   - 12 corners = 12 subs, value 0-5 each. Adjacent pairs share their
+ *     parent dim's color.
+ *   - User shape: filled polygon connecting the 12 sub scores.
+ *   - 6 dim "balls" sit at the midpoint angle between each dim's two
+ *     subs, radius = avg of the pair, color = dim color, value inside.
+ *   - Bottom legend: 6 columns (one per dim), each with the dim avg
+ *     and the 2 sub scores.
  */
-export function HexChart({ subs, size = 280 }: HexChartProps) {
+export function HexChart({ subs, size = 300 }: HexChartProps) {
   const subScores = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of subs) map.set(s.sub_id, s.subjective_score);
+    const map = new Map<SubId, number>();
+    for (const s of subs) map.set(s.sub_id as SubId, s.subjective_score);
     return map;
   }, [subs]);
 
-  const dimScores = useMemo(() => {
-    const map = new Map<DimensionId, number>();
-    for (const dim of DIMENSION_ORDER) {
-      const [a, b] = SUBS_BY_DIM[dim];
-      map.set(dim, (subScores.get(a) ?? 0) + (subScores.get(b) ?? 0));
-    }
-    return map;
-  }, [subScores]);
+  // Flat list of 12 subs in display order (dim-paired).
+  const subOrder = useMemo<SubId[]>(
+    () => DIMENSION_ORDER.flatMap((d) => SUBS_BY_DIM[d]),
+    [],
+  );
 
-  // Geometry
-  const padding = 36; // room for labels
+  const padding = 56;
   const cx = size / 2;
   const cy = size / 2;
   const radius = size / 2 - padding;
-  const MAX = 10;
+  const SUB_MAX = 5;
 
-  // Hex corners — start at top, go clockwise.
+  // Sub corners — 12 axes, 30° steps starting at top.
   const corners = useMemo(() => {
-    return DIMENSION_ORDER.map((dim, i) => {
-      const angle = (Math.PI / 3) * i - Math.PI / 2; // -90° start
+    return subOrder.map((subId, i) => {
+      const angle = (Math.PI / 6) * i - Math.PI / 2;
+      const meta = SUB_META[subId];
       return {
-        dim,
+        subId,
+        dimensionId: meta.dimensionId,
         angle,
         x: cx + radius * Math.cos(angle),
         y: cy + radius * Math.sin(angle),
       };
     });
-  }, [cx, cy, radius]);
+  }, [subOrder, cx, cy, radius]);
 
-  // Concentric grid rings (5 levels = every 2 points on 0-10 scale)
-  const gridRings = [0.2, 0.4, 0.6, 0.8, 1.0];
+  // Dim midpoints — angle bisects the two sub axes of a dim.
+  const dimMids = useMemo(() => {
+    return DIMENSION_ORDER.map((dim, d) => {
+      const angle = (Math.PI / 6) * (2 * d + 0.5) - Math.PI / 2;
+      const [a, b] = SUBS_BY_DIM[dim];
+      const sa = subScores.get(a) ?? 0;
+      const sb = subScores.get(b) ?? 0;
+      const avg = (sa + sb) / 2;
+      const r = (avg / SUB_MAX) * radius;
+      return {
+        dim,
+        angle,
+        avg,
+        x: cx + r * Math.cos(angle),
+        y: cy + r * Math.sin(angle),
+        labelX: cx + (radius + 26) * Math.cos(angle),
+        labelY: cy + (radius + 26) * Math.sin(angle),
+      };
+    });
+  }, [subScores, cx, cy, radius]);
 
-  // Outer hex frame points (always at full radius)
+  // Concentric grid (every full point on the 0-5 scale).
+  const gridRings = [1 / 5, 2 / 5, 3 / 5, 4 / 5, 1.0];
+
   const framePoints = corners
     .map((c) => `${c.x.toFixed(2)},${c.y.toFixed(2)}`)
     .join(' ');
 
-  // Polygon for the user's actual scores
   const valuePoints = corners
     .map((c) => {
-      const v = dimScores.get(c.dim) ?? 0;
-      const r = (v / MAX) * radius;
+      const v = subScores.get(c.subId) ?? 0;
+      const r = (v / SUB_MAX) * radius;
       const x = cx + r * Math.cos(c.angle);
       const y = cy + r * Math.sin(c.angle);
       return `${x.toFixed(2)},${y.toFixed(2)}`;
@@ -80,7 +101,6 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
     <View>
       <View style={{ width: size, height: size, alignSelf: 'center' }}>
         <Svg width={size} height={size}>
-          {/* Concentric grid rings (hex-shaped) */}
           {gridRings.map((g, i) => {
             const pts = corners
               .map((c) => {
@@ -101,7 +121,6 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
             );
           })}
 
-          {/* Spokes from center to each corner */}
           {corners.map((c, i) => (
             <Line
               key={`spoke-${i}`}
@@ -109,12 +128,11 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
               y1={cy}
               x2={c.x}
               y2={c.y}
-              stroke={tokens.border.divider}
+              stroke={`${DIMENSION_META[c.dimensionId].color}40`}
               strokeWidth={1}
             />
           ))}
 
-          {/* Outer frame */}
           <Polygon
             points={framePoints}
             fill="none"
@@ -122,7 +140,6 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
             strokeWidth={1.5}
           />
 
-          {/* User value polygon */}
           <Polygon
             points={valuePoints}
             fill={tokens.brand.violetGlow}
@@ -130,104 +147,101 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
             strokeWidth={2}
           />
 
-          {/* Corner dots */}
           {corners.map((c, i) => {
-            const meta = DIMENSION_META[c.dim];
-            const v = dimScores.get(c.dim) ?? 0;
-            const r = (v / MAX) * radius;
+            const v = subScores.get(c.subId) ?? 0;
+            const r = (v / SUB_MAX) * radius;
             const x = cx + r * Math.cos(c.angle);
             const y = cy + r * Math.sin(c.angle);
             return (
               <Circle
-                key={`corner-${i}`}
+                key={`sub-dot-${i}`}
                 cx={x}
                 cy={y}
-                r={5}
-                fill={meta.color}
+                r={3.5}
+                fill={DIMENSION_META[c.dimensionId].color}
                 stroke={tokens.bg.deep}
-                strokeWidth={2}
+                strokeWidth={1}
               />
             );
           })}
 
-          {/* Numeric value at each frame corner (0-10 dim score) */}
-          {corners.map((c, i) => {
-            const v = dimScores.get(c.dim) ?? 0;
-            // Place text just outside the corner
-            const labelR = radius + 18;
-            const lx = cx + labelR * Math.cos(c.angle);
-            const ly = cy + labelR * Math.sin(c.angle);
-            const meta = DIMENSION_META[c.dim];
-            return (
-              <SvgText
-                key={`val-${i}`}
-                x={lx}
-                y={ly + 4}
-                fontSize={13}
-                fontWeight="800"
-                fill={meta.color}
-                textAnchor="middle"
-              >
-                {v}
-              </SvgText>
-            );
-          })}
-        </Svg>
-
-        {/* Dim icons positioned over corners (RN View overlay so we get Ionicons) */}
-        {corners.map((c, i) => {
-          const meta = DIMENSION_META[c.dim];
-          // Place icon at frame corner, slightly outward
-          const iconR = radius + 2;
-          const ix = cx + iconR * Math.cos(c.angle) - 14;
-          const iy = cy + iconR * Math.sin(c.angle) - 14;
-          return (
-            <View
-              key={`icon-${i}`}
-              style={[
-                styles.cornerIconWrap,
-                { left: ix, top: iy, backgroundColor: meta.bg, borderColor: `${meta.color}88` },
-              ]}
+          {dimMids.map((m, i) => (
+            <Circle
+              key={`dim-ball-${i}`}
+              cx={m.x}
+              cy={m.y}
+              r={13}
+              fill={DIMENSION_META[m.dim].color}
+              stroke={tokens.bg.deep}
+              strokeWidth={2}
+              opacity={0.95}
+            />
+          ))}
+          {dimMids.map((m, i) => (
+            <SvgText
+              key={`dim-ball-text-${i}`}
+              x={m.x}
+              y={m.y + 4}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight="800"
+              fill={tokens.text.hi}
             >
-              <Ionicons
-                name={meta.iconName as never}
-                size={14}
-                color={meta.color}
-              />
-            </View>
-          );
-        })}
+              {m.avg.toFixed(1)}
+            </SvgText>
+          ))}
+
+          {dimMids.map((m, i) => (
+            <SvgText
+              key={`dim-label-${i}`}
+              x={m.labelX}
+              y={m.labelY + 4}
+              textAnchor="middle"
+              fontSize={10}
+              fontWeight="800"
+              fill={DIMENSION_META[m.dim].color}
+            >
+              {DIMENSION_META[m.dim].label.toUpperCase()}
+            </SvgText>
+          ))}
+        </Svg>
       </View>
 
-      {/* Legend: 6 columns, 2 sub rows each, showing 0-5 sub scores */}
       <View style={styles.legend}>
         {DIMENSION_ORDER.map((dim) => {
           const meta = DIMENSION_META[dim];
           const subIds = SUBS_BY_DIM[dim];
+          const sa = subScores.get(subIds[0]) ?? 0;
+          const sb = subScores.get(subIds[1]) ?? 0;
+          const avg = (sa + sb) / 2;
           return (
-            <View key={dim} style={styles.legendCol}>
+            <View
+              key={dim}
+              style={[styles.legendCol, { borderColor: `${meta.color}33` }]}
+            >
+              <View style={[styles.legendBadge, { backgroundColor: meta.color }]}>
+                <Text style={styles.legendBadgeText}>{avg.toFixed(1)}</Text>
+              </View>
               <Text
                 style={[styles.legendDim, { color: meta.color }]}
                 numberOfLines={1}
               >
-                {meta.label.toUpperCase()}
+                {meta.label}
               </Text>
-              {subIds.map((subId) => {
+              {subIds.map((subId, i) => {
                 const subMeta = SUB_META[subId];
-                const score = subScores.get(subId) ?? 0;
+                const score = i === 0 ? sa : sb;
                 return (
                   <View key={subId} style={styles.legendSubRow}>
                     <Ionicons
                       name={subMeta.iconName as never}
-                      size={10}
-                      color={meta.color}
+                      size={9}
+                      color={tokens.text.dim}
                     />
                     <Text style={styles.legendSubLabel} numberOfLines={1}>
                       {subMeta.label}
                     </Text>
-                    <Text style={[styles.legendSubScore, { color: meta.color }]}>
-                      {score}
-                    </Text>
+                    <Text style={styles.legendSubScore}>{score}</Text>
                   </View>
                 );
               })}
@@ -240,37 +254,43 @@ export function HexChart({ subs, size = 280 }: HexChartProps) {
 }
 
 const styles = StyleSheet.create({
-  cornerIconWrap: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
   legend: {
     flexDirection: 'row',
-    marginTop: tokens.space[3],
+    marginTop: tokens.space[4],
     gap: tokens.space[1],
   },
   legendCol: {
     flex: 1,
-    gap: 4,
-    paddingHorizontal: 2,
-    paddingVertical: tokens.space[2],
+    gap: 3,
+    paddingHorizontal: 3,
+    paddingTop: tokens.space[3],
+    paddingBottom: tokens.space[2],
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.sm,
     borderWidth: 1,
-    borderColor: tokens.border.base,
     alignItems: 'stretch',
+  },
+  legendBadge: {
+    alignSelf: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  legendBadgeText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.text.hi,
   },
   legendDim: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 8,
-    letterSpacing: 0.6,
+    fontSize: 9,
+    letterSpacing: 0.4,
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   legendSubRow: {
     flexDirection: 'row',
@@ -287,5 +307,6 @@ const styles = StyleSheet.create({
   legendSubScore: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
+    color: tokens.text.hi,
   },
 });

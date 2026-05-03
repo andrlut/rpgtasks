@@ -117,6 +117,10 @@ export default function RootLayout() {
               name="quests"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="self-assessment"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>

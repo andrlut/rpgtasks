@@ -118,21 +118,68 @@ interface SubMeta {
   label: string;
   iconName: string;
   dimensionId: DimensionId;
+  description: string;
 }
 
 export const SUB_META: Record<SubId, SubMeta> = {
-  sleep:       { label: 'Sleep',            iconName: 'moon',            dimensionId: 'health' },
-  nutrition:   { label: 'Nutrition',        iconName: 'restaurant',      dimensionId: 'health' },
-  movement:    { label: 'Movement',         iconName: 'walk',            dimensionId: 'strength' },
-  dexterity:   { label: 'Dexterity',        iconName: 'body',            dimensionId: 'strength' },
-  learn:       { label: 'Learn',            iconName: 'book',            dimensionId: 'mind' },
-  contemplate: { label: 'Contemplate',      iconName: 'leaf',            dimensionId: 'mind' },
-  money:       { label: 'Money',            iconName: 'wallet',          dimensionId: 'wealth' },
-  career:      { label: 'Career',           iconName: 'briefcase',       dimensionId: 'wealth' },
-  circle:      { label: 'Friends & Family', iconName: 'people',          dimensionId: 'bonds' },
-  romance:     { label: 'Romance',          iconName: 'heart',           dimensionId: 'bonds' },
-  play:        { label: 'Play',             iconName: 'game-controller', dimensionId: 'craft' },
-  build:       { label: 'Build',            iconName: 'construct',       dimensionId: 'craft' },
+  sleep: {
+    label: 'Sleep', iconName: 'moon', dimensionId: 'health',
+    description: 'How well-rested you feel. Hours, consistency, recovery.',
+  },
+  nutrition: {
+    label: 'Nutrition', iconName: 'restaurant', dimensionId: 'health',
+    description: 'Quality of what you eat and drink. Real food, hydration, restraint.',
+  },
+  movement: {
+    label: 'Movement', iconName: 'walk', dimensionId: 'strength',
+    description: 'Cardio, lifting, walking — the raw amount you move your body.',
+  },
+  dexterity: {
+    label: 'Dexterity', iconName: 'body', dimensionId: 'strength',
+    description: 'Coordination, mobility, sport skill — how well your body moves.',
+  },
+  learn: {
+    label: 'Learn', iconName: 'book', dimensionId: 'mind',
+    description: 'Reading, study, deep work — what you absorb and get better at.',
+  },
+  contemplate: {
+    label: 'Contemplate', iconName: 'leaf', dimensionId: 'mind',
+    description: 'Meditation, journaling, prayer — practices that quiet and ground you.',
+  },
+  money: {
+    label: 'Money', iconName: 'wallet', dimensionId: 'wealth',
+    description: 'Saving, budgeting, investing — your relationship with money.',
+  },
+  career: {
+    label: 'Career', iconName: 'briefcase', dimensionId: 'wealth',
+    description: 'Building skills, shipping, advancing your craft of work.',
+  },
+  circle: {
+    label: 'Friends & Family', iconName: 'people', dimensionId: 'bonds',
+    description: 'Family and friends — the relationships that show up over years.',
+  },
+  romance: {
+    label: 'Romance', iconName: 'heart', dimensionId: 'bonds',
+    description: 'Your romantic partnership — depth, presence, affection.',
+  },
+  play: {
+    label: 'Play', iconName: 'game-controller', dimensionId: 'craft',
+    description: 'Hobbies and creative time done for joy, no goal attached.',
+  },
+  build: {
+    label: 'Build', iconName: 'construct', dimensionId: 'craft',
+    description: 'Side-projects and creative work made to ship or share.',
+  },
+};
+
+/** Generic anchor labels for the 0-5 self-assessment scale. */
+export const SUB_SCORE_LABELS: Record<number, string> = {
+  0: 'Missing',
+  1: 'Struggling',
+  2: 'Below',
+  3: 'OK',
+  4: 'Strong',
+  5: 'Mastery',
 };
 
 /** Subs grouped by their parent dim, in display order. */

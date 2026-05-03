@@ -335,10 +335,25 @@ export default function CharacterScreen() {
           </View>
 
           {/* ── 2. HEX OF LIFE — subjective scores per sub ──── */}
-          <Text style={styles.sectionTitle}>Self-assessment</Text>
-          <View style={styles.hexCard}>
-            <HexChart subs={character.data.subs} size={280} />
+          <View style={styles.hexHeader}>
+            <Text style={styles.sectionTitle}>Self-assessment</Text>
+            <Text style={styles.hexHint}>Tap to edit</Text>
           </View>
+          <Pressable
+            onPress={() => router.push('/self-assessment')}
+            style={({ pressed }) => [
+              styles.hexCard,
+              pressed && { opacity: 0.85 },
+            ]}
+            hitSlop={4}
+          >
+            <HexChart subs={character.data.subs} size={300} />
+            <View style={styles.hexEditRow}>
+              <Ionicons name="create" size={14} color={tokens.brand.violet2} />
+              <Text style={styles.hexEditText}>Update your levels</Text>
+              <Ionicons name="chevron-forward" size={14} color={tokens.brand.violet2} />
+            </View>
+          </Pressable>
 
           {/* ── 3. CATEGORIES (RPG stat block, XP per dim) ────── */}
           <Text style={styles.sectionTitle}>Dedication (XP)</Text>
@@ -726,6 +741,21 @@ const styles = StyleSheet.create({
   },
 
   // Hex card wrapping the wheel-of-life-style chart
+  hexHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: tokens.space[5],
+    marginBottom: tokens.space[3],
+  },
+  hexHint: {
+    ...tokens.type.caption,
+    color: tokens.brand.violet2,
+    fontFamily: 'Manrope_700Bold',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    fontSize: 10,
+  },
   hexCard: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
@@ -734,6 +764,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[3],
     paddingTop: tokens.space[4],
     paddingBottom: tokens.space[3],
+  },
+  hexEditRow: {
+    marginTop: tokens.space[3],
+    paddingTop: tokens.space[3],
+    borderTopWidth: 1,
+    borderTopColor: tokens.border.divider,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  hexEditText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.brand.violet2,
+    letterSpacing: 0.3,
   },
 
   // Categories — compact stat block, 6 cols across, BG3-inspired
