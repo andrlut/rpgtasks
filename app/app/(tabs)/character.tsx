@@ -160,7 +160,11 @@ export default function CharacterScreen() {
   const rewards = useRewards();
   const { width: screenWidth } = useWindowDimensions();
   // Chart bleeds outside the content padding to use the full screen width.
-  const chartSize = Math.min(screenWidth - tokens.space[2] * 2, 480);
+  // Guard against the initial render where width can briefly be 0 or NaN.
+  const chartSize = Math.max(
+    240,
+    Math.min((screenWidth || 360) - tokens.space[2] * 2, 480),
+  );
 
   useHydrateHeroSkillsExpand();
   const expanded = useHeroSkillsExpand((s) => s.expanded);

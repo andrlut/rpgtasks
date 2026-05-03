@@ -96,9 +96,15 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
     <View>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}>
         <Defs>
-          <RadialGradient id="hexGradA" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#9B82FF" stopOpacity={0.5} />
-            <Stop offset="100%" stopColor="#7B5CFF" stopOpacity={0.18} />
+          <RadialGradient
+            id="hexGradA"
+            cx={CX}
+            cy={CY}
+            r={R}
+            gradientUnits="userSpaceOnUse"
+          >
+            <Stop offset={0} stopColor="#9B82FF" stopOpacity={0.5} />
+            <Stop offset={1} stopColor="#7B5CFF" stopOpacity={0.18} />
           </RadialGradient>
         </Defs>
 
