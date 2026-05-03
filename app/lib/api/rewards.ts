@@ -12,6 +12,7 @@ export const rewardKeys = {
   templates: () => [...rewardKeys.all, 'templates'] as const,
   bank: () => [...rewardKeys.all, 'bank'] as const,
   used: () => [...rewardKeys.all, 'used'] as const,
+  tracked: () => [...rewardKeys.all, 'tracked'] as const,
 };
 
 export interface RedemptionEntry {
@@ -285,6 +286,73 @@ export function useRedeemReward() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
       queryClient.invalidateQueries({ queryKey: rewardKeys.bank() });
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tracking: pin one reward to keep close. Used by the wide goal card on Shop.
+// Single row per character (PK on character_id), enforced server-side.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The id of the reward currently being tracked, or null if none. */
+export function useTrackedRewardId() {
+  return useQuery({
+    queryKey: rewardKeys.tracked(),
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from('reward_tracking')
+        .select('reward_id')
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.reward_id as string | undefined) ?? null;
+    },
+  });
+}
+
+/**
+ * Set the tracked reward. Pass `null` to clear.
+ * Upsert pattern: character_id is the PK, so re-tracking another reward
+ * overwrites the previous row in one round-trip.
+ */
+export function useSetTrackedReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rewardId: string | null) => {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+
+      if (rewardId === null) {
+        const { error } = await supabase
+          .from('reward_tracking')
+          .delete()
+          .eq('character_id', userId);
+        if (error) throw error;
+        return null;
+      }
+
+      const { error } = await supabase
+        .from('reward_tracking')
+        .upsert(
+          { character_id: userId, reward_id: rewardId, tracked_at: new Date().toISOString() },
+          { onConflict: 'character_id' },
+        );
+      if (error) throw error;
+      return rewardId;
+    },
+    onMutate: async (rewardId) => {
+      await queryClient.cancelQueries({ queryKey: rewardKeys.tracked() });
+      const prev = queryClient.getQueryData<string | null>(rewardKeys.tracked());
+      queryClient.setQueryData<string | null>(rewardKeys.tracked(), rewardId);
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx) queryClient.setQueryData(rewardKeys.tracked(), ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.tracked() });
     },
   });
 }

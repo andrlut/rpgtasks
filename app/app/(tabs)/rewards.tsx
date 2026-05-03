@@ -20,6 +20,8 @@ import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { TemplateCard } from '@/components/TemplateCard';
+import { TrackedRewardCard } from '@/components/TrackedRewardCard';
+import { TrackPickerSheet } from '@/components/TrackPickerSheet';
 import { useCharacter } from '@/lib/api/character';
 import {
   useAddTemplateToShop,
@@ -28,6 +30,8 @@ import {
   useRedeemReward,
   useRewardTemplates,
   useRewards,
+  useSetTrackedReward,
+  useTrackedRewardId,
   useUseReward,
   useUsedRewards,
 } from '@/lib/api/rewards';
@@ -50,15 +54,25 @@ export default function RewardsScreen() {
   const archiveReward = useArchiveReward();
   const banked = useBankedRewards();
   const used = useUsedRewards(50);
+  const trackedId = useTrackedRewardId();
+  const setTracked = useSetTrackedReward();
 
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [usingId, setUsingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<RewardCategory>('indulgence');
   const [view, setView] = useState<RewardView>('shop');
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const coins = character.data?.character.coins ?? 0;
   const bankCount = banked.data?.length ?? 0;
+  const trackedReward = useMemo(
+    () =>
+      trackedId.data
+        ? (rewards.data ?? []).find((r) => r.id === trackedId.data) ?? null
+        : null,
+    [trackedId.data, rewards.data],
+  );
 
   const myRewardsByCategory = useMemo(() => {
     const map: Record<RewardCategory, Reward[]> = {
@@ -158,6 +172,15 @@ export default function RewardsScreen() {
     }
   };
 
+  const handleTrack = (rewardId: string) => {
+    setTracked.mutate(rewardId);
+  };
+
+  const handleUntrack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setTracked.mutate(null);
+  };
+
   const handleAddTemplate = async (template: RewardTemplate) => {
     setAddingTemplateId(template.id);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -228,6 +251,38 @@ export default function RewardsScreen() {
 
         {view === 'shop' && (
           <>
+            {trackedReward ? (
+              <View style={styles.trackedWrap}>
+                <TrackedRewardCard
+                  reward={trackedReward}
+                  coins={coins}
+                  onChange={() => setPickerOpen(true)}
+                  onUntrack={handleUntrack}
+                  onBuy={() => handleBuy(trackedReward)}
+                  isBuying={redeemingId === trackedReward.id}
+                />
+              </View>
+            ) : (
+              <Pressable
+                onPress={() => setPickerOpen(true)}
+                style={({ pressed }) => [
+                  styles.trackCta,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <View style={styles.trackCtaIcon}>
+                  <Ionicons name="bookmark" size={18} color={tokens.brand.violet2} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.trackCtaTitle}>Track a reward</Text>
+                  <Text style={styles.trackCtaSub}>
+                    Pin one to keep its progress close.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={tokens.text.mid} />
+              </Pressable>
+            )}
+
             <View style={styles.tabs}>
               {REWARD_CATEGORY_ORDER.map((cat) => {
                 const m = REWARD_CATEGORY_META[cat];
@@ -473,6 +528,15 @@ export default function RewardsScreen() {
         )}
       </ScrollView>
       </ScreenBackground>
+
+      <TrackPickerSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        rewards={rewards.data ?? []}
+        coins={coins}
+        currentTrackedId={trackedId.data ?? null}
+        onPick={handleTrack}
+      />
     </SafeAreaView>
   );
 }
@@ -722,5 +786,41 @@ const styles = StyleSheet.create({
 
   addCardWrap: {
     marginTop: tokens.space[4],
+  },
+
+  // Tracked reward block (above category tabs on the Shop view)
+  trackedWrap: {
+    marginBottom: tokens.space[4],
+  },
+  trackCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    borderStyle: 'dashed',
+    backgroundColor: tokens.bg.surface,
+    marginBottom: tokens.space[4],
+  },
+  trackCtaIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(155, 130, 255, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackCtaTitle: {
+    ...tokens.type.bodyLg,
+    color: tokens.text.hi,
+    fontFamily: 'Manrope_700Bold',
+  },
+  trackCtaSub: {
+    ...tokens.type.caption,
+    color: tokens.text.mid,
+    marginTop: 2,
   },
 });

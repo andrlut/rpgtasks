@@ -209,6 +209,12 @@ export interface RewardTemplate {
   sort_order: number;
 }
 
+export interface RewardTracking {
+  character_id: string;
+  reward_id: string;
+  tracked_at: string;
+}
+
 export interface RewardRedemption {
   id: string;
   reward_id: string;
