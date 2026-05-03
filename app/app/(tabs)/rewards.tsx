@@ -488,51 +488,60 @@ export default function RewardsScreen() {
                   </Text>
                 </View>
                 <View style={styles.bankList}>
-                  {banked.data!.map((b) => (
-                    <View key={b.id} style={styles.bankCard}>
-                      <View style={styles.bankIconWrap}>
-                        <Ionicons
-                          name={b.reward_icon as never}
-                          size={20}
-                          color={tokens.semantic.coin}
-                        />
-                      </View>
-                      <View style={styles.bankBody}>
-                        <Text style={styles.bankTitle} numberOfLines={1}>
-                          {b.reward_title}
-                        </Text>
-                        <View style={styles.bankMetaRow}>
-                          <CoinIcon size={10} />
-                          <Text style={styles.bankMetaCost}>
-                            {b.cost_paid.toLocaleString()}
-                          </Text>
-                          <Text style={styles.bankMetaDot}>·</Text>
-                          <Text style={styles.bankMetaTime}>
-                            bought {timeAgo(b.redeemed_at)}
-                          </Text>
+                  {banked.data!.map((b) => {
+                    const cat = b.reward_category
+                      ? REWARD_CATEGORY_META[b.reward_category]
+                      : null;
+                    return (
+                      <View key={b.id} style={styles.bankCard}>
+                        <View
+                          style={[
+                            styles.bankIconWrap,
+                            cat
+                              ? { backgroundColor: cat.bg }
+                              : { backgroundColor: 'rgba(255,255,255,0.05)' },
+                          ]}
+                        >
+                          <Ionicons
+                            name={b.reward_icon as never}
+                            size={20}
+                            color={cat ? cat.color : tokens.text.mid}
+                          />
                         </View>
-                      </View>
-                      <Pressable
-                        disabled={usingId === b.id}
-                        onPress={() => handleUse(b)}
-                        style={({ pressed }) => [
-                          styles.useBtn,
-                          pressed && { opacity: 0.85 },
-                          usingId === b.id && { opacity: 0.6 },
-                        ]}
-                        hitSlop={6}
-                      >
-                        {usingId === b.id ? (
-                          <ActivityIndicator size="small" color={tokens.text.hi} />
-                        ) : (
-                          <>
-                            <Ionicons name="checkmark-circle" size={14} color={tokens.text.hi} />
+                        <View style={styles.bankBody}>
+                          <Text style={styles.bankTitle} numberOfLines={1}>
+                            {b.reward_title}
+                          </Text>
+                          <View style={styles.bankMetaRow}>
+                            <CoinIcon size={10} />
+                            <Text style={styles.bankMetaCost}>
+                              {b.cost_paid.toLocaleString()}
+                            </Text>
+                            <Text style={styles.bankMetaDot}>·</Text>
+                            <Text style={styles.bankMetaTime}>
+                              {timeAgo(b.redeemed_at)}
+                            </Text>
+                          </View>
+                        </View>
+                        <Pressable
+                          disabled={usingId === b.id}
+                          onPress={() => handleUse(b)}
+                          style={({ pressed }) => [
+                            styles.useBtn,
+                            pressed && { opacity: 0.85 },
+                            usingId === b.id && { opacity: 0.6 },
+                          ]}
+                          hitSlop={6}
+                        >
+                          {usingId === b.id ? (
+                            <ActivityIndicator size="small" color={tokens.text.hi} />
+                          ) : (
                             <Text style={styles.useBtnText}>Use</Text>
-                          </>
-                        )}
-                      </Pressable>
-                    </View>
-                  ))}
+                          )}
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
               </>
             )}
@@ -563,31 +572,43 @@ export default function RewardsScreen() {
                   </Text>
                 </View>
                 <View style={styles.historyList}>
-                  {used.data!.map((r) => (
-                    <View key={r.id} style={styles.historyRow}>
-                      <View style={styles.historyIconWrap}>
-                        <Ionicons
-                          name={r.reward_icon as never}
-                          size={16}
-                          color={tokens.text.mid}
-                        />
+                  {used.data!.map((r) => {
+                    const cat = r.reward_category
+                      ? REWARD_CATEGORY_META[r.reward_category]
+                      : null;
+                    return (
+                      <View key={r.id} style={styles.historyRow}>
+                        <View
+                          style={[
+                            styles.historyIconWrap,
+                            cat
+                              ? { backgroundColor: cat.bg }
+                              : { backgroundColor: 'rgba(255,255,255,0.05)' },
+                          ]}
+                        >
+                          <Ionicons
+                            name={r.reward_icon as never}
+                            size={14}
+                            color={cat ? cat.color : tokens.text.mid}
+                          />
+                        </View>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                          <Text style={styles.historyTitle} numberOfLines={1}>
+                            {r.reward_title}
+                          </Text>
+                          <Text style={styles.historyMeta}>
+                            {r.used_at ? timeAgo(r.used_at) : ''}
+                          </Text>
+                        </View>
+                        <View style={styles.historyCost}>
+                          <CoinIcon size={11} />
+                          <Text style={styles.historyCostText}>
+                            −{r.cost_paid.toLocaleString()}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={styles.historyTitle} numberOfLines={1}>
-                          {r.reward_title}
-                        </Text>
-                        <Text style={styles.historyMeta}>
-                          used {r.used_at ? timeAgo(r.used_at) : ''}
-                        </Text>
-                      </View>
-                      <View style={styles.historyCost}>
-                        <CoinIcon size={11} />
-                        <Text style={styles.historyCostText}>
-                          −{r.cost_paid.toLocaleString()}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </>
             )}
@@ -733,9 +754,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
 
-  // BANK — hero rows with the explicit "Use" CTA
+  // BANK — clean rows with category-tinted tile + green USE pill
   bankList: {
-    gap: tokens.space[3],
+    gap: tokens.space[2],
   },
   bankCard: {
     flexDirection: 'row',
@@ -746,13 +767,12 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,200,61,0.25)',
+    borderColor: tokens.border.base,
   },
   bankIconWrap: {
     width: 40,
     height: 40,
     borderRadius: tokens.radius.md,
-    backgroundColor: 'rgba(255, 200, 61, 0.14)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -785,57 +805,51 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
   },
   useBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: tokens.space[3],
+    paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[2],
     borderRadius: tokens.radius.pill,
     backgroundColor: tokens.semantic.xp,
-    minWidth: 64,
+    minWidth: 60,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   useBtnText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 12,
-    color: tokens.text.hi,
-    letterSpacing: 0.3,
+    color: '#062416',
+    letterSpacing: 0.4,
   },
 
-  // USED history (compact list)
+  // USED history — leanest possible row, same visual language as bank
   historyList: {
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    overflow: 'hidden',
+    gap: tokens.space[1],
   },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[3],
-    borderBottomWidth: 1,
-    borderBottomColor: tokens.border.base,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[2],
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   historyIconWrap: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: tokens.radius.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   historyTitle: {
     ...tokens.type.body,
-    color: tokens.text.hi,
-    fontFamily: 'Manrope_700Bold',
+    color: tokens.text.base,
+    fontFamily: 'Manrope_600SemiBold',
   },
   historyMeta: {
     ...tokens.type.caption,
     color: tokens.text.dim,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
   },
   historyCost: {
     flexDirection: 'row',
