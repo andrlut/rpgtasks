@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { SubId } from '@/lib/db/types';
+import type { DimensionId, SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { DIMENSION_META, DIMENSION_ORDER, SUB_META, SUBS_BY_DIM } from '@/theme/dimensions';
 
@@ -16,6 +16,9 @@ interface HexChartProps {
   size?: number;
   /** Color for the secondary polygon outline. Defaults to bonds teal. */
   secondaryColor?: string;
+  /** When provided, the 6 legend cards become tappable and call this with
+   *  the dim id. Used to drill into the dim detail screen from the hex. */
+  onDimPress?: (dim: DimensionId) => void;
 }
 
 const SUB_MAX = 5;
@@ -74,6 +77,7 @@ export function HexChart({
   secondaryScores,
   size = 320,
   secondaryColor = '#4DD0FF',
+  onDimPress,
 }: HexChartProps) {
   const cx = size / 2;
   const cy = size / 2;
@@ -305,18 +309,17 @@ export function HexChart({
         </Text>
       </View>
 
-      {/* Legend: 2 rows × 3 cards, exact widths via flex:1 */}
+      {/* Legend: 2 rows × 3 cards, exact widths via flex:1. When onDimPress
+          is provided, each card becomes a Pressable that drills into the
+          dim detail screen — primary entry-point from the hex. */}
       <View style={styles.legend}>
         {[0, 3].map((rowStart) => (
           <View key={`row-${rowStart}`} style={styles.legendRow}>
             {mains.slice(rowStart, rowStart + 3).map((m) => {
               const meta = DIMENSION_META[m.dim];
               const subIds = SUBS_BY_DIM[m.dim];
-              return (
-                <View
-                  key={`card-${m.dim}`}
-                  style={[styles.card, { borderColor: `${meta.color}40` }]}
-                >
+              const cardContent = (
+                <>
                   <View style={styles.cardHeader}>
                     <Ionicons
                       name={meta.iconName as never}
@@ -362,6 +365,30 @@ export function HexChart({
                       </View>
                     );
                   })}
+                </>
+              );
+              if (onDimPress) {
+                return (
+                  <Pressable
+                    key={`card-${m.dim}`}
+                    onPress={() => onDimPress(m.dim)}
+                    style={({ pressed }) => [
+                      styles.card,
+                      { borderColor: `${meta.color}40` },
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    hitSlop={2}
+                  >
+                    {cardContent}
+                  </Pressable>
+                );
+              }
+              return (
+                <View
+                  key={`card-${m.dim}`}
+                  style={[styles.card, { borderColor: `${meta.color}40` }]}
+                >
+                  {cardContent}
                 </View>
               );
             })}
