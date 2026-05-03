@@ -6,7 +6,7 @@ import { tokens } from '@/theme';
 import { DIMENSION_META } from '@/theme/dimensions';
 
 import { ProgressBar } from './ProgressBar';
-import { TierBadge } from './TierBadge';
+import { TierMedal } from './TierMedal';
 
 interface Props {
   state: SkillState;
@@ -27,26 +27,31 @@ export function SkillRow({ state, onPress }: Props) {
       onPress={onPress}
       style={({ pressed }) => [styles.container, pressed && { opacity: 0.7 }]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: dim.bg }]}>
-        <Ionicons name={skill.icon as never} size={20} color={dim.color} />
-      </View>
+      <TierMedal tier={currentTier.tier_name} size={44} />
       <View style={styles.body}>
         <View style={styles.topRow}>
-          <Text style={styles.title}>{skill.display_name}</Text>
-          <TierBadge tier={currentTier.tier_name} size="sm" />
+          <View style={styles.iconWithTitle}>
+            <Ionicons name={skill.icon as never} size={14} color={dim.color} />
+            <Text style={styles.title}>{skill.display_name}</Text>
+          </View>
         </View>
-        <Text style={styles.subtitle}>
-          {currentPr} {skill.unit}
-          {nextTier ? ` · ${Math.max(0, nextTier.threshold - currentPr)} ${skill.unit} to next tier` : ' · max tier'}
+        <Text style={styles.bigValue}>
+          <Text style={styles.bigValueNum}>{currentPr}</Text>
+          <Text style={styles.bigValueUnit}> {skill.unit}</Text>
         </Text>
         <View style={{ marginTop: 6 }}>
           <ProgressBar
             value={progressVal}
             max={progressNeeded}
-            color={dim.color}
+            color={tokens.semantic.coin}
             height={4}
           />
         </View>
+        {nextTier && (
+          <Text style={styles.subtitle}>
+            {Math.max(0, nextTier.threshold - currentPr)} to {nextTier.tier_name}
+          </Text>
+        )}
       </View>
       <Ionicons name="chevron-forward" size={18} color={tokens.text.dim} />
     </Pressable>
@@ -64,13 +69,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.border.base,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: tokens.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   body: {
     flex: 1,
     minWidth: 0,
@@ -81,15 +79,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: tokens.space[2],
   },
+  iconWithTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
   title: {
     ...tokens.type.body,
     color: tokens.text.hi,
     fontFamily: 'Manrope_700Bold',
     flexShrink: 1,
   },
+  bigValue: {
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  bigValueNum: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 18,
+    color: tokens.text.hi,
+  },
+  bigValueUnit: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 11,
+    color: tokens.text.mid,
+  },
   subtitle: {
     ...tokens.type.caption,
-    color: tokens.text.mid,
-    marginTop: 2,
+    color: tokens.text.dim,
+    marginTop: 4,
   },
 });
