@@ -196,6 +196,9 @@ export interface Skill {
   /** 1-3 sentence description shown on the skill detail screen. Catalog skills
    * may have this populated; user-created skills are optional. */
   description: string | null;
+  /** Punchy 1-line population stat shown next to the medal — e.g. "Only 0.05%
+   * of US adults finish a marathon (RunRepeat 2025)." Catalog only. */
+  population_stat: string | null;
   /** NULL = catalog skill (visible to everyone). Non-null = owned by that
    * character (visible/editable only by them). */
   character_id: string | null;
