@@ -287,47 +287,57 @@ export default function CharacterScreen() {
 
           {/* ── 2. CATEGORIES ─────────────────────────────────── */}
           <Text style={styles.sectionTitle}>Categories</Text>
-          <View style={styles.dimensionGrid}>
-            {DIMENSION_ORDER.map((id) => {
+          <View style={styles.dimensionList}>
+            {DIMENSION_ORDER.map((id, idx) => {
               const meta = DIMENSION_META[id];
               const row = dimMap.get(id);
               const xp = row?.xp ?? 0;
               const lp = levelProgress(xp);
+              const pct = lp.xpNeededForLevel === 0
+                ? 0
+                : Math.round((lp.xpInLevel / lp.xpNeededForLevel) * 100);
               return (
                 <Pressable
                   key={id}
                   style={({ pressed }) => [
-                    styles.dimCard,
-                    pressed && styles.dimCardPressed,
+                    styles.dimRow,
+                    idx > 0 && styles.dimRowDivider,
+                    pressed && { opacity: 0.7 },
                   ]}
                   onPress={() =>
                     router.push({ pathname: '/dimension/[id]', params: { id } })
                   }
                 >
-                  <View
-                    style={[styles.dimBlob, { backgroundColor: meta.color }]}
-                    pointerEvents="none"
-                  />
-                  <View style={[styles.dimIconWrap, { backgroundColor: meta.bg }]}>
-                    <Ionicons
-                      name={meta.iconName as never}
-                      size={20}
-                      color={meta.color}
-                    />
+                  <View style={[styles.dimRowIcon, { backgroundColor: meta.bg }]}>
+                    <Ionicons name={meta.iconName as never} size={16} color={meta.color} />
                   </View>
-                  <Text style={styles.dimLabel}>{meta.label}</Text>
-                  <Text style={styles.dimLevel}>LV {lp.level}</Text>
-                  <View style={styles.dimBar}>
-                    <ProgressBar
-                      value={lp.xpInLevel}
-                      max={lp.xpNeededForLevel}
-                      color={meta.color}
-                      height={5}
-                    />
+                  <View style={styles.dimRowBody}>
+                    <View style={styles.dimRowTopRow}>
+                      <Text style={styles.dimRowLabel}>{meta.label}</Text>
+                      <View style={styles.dimRowLevel}>
+                        <Text style={styles.dimRowLevelLv}>LV</Text>
+                        <Text style={[styles.dimRowLevelNum, { color: meta.color }]}>
+                          {lp.level}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.dimRowBarWrap}>
+                      <ProgressBar
+                        value={lp.xpInLevel}
+                        max={lp.xpNeededForLevel}
+                        color={meta.color}
+                        height={6}
+                      />
+                    </View>
+                    <View style={styles.dimRowFooter}>
+                      <Text style={styles.dimRowXp}>
+                        {lp.xpInLevel.toLocaleString()} / {lp.xpNeededForLevel.toLocaleString()} XP
+                      </Text>
+                      <Text style={[styles.dimRowPct, { color: meta.color }]}>
+                        {pct}%
+                      </Text>
+                    </View>
                   </View>
-                  <Text style={styles.dimXp}>
-                    {lp.xpInLevel} / {lp.xpNeededForLevel} XP
-                  </Text>
                 </Pressable>
               );
             })}
@@ -576,62 +586,83 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_600SemiBold',
   },
 
-  // Categories
-  dimensionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: tokens.space[3],
-  },
-  dimCard: {
-    width: '48%',
-    flexGrow: 1,
+  // Categories — RPG sheet style: vertical rows in a single card
+  dimensionList: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    padding: tokens.space[4],
-    gap: 4,
-    overflow: 'hidden',
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[2],
   },
-  dimBlob: {
-    position: 'absolute',
-    top: -28,
-    right: -28,
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    opacity: 0.14,
+  dimRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    paddingVertical: tokens.space[3],
   },
-  dimCardPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
+  dimRowDivider: {
+    borderTopWidth: 1,
+    borderTopColor: tokens.border.divider,
   },
-  dimIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: tokens.radius.md,
+  dimRowIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: tokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: tokens.space[2],
   },
-  dimLabel: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  dimRowBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
-  dimLevel: {
-    ...tokens.type.h2,
+  dimRowTopRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  dimRowLabel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
     color: tokens.text.hi,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
-  dimBar: {
-    marginTop: tokens.space[2],
+  dimRowLevel: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
   },
-  dimXp: {
-    ...tokens.type.caption,
+  dimRowLevelLv: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 9,
     color: tokens.text.dim,
-    fontSize: 10,
+    letterSpacing: 1,
+  },
+  dimRowLevelNum: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 18,
+    lineHeight: 18,
+  },
+  dimRowBarWrap: {
     marginTop: 2,
+  },
+  dimRowFooter: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  dimRowXp: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 10,
+    color: tokens.text.dim,
+  },
+  dimRowPct: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 0.3,
   },
 
   // Skills
