@@ -163,10 +163,17 @@ export default function RewardsScreen() {
           />
         }
       >
-        <View style={styles.balanceCard}>
-          <CoinIcon size={32} />
-          <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
-          <Text style={styles.balanceLabel}>coins available</Text>
+        <View style={styles.balanceHero}>
+          <Text style={styles.balanceEyebrow}>Your balance</Text>
+          <View style={styles.balanceRow}>
+            <CoinIcon size={48} />
+            <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
+          </View>
+          {character.data?.character.total_xp ? (
+            <Text style={styles.balanceSub}>
+              {character.data.character.total_xp.toLocaleString()} XP earned lifetime
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.viewToggle}>
@@ -239,17 +246,19 @@ export default function RewardsScreen() {
                 </Text>
               </View>
             ) : (
-              <View style={styles.list}>
+              <View style={styles.grid}>
                 {myList.map((reward) => (
-                  <RewardCard
-                    key={reward.id}
-                    reward={reward}
-                    affordable={coins >= reward.cost}
-                    onRedeem={() => handleRedeem(reward)}
-                    onEdit={() => handleRewardActions(reward)}
-                    onLongPress={() => handleRewardActions(reward)}
-                    isRedeeming={redeemingId === reward.id}
-                  />
+                  <View key={reward.id} style={styles.gridItem}>
+                    <RewardCard
+                      reward={reward}
+                      affordable={coins >= reward.cost}
+                      deficit={Math.max(0, reward.cost - coins)}
+                      onRedeem={() => handleRedeem(reward)}
+                      onEdit={() => handleRewardActions(reward)}
+                      onLongPress={() => handleRewardActions(reward)}
+                      isRedeeming={redeemingId === reward.id}
+                    />
+                  </View>
                 ))}
               </View>
             )}
@@ -357,26 +366,36 @@ const styles = StyleSheet.create({
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,
   },
-  balanceCard: {
+  balanceHero: {
     alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    borderRadius: tokens.radius.xl,
-    paddingVertical: tokens.space[6],
+    paddingTop: tokens.space[4],
+    paddingBottom: tokens.space[5],
     gap: tokens.space[2],
-    marginTop: tokens.space[3],
-    marginBottom: tokens.space[4],
+  },
+  balanceEyebrow: {
+    ...tokens.type.eyebrow,
+    color: tokens.semantic.coin2,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    marginTop: 4,
   },
   balanceValue: {
-    ...tokens.type.numXl,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 56,
+    lineHeight: 56,
     color: tokens.semantic.coin,
+    letterSpacing: -1,
   },
-  balanceLabel: {
+  balanceSub: {
     ...tokens.type.caption,
     color: tokens.text.mid,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    fontFamily: 'Manrope_600SemiBold',
+    marginTop: 4,
   },
   viewToggle: {
     marginBottom: tokens.space[5],
@@ -458,6 +477,15 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: tokens.space[3],
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: tokens.space[3],
+  },
+  gridItem: {
+    width: '48%',
+    flexGrow: 1,
   },
   historyList: {
     backgroundColor: tokens.bg.surface,

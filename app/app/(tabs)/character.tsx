@@ -12,13 +12,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
+import { LevelRing } from '@/components/LevelRing';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillRow } from '@/components/SkillRow';
 import { useCharacter } from '@/lib/api/character';
 import { useSkillStates } from '@/lib/api/skills';
+import { useStreak } from '@/lib/api/streak';
 import type { CharacterDimension, DimensionId } from '@/lib/db/types';
-import { levelForXp, levelProgress } from '@/lib/xp';
+import { levelProgress } from '@/lib/xp';
 import { tokens } from '@/theme';
 import { DIMENSION_META, DIMENSION_ORDER } from '@/theme/dimensions';
 
@@ -26,6 +28,7 @@ export default function CharacterScreen() {
   const router = useRouter();
   const character = useCharacter();
   const skillStates = useSkillStates();
+  const streak = useStreak();
 
   if (character.isLoading) {
     return (
@@ -73,25 +76,71 @@ export default function CharacterScreen() {
         }
       >
         <View style={styles.heroBlock}>
-          <View style={styles.bigAvatar}>
-            <Text style={styles.bigLevel}>{totalProgress.level}</Text>
+          <View style={styles.eyebrowRow}>
+            <Text style={styles.heroEyebrow}>Your Hero</Text>
           </View>
-          <Text style={styles.name}>{profile.display_name}</Text>
-          <Text style={styles.subtitle}>
-            {totalProgress.xpInLevel} / {totalProgress.xpNeededForLevel} XP to LV{' '}
-            {totalProgress.level + 1}
-          </Text>
-          <View style={styles.totalBar}>
-            <ProgressBar
-              value={totalProgress.xpInLevel}
-              max={totalProgress.xpNeededForLevel}
-              color={tokens.brand.violet}
-              height={8}
-            />
+          <View style={styles.heroBody}>
+            <LevelRing
+              size={120}
+              level={totalProgress.level}
+              progress={
+                totalProgress.xpNeededForLevel === 0
+                  ? 0
+                  : totalProgress.xpInLevel / totalProgress.xpNeededForLevel
+              }
+            >
+              <Ionicons name="person" size={56} color={tokens.brand.violet2} />
+            </LevelRing>
+            <View style={styles.heroInfo}>
+              <Text style={styles.name} numberOfLines={1}>
+                {profile.display_name}
+              </Text>
+              <Text style={styles.subtitle}>
+                {totalProgress.xpInLevel} / {totalProgress.xpNeededForLevel} XP
+              </Text>
+              <View style={styles.totalBar}>
+                <ProgressBar
+                  value={totalProgress.xpInLevel}
+                  max={totalProgress.xpNeededForLevel}
+                  color={tokens.brand.violet}
+                  height={6}
+                />
+              </View>
+              <Text style={styles.toNext}>
+                {Math.max(0, totalProgress.xpNeededForLevel - totalProgress.xpInLevel)} XP
+                to Level {totalProgress.level + 1}
+              </Text>
+            </View>
           </View>
-          <View style={styles.coinRow}>
-            <CoinIcon size={16} />
-            <Text style={styles.coinText}>{char.coins.toLocaleString()} coins</Text>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statBlock}>
+              <View style={styles.statTop}>
+                <CoinIcon size={14} />
+                <Text style={[styles.statValue, { color: tokens.semantic.coin }]}>
+                  {char.coins.toLocaleString()}
+                </Text>
+              </View>
+              <Text style={styles.statLabel}>Coins</Text>
+            </View>
+            <View style={styles.statBlock}>
+              <View style={styles.statTop}>
+                <Ionicons name="flame" size={14} color={tokens.semantic.warn} />
+                <Text style={[styles.statValue, { color: tokens.semantic.warn }]}>
+                  {streak.data?.currentStreak ?? 0}
+                </Text>
+              </View>
+              <Text style={styles.statLabel}>Day streak</Text>
+            </View>
+            <View style={styles.statBlock}>
+              <View style={styles.statTop}>
+                <Ionicons name="flash" size={14} color={tokens.semantic.xp} />
+                <Text style={[styles.statValue, { color: tokens.semantic.xp }]}>
+                  {char.total_xp.toLocaleString()}
+                </Text>
+              </View>
+              <Text style={styles.statLabel}>Total XP</Text>
+            </View>
           </View>
         </View>
 
@@ -149,21 +198,6 @@ export default function CharacterScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Lifetime</Text>
-        <View style={styles.statsRow}>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{char.total_xp.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Total XP</Text>
-          </View>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{levelForXp(char.total_xp)}</Text>
-            <Text style={styles.statLabel}>Level</Text>
-          </View>
-          <View style={styles.statBlock}>
-            <Text style={styles.statValue}>{char.coins.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Coins</Text>
-          </View>
-        </View>
       </ScrollView>
       </ScreenBackground>
     </SafeAreaView>
@@ -179,27 +213,32 @@ const styles = StyleSheet.create({
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { ...tokens.type.body, color: tokens.text.mid },
   heroBlock: {
-    alignItems: 'center',
-    paddingTop: tokens.space[6],
-    paddingBottom: tokens.space[6],
+    paddingTop: tokens.space[3],
+    paddingBottom: tokens.space[5],
+    gap: tokens.space[4],
   },
-  bigAvatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: tokens.brand.violetDeep,
-    borderWidth: 3,
-    borderColor: tokens.brand.violet2,
+  eyebrowRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: tokens.space[3],
   },
-  bigLevel: {
-    ...tokens.type.numLg,
-    color: tokens.text.hi,
+  heroEyebrow: {
+    ...tokens.type.eyebrow,
+    color: tokens.brand.violet2,
+    textTransform: 'uppercase',
+    letterSpacing: 1.4,
+  },
+  heroBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[4],
+  },
+  heroInfo: {
+    flex: 1,
+    minWidth: 0,
   },
   name: {
-    ...tokens.type.h1,
+    ...tokens.type.h2,
     color: tokens.text.hi,
   },
   subtitle: {
@@ -208,19 +247,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   totalBar: {
-    width: '80%',
-    marginTop: tokens.space[3],
+    marginTop: tokens.space[2],
   },
-  coinRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: tokens.space[3],
-  },
-  coinText: {
-    ...tokens.type.body,
-    color: tokens.semantic.coin,
+  toNext: {
+    ...tokens.type.caption,
+    color: tokens.brand.violet2,
     fontFamily: 'Manrope_700Bold',
+    marginTop: 6,
   },
   sectionTitle: {
     ...tokens.type.eyebrow,
@@ -291,24 +324,34 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: tokens.space[3],
+    gap: tokens.space[2],
   },
   statBlock: {
     flex: 1,
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
+    backgroundColor: tokens.bg.glass,
+    borderRadius: tokens.radius.md,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    padding: tokens.space[4],
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[3],
+    gap: 4,
+  },
+  statTop: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
   statValue: {
-    ...tokens.type.h2,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 16,
+    lineHeight: 18,
     color: tokens.text.hi,
   },
   statLabel: {
     ...tokens.type.caption,
     color: tokens.text.mid,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontSize: 10,
   },
 });
