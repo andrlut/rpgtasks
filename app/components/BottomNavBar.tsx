@@ -12,18 +12,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tokens } from '@/theme';
 
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'home',
+  index: 'list',
+  history: 'calendar',
   character: 'person',
   rewards: 'gift',
-  history: 'calendar',
   profile: 'settings',
 };
 
 const TAB_LABELS: Record<string, string> = {
-  index: 'Home',
+  index: 'Tasks',
+  history: 'History',
   character: 'Hero',
   rewards: 'Rewards',
-  history: 'History',
   profile: 'Settings',
 };
 
