@@ -15,9 +15,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { TierMedal } from '@/components/TierMedal';
 import { useSkillStates } from '@/lib/api/skills';
-import type { DimensionId, SkillState, TierName } from '@/lib/db/types';
+import type { DimensionId, SkillState, SubId, TierName } from '@/lib/db/types';
 import { tokens } from '@/theme';
-import { DIMENSION_META, DIMENSION_ORDER } from '@/theme/dimensions';
+import {
+  DIMENSION_META,
+  DIMENSION_ORDER,
+  SUB_META,
+  SUBS_BY_DIM,
+} from '@/theme/dimensions';
 
 const TIER_RANK: Record<TierName, number> = {
   beginner: 0,
@@ -48,33 +53,71 @@ function totals(states: SkillState[]): MedalTotals {
   return { tracked: states.length, medals, topTier };
 }
 
+/**
+ * Skills hub — single category at a time.
+ *
+ * The user picks one of the 6 dimensions via a chip row at the top; only
+ * that dim's skills render below, organized by sub. Skills with
+ * sub_id = null in the active dim land under "Outros". Search filters
+ * within the active dim. This respects the rule: never lump categories
+ * together; always split, and let the user drill in.
+ */
 export default function SkillsHubScreen() {
   const router = useRouter();
   const skillStates = useSkillStates();
   const [query, setQuery] = useState('');
+  const [activeDim, setActiveDim] = useState<DimensionId>('health');
 
   const summary = useMemo(
     () => totals(skillStates.data ?? []),
     [skillStates.data],
   );
 
-  const filtered = useMemo(() => {
-    const list = skillStates.data ?? [];
-    const q = query.trim().toLowerCase();
-    return q.length === 0
-      ? list
-      : list.filter((s) => s.skill.display_name.toLowerCase().includes(q));
-  }, [skillStates.data, query]);
-
-  const skillsByDim = useMemo(() => {
-    const map = new Map<DimensionId, SkillState[]>();
-    for (const s of filtered) {
-      const arr = map.get(s.skill.dimension_id) ?? [];
-      arr.push(s);
-      map.set(s.skill.dimension_id, arr);
+  // Per-dim counts for the chip subtext (medals in that dim).
+  const medalsByDim = useMemo(() => {
+    const map = new Map<DimensionId, number>();
+    for (const s of skillStates.data ?? []) {
+      if (s.currentTier.tier_name === 'beginner') continue;
+      map.set(s.skill.dimension_id, (map.get(s.skill.dimension_id) ?? 0) + 1);
     }
     return map;
-  }, [filtered]);
+  }, [skillStates.data]);
+
+  // Filter to active dim + search.
+  const dimSkills = useMemo(() => {
+    const all = skillStates.data ?? [];
+    const q = query.trim().toLowerCase();
+    return all.filter((s) => {
+      if (s.skill.dimension_id !== activeDim) return false;
+      if (q && !s.skill.display_name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [skillStates.data, query, activeDim]);
+
+  // Group active-dim skills by sub_id (with a virtual "outros" bucket for nulls).
+  const groupedBySub = useMemo(() => {
+    const subIds = SUBS_BY_DIM[activeDim];
+    const buckets = new Map<SubId | 'outros', SkillState[]>();
+    for (const sub of subIds) buckets.set(sub, []);
+    buckets.set('outros', []);
+    for (const s of dimSkills) {
+      const key: SubId | 'outros' = s.skill.sub_id ?? 'outros';
+      const arr = buckets.get(key) ?? [];
+      arr.push(s);
+      buckets.set(key, arr);
+    }
+    // Drop empty buckets but preserve canonical sub order, then "outros" last.
+    const result: { key: SubId | 'outros'; skills: SkillState[] }[] = [];
+    for (const sub of subIds) {
+      const arr = buckets.get(sub) ?? [];
+      if (arr.length > 0) result.push({ key: sub, skills: arr });
+    }
+    const outros = buckets.get('outros') ?? [];
+    if (outros.length > 0) result.push({ key: 'outros', skills: outros });
+    return result;
+  }, [dimSkills, activeDim]);
+
+  const activeMeta = DIMENSION_META[activeDim];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -83,20 +126,21 @@ export default function SkillsHubScreen() {
         <View style={styles.topBar}>
           <Pressable
             onPress={() => router.back()}
-            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed && { opacity: 0.6 },
+            ]}
             hitSlop={8}
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
           <Text style={styles.title}>All Skills</Text>
           <Pressable
-            onPress={() =>
-              router.push({
-                pathname: '/skill-form',
-                params: {},
-              })
-            }
-            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+            onPress={() => router.push({ pathname: '/skill-form', params: {} })}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed && { opacity: 0.6 },
+            ]}
             hitSlop={8}
           >
             <Ionicons name="add" size={22} color={tokens.brand.violet2} />
@@ -108,7 +152,7 @@ export default function SkillsHubScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Stats strip */}
+          {/* Stats strip — totals across all dims (kept as global anchor). */}
           <View style={styles.statsStrip}>
             <View style={styles.statBlock}>
               <Text style={styles.statValue}>{summary.tracked}</Text>
@@ -128,13 +172,60 @@ export default function SkillsHubScreen() {
             </View>
           </View>
 
-          {/* Search */}
+          {/* Category chip row — single active. Horizontal scroll so all 6 fit. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsRow}
+          >
+            {DIMENSION_ORDER.map((id) => {
+              const meta = DIMENSION_META[id];
+              const active = id === activeDim;
+              const medals = medalsByDim.get(id) ?? 0;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setActiveDim(id)}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    active && {
+                      backgroundColor: meta.bg,
+                      borderColor: meta.color,
+                    },
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  hitSlop={4}
+                >
+                  <Ionicons
+                    name={meta.iconName as never}
+                    size={14}
+                    color={active ? meta.color : tokens.text.dim}
+                  />
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: active ? meta.color : tokens.text.mid },
+                    ]}
+                  >
+                    {meta.label}
+                  </Text>
+                  {medals > 0 && (
+                    <View style={styles.chipBadge}>
+                      <Text style={styles.chipBadgeText}>{medals}</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          {/* Search inside the active dim */}
           <View style={styles.searchWrap}>
             <Ionicons name="search" size={16} color={tokens.text.dim} />
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search skills..."
+              placeholder={`Search in ${activeMeta.label}...`}
               placeholderTextColor={tokens.text.faint}
               style={styles.searchInput}
               autoCorrect={false}
@@ -142,7 +233,11 @@ export default function SkillsHubScreen() {
             />
             {query.length > 0 && (
               <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={tokens.text.dim} />
+                <Ionicons
+                  name="close-circle"
+                  size={16}
+                  color={tokens.text.dim}
+                />
               </Pressable>
             )}
           </View>
@@ -152,43 +247,49 @@ export default function SkillsHubScreen() {
             <View style={styles.loadingBox}>
               <ActivityIndicator color={tokens.brand.violet2} />
             </View>
-          ) : filtered.length === 0 ? (
+          ) : groupedBySub.length === 0 ? (
             <View style={styles.emptyBox}>
               <Ionicons
-                name={query ? 'search' : 'sparkles'}
+                name={query ? 'search' : (activeMeta.iconName as never)}
                 size={32}
                 color={tokens.text.dim}
               />
               <Text style={styles.emptyTitle}>
-                {query ? 'No matches' : 'No skills yet'}
+                {query ? 'Sem resultados' : `Nada em ${activeMeta.label}`}
               </Text>
               <Text style={styles.emptySub}>
                 {query
-                  ? `Nothing matches "${query}"`
-                  : 'Create your first skill with the + button.'}
+                  ? `Nada combina com "${query}"`
+                  : 'Toque + pra criar uma skill nessa categoria.'}
               </Text>
             </View>
           ) : (
-            <View style={{ gap: tokens.space[3] }}>
-              {DIMENSION_ORDER.filter((id) => skillsByDim.has(id)).map((id) => {
-                const meta = DIMENSION_META[id];
-                const skills = skillsByDim.get(id) ?? [];
+            <View style={styles.subGroups}>
+              {groupedBySub.map(({ key, skills }) => {
+                const subLabel =
+                  key === 'outros'
+                    ? 'Outros'
+                    : SUB_META[key as SubId].label;
+                const subIconName =
+                  key === 'outros'
+                    ? 'apps'
+                    : (SUB_META[key as SubId].iconName as never);
                 return (
-                  <View key={id} style={styles.groupCard}>
-                    <View style={styles.groupHeader}>
-                      <View
-                        style={[styles.groupIcon, { backgroundColor: meta.bg }]}
+                  <View key={key} style={styles.subGroup}>
+                    <View style={styles.subHeader}>
+                      <Ionicons
+                        name={subIconName}
+                        size={13}
+                        color={activeMeta.color}
+                      />
+                      <Text
+                        style={[styles.subLabel, { color: activeMeta.color }]}
                       >
-                        <Ionicons
-                          name={meta.iconName as never}
-                          size={14}
-                          color={meta.color}
-                        />
-                      </View>
-                      <Text style={styles.groupTitle}>{meta.label}</Text>
-                      <Text style={styles.groupCount}>{skills.length}</Text>
+                        {subLabel.toUpperCase()}
+                      </Text>
+                      <Text style={styles.subCount}>{skills.length}</Text>
                     </View>
-                    <View style={styles.groupBody}>
+                    <View style={styles.subBody}>
                       {skills.map((s, i) => {
                         const isCustom = s.skill.character_id !== null;
                         return (
@@ -226,28 +327,19 @@ export default function SkillsHubScreen() {
                                   </View>
                                 )}
                               </View>
-                              {s.skill.description ? (
-                                <Text
-                                  style={styles.skillItemDesc}
-                                  numberOfLines={1}
-                                >
-                                  {s.skill.description}
-                                </Text>
-                              ) : (
-                                <Text style={styles.skillItemTier}>
-                                  {s.currentTier.tier_name.toUpperCase()}
-                                  {s.nextTier && (
-                                    <Text style={styles.skillItemNext}>
-                                      {' · '}
-                                      {Math.max(
-                                        0,
-                                        s.nextTier.threshold - s.currentPr,
-                                      )}{' '}
-                                      to {s.nextTier.tier_name}
-                                    </Text>
-                                  )}
-                                </Text>
-                              )}
+                              <Text style={styles.skillItemTier}>
+                                {s.currentTier.tier_name.toUpperCase()}
+                                {s.nextTier && (
+                                  <Text style={styles.skillItemNext}>
+                                    {' · '}
+                                    {Math.max(
+                                      0,
+                                      s.nextTier.threshold - s.currentPr,
+                                    )}{' '}
+                                    to {s.nextTier.tier_name}
+                                  </Text>
+                                )}
+                              </Text>
                             </View>
                             <View style={styles.skillItemRight}>
                               <Text style={styles.skillItemPr}>
@@ -337,6 +429,44 @@ const styles = StyleSheet.create({
     height: 28,
     backgroundColor: tokens.border.divider,
   },
+  chipsRow: {
+    gap: tokens.space[2],
+    paddingTop: tokens.space[4],
+    paddingBottom: tokens.space[2],
+    paddingRight: tokens.space[2],
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[2],
+    borderRadius: tokens.radius.pill,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: tokens.bg.surface,
+  },
+  chipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    letterSpacing: 0.4,
+  },
+  chipBadge: {
+    minWidth: 20,
+    paddingHorizontal: 6,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 200, 61, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 61, 0.30)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipBadgeText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.semantic.coin,
+  },
   searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -376,43 +506,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: tokens.space[6],
   },
-  groupCard: {
+  subGroups: {
+    gap: tokens.space[3],
+  },
+  subGroup: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.border.base,
     overflow: 'hidden',
   },
-  groupHeader: {
+  subHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.space[3],
+    gap: tokens.space[2],
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[3],
     borderBottomWidth: 1,
     borderBottomColor: tokens.border.divider,
   },
-  groupIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: tokens.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  groupTitle: {
+  subLabel: {
     flex: 1,
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
-    color: tokens.text.hi,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 11,
+    letterSpacing: 1.2,
   },
-  groupCount: {
+  subCount: {
     fontFamily: 'Manrope_700Bold',
     fontSize: 11,
     color: tokens.text.dim,
   },
-  groupBody: {
+  subBody: {
     paddingHorizontal: tokens.space[4],
   },
   skillItem: {
@@ -454,11 +578,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: tokens.brand.violet2,
     letterSpacing: 0.6,
-  },
-  skillItemDesc: {
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 11,
-    color: tokens.text.mid,
   },
   skillItemTier: {
     fontFamily: 'Manrope_800ExtraBold',
