@@ -106,6 +106,10 @@ export default function RootLayout() {
             <Stack.Screen name="skill/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="skills" options={{ headerShown: false }} />
             <Stack.Screen
+              name="skill-form"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
               name="dimension/[id]"
               options={{ presentation: 'modal', headerShown: false }}
             />
