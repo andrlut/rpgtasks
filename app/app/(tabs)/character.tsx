@@ -159,8 +159,8 @@ export default function CharacterScreen() {
   const streak = useStreak();
   const rewards = useRewards();
   const { width: screenWidth } = useWindowDimensions();
-  // Hex breaks out of the content padding to consume the full screen width.
-  const chartSize = Math.min(screenWidth - tokens.space[2] * 2, 480);
+  // Chart fits the card (screen padding + card padding subtracted).
+  const chartSize = Math.min(screenWidth - tokens.space[4] * 2 - 36, 360);
 
   useHydrateHeroSkillsExpand();
   const expanded = useHeroSkillsExpand((s) => s.expanded);
@@ -339,27 +339,22 @@ export default function CharacterScreen() {
           </View>
 
           {/* ── 2. HEX OF LIFE — subjective scores per sub ──── */}
-          <View style={styles.hexHeader}>
-            <Text style={styles.sectionTitle}>Self-assessment</Text>
-            <Text style={styles.hexHint}>Tap to edit</Text>
-          </View>
           <Pressable
             onPress={() => router.push('/self-assessment')}
             style={({ pressed }) => [
-              styles.hexBleed,
+              styles.hexCard,
               pressed && { opacity: 0.85 },
             ]}
             hitSlop={4}
           >
+            <View style={styles.hexHeader}>
+              <Text style={styles.hexEyebrow}>SELF-ASSESSMENT</Text>
+              <Text style={styles.hexEdit}>TAP TO EDIT</Text>
+            </View>
             <HexChart
               scores={pickSubScores(character.data.subScores, 'self')}
               size={chartSize}
             />
-            <View style={styles.hexEditRow}>
-              <Ionicons name="create" size={14} color={tokens.brand.violet2} />
-              <Text style={styles.hexEditText}>Update your levels</Text>
-              <Ionicons name="chevron-forward" size={14} color={tokens.brand.violet2} />
-            </View>
           </Pressable>
 
           {/* ── 3. CATEGORIES (RPG stat block, XP per dim) ────── */}
@@ -747,45 +742,37 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_600SemiBold',
   },
 
-  // Hex card wrapping the wheel-of-life-style chart
+  // Hex card — matches the design handoff frame
+  hexCard: {
+    marginTop: tokens.space[5],
+    backgroundColor: tokens.bg.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 18,
+    gap: tokens.space[2],
+  },
   hexHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    marginTop: tokens.space[5],
-    marginBottom: tokens.space[3],
-  },
-  hexHint: {
-    ...tokens.type.caption,
-    color: tokens.brand.violet2,
-    fontFamily: 'Manrope_700Bold',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    fontSize: 10,
-  },
-  hexBleed: {
-    // Cancel the parent ScrollView's content padding so the chart can use
-    // the full screen width. Inner padding is intentionally tiny so axis
-    // labels (which now live on the wedge perimeter) hug the screen edges.
-    marginHorizontal: -tokens.space[4],
-    paddingHorizontal: tokens.space[2],
-    paddingTop: tokens.space[2],
-  },
-  hexEditRow: {
-    marginTop: tokens.space[3],
-    paddingTop: tokens.space[3],
-    borderTopWidth: 1,
-    borderTopColor: tokens.border.divider,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    marginBottom: tokens.space[1],
   },
-  hexEditText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
+  hexEyebrow: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.text.mid,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  hexEdit: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
     color: tokens.brand.violet2,
-    letterSpacing: 0.3,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
 
   // Categories — compact stat block, 6 cols across, BG3-inspired
