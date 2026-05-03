@@ -148,7 +148,24 @@ export interface Task {
   metric_label: string | null;
   base_value: number | null;
   increment_per_star: number | null;
-  sub_id: SubId | null;
+  /** NOT NULL after migration 0007 — every task lives under a sub. */
+  sub_id: SubId;
+}
+
+export interface TaskTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  sub_id: SubId;
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  task_type: TaskType;
+  recurrence: Recurrence;
+  target_count: number;
+  metric_type: MetricType | null;
+  metric_label: string | null;
+  base_value: number | null;
+  increment_per_star: number | null;
+  sort_order: number;
 }
 
 /** Task with its linked dimensions (joined via task_dimension). */

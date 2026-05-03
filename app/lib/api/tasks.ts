@@ -4,6 +4,8 @@ import type {
   DimensionId,
   MetricType,
   Recurrence,
+  SubId,
+  TaskTemplate,
   TaskWithDimensions,
 } from '@/lib/db/types';
 import { isDueOn, parseRecurrence } from '@/lib/recurrence';
@@ -18,6 +20,9 @@ export const taskKeys = {
   all: ['tasks'] as const,
   pending: () => [...taskKeys.all, 'pending'] as const,
   detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
+  templates: () => [...taskKeys.all, 'templates'] as const,
+  templatesBySub: (subId: SubId) =>
+    [...taskKeys.all, 'templates', 'sub', subId] as const,
 };
 
 export interface TaskFormInput {
@@ -394,6 +399,47 @@ export function useArchiveTask() {
     onSuccess: (_data, taskId) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+    },
+  });
+}
+
+/**
+ * Public catalog of system-curated task suggestions, anchored by sub_id.
+ * Public-read; user adopts via start_task_from_template.
+ */
+export function useTaskTemplates() {
+  return useQuery({
+    queryKey: taskKeys.templates(),
+    queryFn: async (): Promise<TaskTemplate[]> => {
+      const { data, error } = await supabase
+        .from('task_template')
+        .select('*')
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as TaskTemplate[];
+    },
+  });
+}
+
+/**
+ * Atomically clone a task_template into the user's task list. Returns the
+ * new task id. Invalidates task lists + character (so any quest progress
+ * counters that depend on task list refresh).
+ */
+export function useStartTaskFromTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (templateId: string): Promise<string> => {
+      const { data, error } = await supabase.rpc('start_task_from_template', {
+        p_template_id: templateId,
+      });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
+      queryClient.invalidateQueries({ queryKey: characterKeys.me() });
     },
   });
 }
