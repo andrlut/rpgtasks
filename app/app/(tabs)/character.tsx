@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -50,6 +52,29 @@ function formatXp(xp: number): string {
   if (xp < 1000) return String(xp);
   if (xp < 10000) return (xp / 1000).toFixed(1) + 'k';
   return Math.floor(xp / 1000) + 'k';
+}
+
+function showStreakInfo() {
+  Alert.alert(
+    'Day streak',
+    'Conta os dias seguidos em que você completou pelo menos 1 task diária (recorrente daily).\n\n' +
+      '• Tasks one-shot e weekly não contam.\n' +
+      '• Grace day: se ainda não fez nada hoje, o streak conta a partir de ontem — você não perde só por abrir o app cedo.\n' +
+      '• Bônus: +1% XP e coins por dia, com cap em 2× aos 100 dias de streak.',
+  );
+}
+
+function showTitleInfo() {
+  Alert.alert(
+    'Título',
+    'Derivado em runtime da sua dimensão mais forte (a com mais XP).\n\n' +
+      'O nível dessa dimensão define o rank:\n' +
+      '• Apprentice — nível 0 a 2\n' +
+      '• Builder — nível 3 a 5\n' +
+      '• Adept — nível 6 a 9\n' +
+      '• Master — nível 10+\n\n' +
+      'Muda sozinho conforme você ganha XP em outras dimensões.',
+  );
 }
 
 /**
@@ -173,14 +198,17 @@ export default function CharacterScreen() {
                 </Text>
                 <View style={styles.chipRow}>
                   {title && titleDim && (
-                    <View
-                      style={[
+                    <Pressable
+                      onPress={showTitleInfo}
+                      style={({ pressed }) => [
                         styles.titleChip,
                         {
                           backgroundColor: titleDim.bg,
                           borderColor: `${titleDim.color}55`,
                         },
+                        pressed && { opacity: 0.7 },
                       ]}
+                      hitSlop={6}
                     >
                       <Ionicons
                         name={titleDim.iconName as never}
@@ -192,10 +220,23 @@ export default function CharacterScreen() {
                       >
                         {title.label}
                       </Text>
-                    </View>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={11}
+                        color={titleDim.color}
+                        style={{ opacity: 0.55 }}
+                      />
+                    </Pressable>
                   )}
                   {(streak.data?.currentStreak ?? 0) > 0 && (
-                    <View style={styles.streakChip}>
+                    <Pressable
+                      onPress={showStreakInfo}
+                      style={({ pressed }) => [
+                        styles.streakChip,
+                        pressed && { opacity: 0.7 },
+                      ]}
+                      hitSlop={6}
+                    >
                       <Ionicons
                         name="flame"
                         size={11}
@@ -204,7 +245,13 @@ export default function CharacterScreen() {
                       <Text style={styles.streakChipText}>
                         {streak.data?.currentStreak}d
                       </Text>
-                    </View>
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={11}
+                        color={tokens.semantic.warn}
+                        style={{ opacity: 0.55 }}
+                      />
+                    </Pressable>
                   )}
                 </View>
                 <View style={styles.totalBar}>
