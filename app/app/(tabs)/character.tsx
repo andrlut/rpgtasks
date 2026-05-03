@@ -17,6 +17,10 @@ import { LevelRing } from '@/components/LevelRing';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { TierMedal } from '@/components/TierMedal';
+import {
+  useHeroSkillsExpand,
+  useHydrateHeroSkillsExpand,
+} from '@/lib/heroSkillsExpand';
 import { useCharacter } from '@/lib/api/character';
 import { useRewards } from '@/lib/api/rewards';
 import { useSkillStates } from '@/lib/api/skills';
@@ -69,6 +73,41 @@ function deriveTitle(
   return { label: `${dimLabel} ${rank}`, dim: best.dimension_id };
 }
 
+interface MedalCount {
+  bronze: number;
+  silver: number;
+  gold: number;
+  master: number;
+}
+
+/**
+ * Per-dimension medal count: how many skills currently sit at each tier.
+ * "Push-ups at Silver" + "Pull-ups at Bronze" → { bronze: 1, silver: 1 } for
+ * Strength. Drives the chip beside each dim header in the Hero tab.
+ */
+function deriveMedalCountsByDim(
+  states: SkillState[],
+): Map<DimensionId, MedalCount> {
+  const map = new Map<DimensionId, MedalCount>();
+  for (const s of states) {
+    const counts =
+      map.get(s.skill.dimension_id) ?? { bronze: 0, silver: 0, gold: 0, master: 0 };
+    const tier = s.currentTier.tier_name;
+    if (tier !== 'beginner') {
+      counts[tier as keyof MedalCount]++;
+    }
+    map.set(s.skill.dimension_id, counts);
+  }
+  return map;
+}
+
+const TIER_PILL_COLOR: Record<keyof MedalCount, string> = {
+  bronze: '#E69559',
+  silver: '#E8ECFF',
+  gold: '#FFE08A',
+  master: '#C2A1FF',
+};
+
 /**
  * Badges = every non-beginner tier the user has reached, across all skills.
  * Each entry is one (skill, tier) badge unlocked.
@@ -118,6 +157,10 @@ export default function CharacterScreen() {
   const streak = useStreak();
   const rewards = useRewards();
 
+  useHydrateHeroSkillsExpand();
+  const expanded = useHeroSkillsExpand((s) => s.expanded);
+  const toggleExpand = useHeroSkillsExpand((s) => s.toggle);
+
   const title = useMemo(
     () => deriveTitle(character.data?.dimensions ?? []),
     [character.data?.dimensions],
@@ -131,6 +174,10 @@ export default function CharacterScreen() {
     }
     return map;
   }, [skillStates.data]);
+  const medalCounts = useMemo(
+    () => deriveMedalCountsByDim(skillStates.data ?? []),
+    [skillStates.data],
+  );
   const badges = useMemo(
     () => deriveBadges(skillStates.data ?? []),
     [skillStates.data],
@@ -327,7 +374,7 @@ export default function CharacterScreen() {
             })}
           </View>
 
-          {/* ── 3. SKILLS BY CATEGORY ─────────────────────────── */}
+          {/* ── 3. SKILLS BY CATEGORY (collapsible) ──────────── */}
           {skillStates.isLoading ? (
             <View style={{ paddingVertical: tokens.space[5] }}>
               <ActivityIndicator color={tokens.brand.violet2} />
@@ -339,9 +386,19 @@ export default function CharacterScreen() {
                 {DIMENSION_ORDER.filter((id) => skillsByDim.has(id)).map((id) => {
                   const meta = DIMENSION_META[id];
                   const skills = skillsByDim.get(id) ?? [];
+                  const counts = medalCounts.get(id);
+                  const isOpen = !!expanded[id];
                   return (
                     <View key={id} style={styles.skillsGroupCard}>
-                      <View style={styles.skillsGroupHeader}>
+                      <Pressable
+                        onPress={() => toggleExpand(id)}
+                        style={({ pressed }) => [
+                          styles.skillsGroupHeader,
+                          isOpen && styles.skillsGroupHeaderOpen,
+                          pressed && { opacity: 0.75 },
+                        ]}
+                        hitSlop={4}
+                      >
                         <View
                           style={[
                             styles.skillsGroupIcon,
@@ -354,70 +411,115 @@ export default function CharacterScreen() {
                             color={meta.color}
                           />
                         </View>
-                        <Text style={styles.skillsGroupTitle}>
-                          {meta.label}
-                        </Text>
-                        <Text style={styles.skillsGroupCount}>
-                          {skills.length}
-                        </Text>
-                      </View>
-                      <View style={styles.skillsGroupBody}>
-                        {skills.map((s, i) => (
-                          <Pressable
-                            key={s.skill.id}
-                            style={({ pressed }) => [
-                              styles.skillItem,
-                              i > 0 && styles.skillItemDivider,
-                              pressed && { opacity: 0.7 },
-                            ]}
-                            onPress={() =>
-                              router.push({
-                                pathname: '/skill/[id]',
-                                params: { id: s.skill.id },
-                              })
-                            }
-                          >
-                            <TierMedal
-                              tier={s.currentTier.tier_name}
-                              size={32}
-                            />
-                            <View style={styles.skillItemBody}>
-                              <Text
-                                style={styles.skillItemName}
-                                numberOfLines={1}
-                              >
-                                {s.skill.display_name}
-                              </Text>
-                              <Text style={styles.skillItemTier}>
-                                {s.currentTier.tier_name.toUpperCase()}
-                                {s.nextTier && (
-                                  <Text style={styles.skillItemNext}>
-                                    {' '}
-                                    · {Math.max(0, s.nextTier.threshold - s.currentPr)}{' '}
-                                    to {s.nextTier.tier_name}
-                                  </Text>
-                                )}
-                              </Text>
+                        <Text style={styles.skillsGroupTitle}>{meta.label}</Text>
+                        <View style={styles.medalChips}>
+                          {counts && counts.master > 0 && (
+                            <View style={[styles.medalChip, { backgroundColor: 'rgba(194,161,255,0.18)' }]}>
+                              <View style={[styles.medalDot, { backgroundColor: TIER_PILL_COLOR.master }]} />
+                              <Text style={[styles.medalChipText, { color: TIER_PILL_COLOR.master }]}>{counts.master}</Text>
                             </View>
-                            <View style={styles.skillItemRight}>
-                              <Text style={styles.skillItemPr}>
-                                {s.currentPr}
-                              </Text>
-                              <Text style={styles.skillItemUnit}>
-                                {s.skill.unit}
-                              </Text>
+                          )}
+                          {counts && counts.gold > 0 && (
+                            <View style={[styles.medalChip, { backgroundColor: 'rgba(255,224,138,0.15)' }]}>
+                              <View style={[styles.medalDot, { backgroundColor: TIER_PILL_COLOR.gold }]} />
+                              <Text style={[styles.medalChipText, { color: TIER_PILL_COLOR.gold }]}>{counts.gold}</Text>
                             </View>
-                            <Ionicons
-                              name="chevron-forward"
-                              size={16}
-                              color={tokens.text.dim}
-                            />
-                          </Pressable>
-                        ))}
-                      </View>
+                          )}
+                          {counts && counts.silver > 0 && (
+                            <View style={[styles.medalChip, { backgroundColor: 'rgba(232,236,255,0.10)' }]}>
+                              <View style={[styles.medalDot, { backgroundColor: TIER_PILL_COLOR.silver }]} />
+                              <Text style={[styles.medalChipText, { color: TIER_PILL_COLOR.silver }]}>{counts.silver}</Text>
+                            </View>
+                          )}
+                          {counts && counts.bronze > 0 && (
+                            <View style={[styles.medalChip, { backgroundColor: 'rgba(230,149,89,0.18)' }]}>
+                              <View style={[styles.medalDot, { backgroundColor: TIER_PILL_COLOR.bronze }]} />
+                              <Text style={[styles.medalChipText, { color: TIER_PILL_COLOR.bronze }]}>{counts.bronze}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.skillsGroupCount}>{skills.length}</Text>
+                        <Ionicons
+                          name={isOpen ? 'chevron-up' : 'chevron-down'}
+                          size={16}
+                          color={tokens.text.dim}
+                        />
+                      </Pressable>
+                      {isOpen && (
+                        <View style={styles.skillsGroupBody}>
+                          {skills.map((s, i) => (
+                            <Pressable
+                              key={s.skill.id}
+                              style={({ pressed }) => [
+                                styles.skillItem,
+                                i > 0 && styles.skillItemDivider,
+                                pressed && { opacity: 0.7 },
+                              ]}
+                              onPress={() =>
+                                router.push({
+                                  pathname: '/skill/[id]',
+                                  params: { id: s.skill.id },
+                                })
+                              }
+                            >
+                              <TierMedal
+                                tier={s.currentTier.tier_name}
+                                size={32}
+                              />
+                              <View style={styles.skillItemBody}>
+                                <Text
+                                  style={styles.skillItemName}
+                                  numberOfLines={1}
+                                >
+                                  {s.skill.display_name}
+                                </Text>
+                                <Text style={styles.skillItemTier}>
+                                  {s.currentTier.tier_name.toUpperCase()}
+                                  {s.nextTier && (
+                                    <Text style={styles.skillItemNext}>
+                                      {' '}
+                                      · {Math.max(0, s.nextTier.threshold - s.currentPr)}{' '}
+                                      to {s.nextTier.tier_name}
+                                    </Text>
+                                  )}
+                                </Text>
+                              </View>
+                              <View style={styles.skillItemRight}>
+                                <Text style={styles.skillItemPr}>
+                                  {s.currentPr}
+                                </Text>
+                                <Text style={styles.skillItemUnit}>
+                                  {s.skill.unit}
+                                </Text>
+                              </View>
+                              <Ionicons
+                                name="chevron-forward"
+                                size={16}
+                                color={tokens.text.dim}
+                              />
+                            </Pressable>
+                          ))}
+                        </View>
+                      )}
                     </View>
                   );
                 })}
+                <Pressable
+                  onPress={() => router.push('/skills')}
+                  style={({ pressed }) => [
+                    styles.seeAllSkillsBtn,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  hitSlop={4}
+                >
+                  <Ionicons name="grid" size={16} color={tokens.brand.violet2} />
+                  <Text style={styles.seeAllSkillsText}>See all skills</Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={tokens.brand.violet2}
+                  />
+                </Pressable>
               </View>
             </>
           ) : null}
@@ -663,11 +765,56 @@ const styles = StyleSheet.create({
   skillsGroupHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.space[3],
+    gap: tokens.space[2],
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[3],
+  },
+  skillsGroupHeaderOpen: {
     borderBottomWidth: 1,
     borderBottomColor: tokens.border.divider,
+  },
+  medalChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  medalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: tokens.radius.pill,
+  },
+  medalDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  medalChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+  },
+  seeAllSkillsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(123,92,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(123,92,255,0.30)',
+    borderStyle: 'dashed',
+    marginTop: tokens.space[1],
+  },
+  seeAllSkillsText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.brand.violet2,
+    letterSpacing: 0.3,
   },
   skillsGroupIcon: {
     width: 26,
@@ -677,7 +824,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skillsGroupTitle: {
-    flex: 1,
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 12,
     color: tokens.text.hi,
