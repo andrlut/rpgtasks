@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -15,9 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { HexChart } from '@/components/HexChart';
-import { HexChartFallback } from '@/components/HexChartFallback';
 import { LevelRing } from '@/components/LevelRing';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -358,42 +355,10 @@ export default function CharacterScreen() {
             ]}
             hitSlop={4}
           >
-            {Platform.OS === 'android' ? (
-              // react-native-svg 15.12.1 has known native crashes on
-              // Android (Brush.getVal NPE, font lookup). Use the pure-RN
-              // representation until upstream is patched.
-              <HexChartFallback
-                scores={pickSubScores(character.data.subScores, 'self')}
-                size={chartSize}
-              />
-            ) : (
-              <ErrorBoundary
-                label="Hex chart"
-                fallback={(err, info) => (
-                  <View style={{ gap: tokens.space[3] }}>
-                    <View style={styles.errorCard}>
-                      <Text style={styles.errorTitle}>HEX CHART CRASHED</Text>
-                      <Text style={styles.errorMessage}>
-                        {err.message || String(err)}
-                      </Text>
-                      {info ? (
-                        <Text style={styles.errorStack} numberOfLines={20}>
-                          {info.trim()}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <HexChartFallback
-                      scores={pickSubScores(character.data.subScores, 'self')}
-                    />
-                  </View>
-                )}
-              >
-                <HexChart
-                  scores={pickSubScores(character.data.subScores, 'self')}
-                  size={chartSize}
-                />
-              </ErrorBoundary>
-            )}
+            <HexChart
+              scores={pickSubScores(character.data.subScores, 'self')}
+              size={chartSize}
+            />
           </Pressable>
 
           {/* ── 3. CATEGORIES (RPG stat block, XP per dim) ────── */}
@@ -806,30 +771,6 @@ const styles = StyleSheet.create({
   hexBleed: {
     marginHorizontal: -tokens.space[4],
     paddingHorizontal: tokens.space[2],
-  },
-  errorCard: {
-    marginHorizontal: tokens.space[2],
-    backgroundColor: 'rgba(255,92,122,0.10)',
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,92,122,0.4)',
-    padding: tokens.space[3],
-    gap: tokens.space[2],
-  },
-  errorTitle: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    color: tokens.semantic.danger,
-    letterSpacing: 0.5,
-  },
-  errorMessage: {
-    ...tokens.type.body,
-    color: tokens.text.hi,
-  },
-  errorStack: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    fontFamily: 'Manrope_500Medium',
   },
 
   // Categories — compact stat block, 6 cols across, BG3-inspired

@@ -1,6 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Polygon } from 'react-native-svg';
 
 import type { SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
@@ -12,261 +13,303 @@ interface HexChartProps {
   size?: number;
 }
 
-const VIEWBOX = 340;
-const CX = 170;
-const CY = 170;
-const R = 118; // outer ring radius
-const SUB_MAX = 5; // 5 pips per sub
-const DIM_MAX = SUB_MAX * 2; // sum of two subs
+const SUB_MAX = 5;
+const DIM_MAX = SUB_MAX * 2;
+const PADDING = 56; // room for outer labels
 
-// Vertex angle (j in 0..5, top is 0).
 function angleAt(j: number) {
   return (j / 6) * Math.PI * 2 - Math.PI / 2;
 }
 
-/** Hex polygon ring at a given fraction of R. */
-function hexPoints(fraction: number) {
-  const r = R * fraction;
-  return Array.from({ length: 6 }, (_, j) => {
-    const a = angleAt(j);
-    return `${(CX + Math.cos(a) * r).toFixed(2)},${(CY + Math.sin(a) * r).toFixed(2)}`;
-  }).join(' ');
-}
-
 /**
- * Self-assessment chart — Option A from the design handoff.
+ * Wheel-of-life style hex chart, identical on every platform.
  *
- *   - 6-vertex hexagon polygon (one vertex per dim, clockwise from top:
- *     health, strength, mind, wealth, bonds, craft)
- *   - Each vertex carries a colored disc with the main score (sum of the
- *     dim's two subs, 0-10)
- *   - Outer dim labels at R + 22 in dim color
- *   - Center stamp: "OVERALL" + average of all 6 mains (rounded to 0.1)
- *   - Legend below: 3 × 2 grid of cards, one per dim, each with a square
- *     score badge and 2 sub rows of 5 pips
+ * The SVG layer ONLY uses primitive shapes (Polygon / Line / Circle) — no
+ * gradients, no SvgText, no Defs. Those were the parts of react-native-svg
+ * 15.12.1 that crashed on Android natively. Numbers and labels are
+ * absolutely-positioned RN <Text> overlays so they use the same Manrope
+ * fonts the rest of the app uses.
  */
-export function HexChart({ scores, size = 340 }: HexChartProps) {
-  // Per-dim main scores in vertex order (clockwise from top).
+export function HexChart({ scores, size = 320 }: HexChartProps) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const R = size / 2 - PADDING;
+
   const mains = useMemo(() => {
-    return DIMENSION_ORDER.map((dim) => {
+    return DIMENSION_ORDER.map((dim, j) => {
       const [a, b] = SUBS_BY_DIM[dim];
       const sa = scores.get(a) ?? 0;
       const sb = scores.get(b) ?? 0;
-      return { dim, score: sa + sb, sa, sb };
+      const score = sa + sb;
+      const angle = angleAt(j);
+      const r = (score / DIM_MAX) * R;
+      return {
+        dim,
+        score,
+        sa,
+        sb,
+        angle,
+        // Score-vertex (where the colored disc lives).
+        x: cx + Math.cos(angle) * r,
+        y: cy + Math.sin(angle) * r,
+        // Outer hex frame vertex (full R).
+        fx: cx + Math.cos(angle) * R,
+        fy: cy + Math.sin(angle) * R,
+        // Outer label position.
+        lx: cx + Math.cos(angle) * (R + 22),
+        ly: cy + Math.sin(angle) * (R + 22),
+      };
     });
-  }, [scores]);
+  }, [scores, cx, cy, R]);
 
   const overall = useMemo(() => {
     const sum = mains.reduce((s, m) => s + m.score, 0);
     return Math.round((sum / mains.length) * 10) / 10;
   }, [mains]);
 
-  // Concentric ring polygons.
-  const rings = [1 / 4, 2 / 4, 3 / 4, 4 / 4];
+  // Concentric reference rings (every 20% of R).
+  const ringFractions = [0.25, 0.5, 0.75, 1.0];
 
-  // Score polygon points.
-  const scorePts = mains
-    .map((m, j) => {
-      const a = angleAt(j);
-      const r = (m.score / DIM_MAX) * R;
-      return `${(CX + Math.cos(a) * r).toFixed(2)},${(CY + Math.sin(a) * r).toFixed(2)}`;
-    })
-    .join(' ');
-
-  // Vertex positions for badges + outer labels.
-  const verts = mains.map((m, j) => {
-    const a = angleAt(j);
-    const r = (m.score / DIM_MAX) * R;
-    const x = CX + Math.cos(a) * r;
-    const y = CY + Math.sin(a) * r;
-    const lx = CX + Math.cos(a) * (R + 22);
-    const ly = CY + Math.sin(a) * (R + 22);
-    return { ...m, x, y, lx, ly };
-  });
+  const framePoints = mains.map((m) => `${m.fx},${m.fy}`).join(' ');
+  const scorePoints = mains.map((m) => `${m.x},${m.y}`).join(' ');
 
   return (
     <View>
-      <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}>
-        {/*
-          Gradient deliberately omitted on Android: react-native-svg 15.12.1
-          has a known NPE in Brush.getVal when RadialGradient props arrive
-          before SVGLength is resolved. We use a flat semi-transparent
-          violet fill instead — same visual class, zero crash risk.
-        */}
+      <View style={[styles.canvas, { width: size, height: size }]}>
+        <Svg width={size} height={size}>
+          {/* Concentric hex rings */}
+          {ringFractions.map((g, i) => {
+            const pts = mains
+              .map((m) => {
+                const x = cx + Math.cos(m.angle) * R * g;
+                const y = cy + Math.sin(m.angle) * R * g;
+                return `${x},${y}`;
+              })
+              .join(' ');
+            return (
+              <Polygon
+                key={`ring-${i}`}
+                points={pts}
+                fill="none"
+                stroke="rgba(255,255,255,0.08)"
+                strokeWidth={1}
+              />
+            );
+          })}
 
-        {/* Concentric hex rings */}
-        {rings.map((g, i) => {
-          const idx = i + 1;
-          const dashed = idx === 2 || idx === 3;
-          const isOuter = idx === 4;
-          return (
-            <Polygon
-              key={`ring-${i}`}
-              points={hexPoints(g)}
-              fill={isOuter ? 'rgba(255,255,255,0.025)' : 'none'}
-              stroke="rgba(255,255,255,0.08)"
-              strokeWidth={1}
-              strokeDasharray={dashed ? '2 4' : undefined}
-            />
-          );
-        })}
-
-        {/* Spokes from center to each outer vertex */}
-        {mains.map((_, j) => {
-          const a = angleAt(j);
-          const x = CX + Math.cos(a) * R;
-          const y = CY + Math.sin(a) * R;
-          return (
+          {/* Spokes from center to each frame vertex */}
+          {mains.map((m, j) => (
             <Line
               key={`spoke-${j}`}
-              x1={CX}
-              y1={CY}
-              x2={x}
-              y2={y}
+              x1={cx}
+              y1={cy}
+              x2={m.fx}
+              y2={m.fy}
               stroke="rgba(255,255,255,0.06)"
               strokeWidth={1}
             />
-          );
-        })}
+          ))}
 
-        {/* Score polygon — flat fill (gradient avoided on Android) */}
-        <Polygon
-          points={scorePts}
-          fill="rgba(155,130,255,0.28)"
-          stroke="#9B82FF"
-          strokeWidth={2}
-          strokeLinejoin="round"
-        />
+          {/* Outer frame */}
+          <Polygon
+            points={framePoints}
+            fill="none"
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth={1.5}
+          />
 
-        {/* Vertex score discs */}
-        {verts.map((v, j) => {
-          const meta = DIMENSION_META[v.dim];
-          return (
-            <Circle
-              key={`disc-${j}`}
-              cx={v.x}
-              cy={v.y}
-              r={15}
-              fill={meta.color}
-            />
-          );
-        })}
-        {/*
-          fontFamily here is the same Manrope_800ExtraBold the rest of
-          the app uses. On Android we don't even reach this code path —
-          Hero detects Platform.OS === 'android' and renders the pure-RN
-          HexChartFallback instead, since react-native-svg 15.12.1 has
-          known native crashes on that platform.
-        */}
-        {verts.map((v, j) => (
-          <SvgText
-            key={`disc-text-${j}`}
-            x={v.x}
-            y={v.y + 4}
-            textAnchor="middle"
-            fontFamily="Manrope_800ExtraBold"
-            fontWeight="800"
-            fontSize={13}
-            fill="#0E1230"
+          {/* Score polygon — flat semi-transparent violet fill */}
+          <Polygon
+            points={scorePoints}
+            fill="rgba(155,130,255,0.28)"
+            stroke="#9B82FF"
+            strokeWidth={2}
+            strokeLinejoin="round"
+          />
+
+          {/* Vertex score discs */}
+          {mains.map((m) => {
+            const meta = DIMENSION_META[m.dim];
+            return (
+              <Circle
+                key={`disc-${m.dim}`}
+                cx={m.x}
+                cy={m.y}
+                r={15}
+                fill={meta.color}
+                stroke={tokens.bg.deep}
+                strokeWidth={2}
+              />
+            );
+          })}
+        </Svg>
+
+        {/* RN <Text> overlays for numbers and labels — uses Manrope. */}
+
+        {/* Score numbers inside each disc */}
+        {mains.map((m) => (
+          <Text
+            key={`disc-text-${m.dim}`}
+            style={[
+              styles.discText,
+              {
+                left: m.x - 16,
+                top: m.y - 9,
+                width: 32,
+              },
+            ]}
+            allowFontScaling={false}
           >
-            {v.score}
-          </SvgText>
+            {m.score}
+          </Text>
         ))}
 
-        {/* Outer dim labels */}
-        {verts.map((v, j) => (
-          <SvgText
-            key={`outer-${j}`}
-            x={v.lx}
-            y={v.ly + 4}
-            textAnchor="middle"
-            fontFamily="Manrope_800ExtraBold"
-            fontWeight="800"
-            fontSize={10}
-            fill={DIMENSION_META[v.dim].color}
-          >
-            {DIMENSION_META[v.dim].label.toUpperCase()}
-          </SvgText>
-        ))}
-
-        {/* Center stamp — overall avg, no label */}
-        <SvgText
-          x={CX}
-          y={CY + 9}
-          textAnchor="middle"
-          fontFamily="Manrope_800ExtraBold"
-          fontWeight="800"
-          fontSize={26}
-          fill="#F2F3FF"
-        >
-          {overall.toFixed(1)}
-        </SvgText>
-      </Svg>
-
-      {/* Legend grid: 2 rows × 3 cols */}
-      <View style={styles.legendGrid}>
+        {/* Outer dim labels around the perimeter */}
         {mains.map((m) => {
           const meta = DIMENSION_META[m.dim];
-          const subIds = SUBS_BY_DIM[m.dim];
+          const dx = m.lx - cx;
+          const align: 'left' | 'right' | 'center' =
+            dx > 5 ? 'left' : dx < -5 ? 'right' : 'center';
+          const labelWidth = 76;
+          const labelLeft =
+            align === 'left'
+              ? m.lx - 4
+              : align === 'right'
+                ? m.lx - labelWidth + 4
+                : m.lx - labelWidth / 2;
           return (
-            <View
-              key={m.dim}
-              style={[styles.card, { borderColor: `${meta.color}40` }]}
+            <Text
+              key={`outer-${m.dim}`}
+              style={[
+                styles.outerLabel,
+                {
+                  left: labelLeft,
+                  top: m.ly - 7,
+                  width: labelWidth,
+                  textAlign: align,
+                  color: meta.color,
+                },
+              ]}
+              numberOfLines={1}
+              allowFontScaling={false}
             >
-              <View style={styles.cardHeader}>
-                <Text
-                  style={[styles.cardLabel, { color: meta.color }]}
-                  numberOfLines={1}
-                >
-                  {meta.label.toUpperCase()}
-                </Text>
-                <View style={[styles.cardBadge, { backgroundColor: meta.color }]}>
-                  <Text style={styles.cardBadgeText}>{m.score}</Text>
-                </View>
-              </View>
-              {subIds.map((subId, i) => {
-                const subMeta = SUB_META[subId];
-                const score = i === 0 ? m.sa : m.sb;
-                return (
-                  <View key={subId} style={styles.subRow}>
-                    <Text style={styles.subLabel} numberOfLines={1}>
-                      {subMeta.label}
-                    </Text>
-                    <View style={styles.pips}>
-                      {[1, 2, 3, 4, 5].map((p) => (
-                        <View
-                          key={p}
-                          style={[
-                            styles.pip,
-                            {
-                              backgroundColor:
-                                p <= score ? meta.color : 'rgba(255,255,255,0.10)',
-                            },
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
+              {meta.label.toUpperCase()}
+            </Text>
           );
         })}
+
+        {/* Center overall number */}
+        <Text
+          style={[
+            styles.overallText,
+            { left: 0, top: cy - 18, width: size },
+          ]}
+          allowFontScaling={false}
+        >
+          {overall.toFixed(1)}
+        </Text>
+      </View>
+
+      {/* Legend: 2 rows × 3 cols, exact widths via flex:1 */}
+      <View style={{ gap: tokens.space[2], marginTop: tokens.space[3] }}>
+        {[0, 3].map((rowStart) => (
+          <View key={`row-${rowStart}`} style={styles.legendRow}>
+            {mains.slice(rowStart, rowStart + 3).map((m) => {
+              const meta = DIMENSION_META[m.dim];
+              const subIds = SUBS_BY_DIM[m.dim];
+              return (
+                <View
+                  key={`card-${m.dim}`}
+                  style={[styles.card, { borderColor: `${meta.color}40` }]}
+                >
+                  <View style={styles.cardHeader}>
+                    <Ionicons
+                      name={meta.iconName as never}
+                      size={12}
+                      color={meta.color}
+                    />
+                    <Text
+                      style={[styles.cardLabel, { color: meta.color }]}
+                      numberOfLines={1}
+                    >
+                      {meta.label.toUpperCase()}
+                    </Text>
+                    <View
+                      style={[styles.cardBadge, { backgroundColor: meta.color }]}
+                    >
+                      <Text style={styles.cardBadgeText}>{m.score}</Text>
+                    </View>
+                  </View>
+                  {subIds.map((subId, i) => {
+                    const subMeta = SUB_META[subId];
+                    const score = i === 0 ? m.sa : m.sb;
+                    return (
+                      <View key={subId} style={styles.subRow}>
+                        <Text style={styles.subLabel} numberOfLines={1}>
+                          {subMeta.label}
+                        </Text>
+                        <View style={styles.pips}>
+                          {[1, 2, 3, 4, 5].map((p) => (
+                            <View
+                              key={p}
+                              style={[
+                                styles.pip,
+                                {
+                                  backgroundColor:
+                                    p <= score
+                                      ? meta.color
+                                      : 'rgba(255,255,255,0.10)',
+                                },
+                              ]}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        ))}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  legendGrid: {
-    marginTop: tokens.space[3],
+  canvas: {
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  outerLabel: {
+    position: 'absolute',
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 1.2,
+  },
+  discText: {
+    position: 'absolute',
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: '#0E1230',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  overallText: {
+    position: 'absolute',
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 28,
+    color: tokens.text.hi,
+    textAlign: 'center',
+  },
+  legendRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: tokens.space[2],
   },
   card: {
-    width: '31.5%',
-    flexGrow: 1,
+    flex: 1,
+    minWidth: 0,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 12,
     borderWidth: 1,
@@ -275,7 +318,7 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
     marginBottom: 8,
   },
   cardLabel: {
@@ -286,8 +329,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   cardBadge: {
-    width: 22,
+    minWidth: 22,
     height: 22,
+    paddingHorizontal: 6,
     borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
