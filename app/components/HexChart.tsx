@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Polygon } from 'react-native-svg';
 
 import type { SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
@@ -15,20 +14,54 @@ interface HexChartProps {
 
 const SUB_MAX = 5;
 const DIM_MAX = SUB_MAX * 2;
-const PADDING = 56; // room for outer labels
+const PADDING = 56;
 
 function angleAt(j: number) {
   return (j / 6) * Math.PI * 2 - Math.PI / 2;
 }
 
+interface LineProps {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  color: string;
+  width?: number;
+  opacity?: number;
+}
+
+/** A line segment between two points, drawn as a thin rotated View. */
+function Line({ x1, y1, x2, y2, color, width = 1, opacity = 1 }: LineProps) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        left: x1,
+        top: y1 - width / 2,
+        width: length,
+        height: width,
+        backgroundColor: color,
+        opacity,
+        transformOrigin: '0% 50%',
+        transform: [{ rotate: `${angle}deg` }],
+      }}
+    />
+  );
+}
+
 /**
- * Wheel-of-life style hex chart, identical on every platform.
+ * Wheel-of-life hexagon — pure React Native, no react-native-svg anywhere.
  *
- * The SVG layer ONLY uses primitive shapes (Polygon / Line / Circle) — no
- * gradients, no SvgText, no Defs. Those were the parts of react-native-svg
- * 15.12.1 that crashed on Android natively. Numbers and labels are
- * absolutely-positioned RN <Text> overlays so they use the same Manrope
- * fonts the rest of the app uses.
+ * react-native-svg 15.12.1 has native crashes on Android even with just
+ * the basic primitives (Polygon/Line/Circle). To keep the chart identical
+ * everywhere, this version uses only Views and rotated Line segments.
+ *
+ * Trade-off: no filled polygon — only outline. The score shape comes
+ * across via the outline + the 6 colored vertex discs at varying radii.
  */
 export function HexChart({ scores, size = 320 }: HexChartProps) {
   const cx = size / 2;
@@ -49,13 +82,10 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
         sa,
         sb,
         angle,
-        // Score-vertex (where the colored disc lives).
         x: cx + Math.cos(angle) * r,
         y: cy + Math.sin(angle) * r,
-        // Outer hex frame vertex (full R).
         fx: cx + Math.cos(angle) * R,
         fy: cy + Math.sin(angle) * R,
-        // Outer label position.
         lx: cx + Math.cos(angle) * (R + 22),
         ly: cy + Math.sin(angle) * (R + 22),
       };
@@ -67,104 +97,78 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
     return Math.round((sum / mains.length) * 10) / 10;
   }, [mains]);
 
-  // Concentric reference rings (every 20% of R).
-  const ringFractions = [0.25, 0.5, 0.75, 1.0];
-
-  const framePoints = mains.map((m) => `${m.fx},${m.fy}`).join(' ');
-  const scorePoints = mains.map((m) => `${m.x},${m.y}`).join(' ');
+  const ringFractions = [0.5, 0.75, 1.0];
 
   return (
     <View>
       <View style={[styles.canvas, { width: size, height: size }]}>
-        <Svg width={size} height={size}>
-          {/* Concentric hex rings */}
-          {ringFractions.map((g, i) => {
-            const pts = mains
-              .map((m) => {
-                const x = cx + Math.cos(m.angle) * R * g;
-                const y = cy + Math.sin(m.angle) * R * g;
-                return `${x},${y}`;
-              })
-              .join(' ');
-            return (
-              <Polygon
-                key={`ring-${i}`}
-                points={pts}
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth={1}
-              />
-            );
-          })}
-
-          {/* Spokes from center to each frame vertex */}
-          {mains.map((m, j) => (
-            <Line
-              key={`spoke-${j}`}
-              x1={cx}
-              y1={cy}
-              x2={m.fx}
-              y2={m.fy}
-              stroke="rgba(255,255,255,0.06)"
-              strokeWidth={1}
+        {/* Concentric reference circles */}
+        {ringFractions.map((g, i) => {
+          const d = R * 2 * g;
+          return (
+            <View
+              key={`ring-${i}`}
+              style={{
+                position: 'absolute',
+                left: cx - d / 2,
+                top: cy - d / 2,
+                width: d,
+                height: d,
+                borderRadius: d / 2,
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.06)',
+                borderStyle: g === 1 ? 'solid' : 'dashed',
+              }}
             />
-          ))}
+          );
+        })}
 
-          {/* Outer frame */}
-          <Polygon
-            points={framePoints}
-            fill="none"
-            stroke="rgba(255,255,255,0.18)"
-            strokeWidth={1.5}
+        {/* Spokes from center to each frame vertex */}
+        {mains.map((m, j) => (
+          <Line
+            key={`spoke-${j}`}
+            x1={cx}
+            y1={cy}
+            x2={m.fx}
+            y2={m.fy}
+            color="rgba(255,255,255,0.06)"
+            width={1}
           />
-
-          {/* Score polygon — flat semi-transparent violet fill */}
-          <Polygon
-            points={scorePoints}
-            fill="rgba(155,130,255,0.28)"
-            stroke="#9B82FF"
-            strokeWidth={2}
-            strokeLinejoin="round"
-          />
-
-          {/* Vertex score discs */}
-          {mains.map((m) => {
-            const meta = DIMENSION_META[m.dim];
-            return (
-              <Circle
-                key={`disc-${m.dim}`}
-                cx={m.x}
-                cy={m.y}
-                r={15}
-                fill={meta.color}
-                stroke={tokens.bg.deep}
-                strokeWidth={2}
-              />
-            );
-          })}
-        </Svg>
-
-        {/* RN <Text> overlays for numbers and labels — uses Manrope. */}
-
-        {/* Score numbers inside each disc */}
-        {mains.map((m) => (
-          <Text
-            key={`disc-text-${m.dim}`}
-            style={[
-              styles.discText,
-              {
-                left: m.x - 16,
-                top: m.y - 9,
-                width: 32,
-              },
-            ]}
-            allowFontScaling={false}
-          >
-            {m.score}
-          </Text>
         ))}
 
-        {/* Outer dim labels around the perimeter */}
+        {/* Static hex frame */}
+        {mains.map((m, j) => {
+          const next = mains[(j + 1) % 6];
+          return (
+            <Line
+              key={`frame-${j}`}
+              x1={m.fx}
+              y1={m.fy}
+              x2={next.fx}
+              y2={next.fy}
+              color="rgba(255,255,255,0.18)"
+              width={1}
+            />
+          );
+        })}
+
+        {/* Score polygon outline */}
+        {mains.map((m, j) => {
+          const next = mains[(j + 1) % 6];
+          return (
+            <Line
+              key={`score-${j}`}
+              x1={m.x}
+              y1={m.y}
+              x2={next.x}
+              y2={next.y}
+              color={tokens.brand.violet2}
+              width={2}
+            />
+          );
+        })}
+
+        {/* Outer dim labels with smart text alignment */}
         {mains.map((m) => {
           const meta = DIMENSION_META[m.dim];
           const dx = m.lx - cx;
@@ -179,7 +183,7 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
                 : m.lx - labelWidth / 2;
           return (
             <Text
-              key={`outer-${m.dim}`}
+              key={`label-${m.dim}`}
               style={[
                 styles.outerLabel,
                 {
@@ -198,6 +202,34 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
           );
         })}
 
+        {/* Vertex score discs */}
+        {mains.map((m) => {
+          const meta = DIMENSION_META[m.dim];
+          const DISC = 30;
+          return (
+            <View
+              key={`disc-${m.dim}`}
+              style={{
+                position: 'absolute',
+                left: m.x - DISC / 2,
+                top: m.y - DISC / 2,
+                width: DISC,
+                height: DISC,
+                borderRadius: DISC / 2,
+                backgroundColor: meta.color,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 2,
+                borderColor: tokens.bg.deep,
+              }}
+            >
+              <Text style={styles.discText} allowFontScaling={false}>
+                {m.score}
+              </Text>
+            </View>
+          );
+        })}
+
         {/* Center overall number */}
         <Text
           style={[
@@ -210,8 +242,8 @@ export function HexChart({ scores, size = 320 }: HexChartProps) {
         </Text>
       </View>
 
-      {/* Legend: 2 rows × 3 cols, exact widths via flex:1 */}
-      <View style={{ gap: tokens.space[2], marginTop: tokens.space[3] }}>
+      {/* Legend: 2 rows × 3 cards, exact widths via flex:1 */}
+      <View style={styles.legend}>
         {[0, 3].map((rowStart) => (
           <View key={`row-${rowStart}`} style={styles.legendRow}>
             {mains.slice(rowStart, rowStart + 3).map((m) => {
@@ -289,11 +321,9 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   discText: {
-    position: 'absolute',
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 13,
     color: '#0E1230',
-    textAlign: 'center',
     lineHeight: 16,
   },
   overallText: {
@@ -302,6 +332,10 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: tokens.text.hi,
     textAlign: 'center',
+  },
+  legend: {
+    marginTop: tokens.space[3],
+    gap: tokens.space[2],
   },
   legendRow: {
     flexDirection: 'row',
