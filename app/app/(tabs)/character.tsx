@@ -337,7 +337,7 @@ export default function CharacterScreen() {
           {/* ── 2. HEX OF LIFE — subjective scores per sub ──── */}
           <Text style={styles.sectionTitle}>Self-assessment</Text>
           <View style={styles.hexCard}>
-            <HexChart subs={character.data.subs} size={280} />
+            <HexChart subs={character.data.subs} size={300} />
           </View>
 
           {/* ── 3. CATEGORIES (RPG stat block, XP per dim) ────── */}
