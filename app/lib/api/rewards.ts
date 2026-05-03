@@ -10,13 +10,15 @@ export const rewardKeys = {
   active: () => [...rewardKeys.all, 'active'] as const,
   detail: (id: string) => [...rewardKeys.all, 'detail', id] as const,
   templates: () => [...rewardKeys.all, 'templates'] as const,
-  redemptions: () => [...rewardKeys.all, 'redemptions'] as const,
+  bank: () => [...rewardKeys.all, 'bank'] as const,
+  used: () => [...rewardKeys.all, 'used'] as const,
 };
 
-export interface RedemptionHistoryEntry {
+export interface RedemptionEntry {
   id: string;
   reward_id: string;
   redeemed_at: string;
+  used_at: string | null;
   cost_paid: number;
   reward_title: string;
   reward_icon: string;
@@ -27,6 +29,7 @@ interface RedemptionRow {
   id: string;
   reward_id: string;
   redeemed_at: string;
+  used_at: string | null;
   cost_paid: number;
   reward:
     | { title: string; icon: string; category: RewardCategory | null }
@@ -34,28 +37,49 @@ interface RedemptionRow {
     | null;
 }
 
-export function useRedemptionHistory(limit: number = 50) {
+function mapRedemption(r: RedemptionRow): RedemptionEntry {
+  const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward;
+  return {
+    id: r.id,
+    reward_id: r.reward_id,
+    redeemed_at: r.redeemed_at,
+    used_at: r.used_at,
+    cost_paid: r.cost_paid,
+    reward_title: reward?.title ?? '(removed reward)',
+    reward_icon: reward?.icon ?? 'gift',
+    reward_category: reward?.category ?? null,
+  };
+}
+
+/** Bought-but-not-yet-used. The "bank". Newest first. */
+export function useBankedRewards() {
   return useQuery({
-    queryKey: rewardKeys.redemptions(),
-    queryFn: async (): Promise<RedemptionHistoryEntry[]> => {
+    queryKey: rewardKeys.bank(),
+    queryFn: async (): Promise<RedemptionEntry[]> => {
       const { data, error } = await supabase
         .from('reward_redemption')
-        .select('id, reward_id, redeemed_at, cost_paid, reward:reward_id ( title, icon, category )')
-        .order('redeemed_at', { ascending: false })
+        .select('id, reward_id, redeemed_at, used_at, cost_paid, reward:reward_id ( title, icon, category )')
+        .is('used_at', null)
+        .order('redeemed_at', { ascending: false });
+      if (error) throw error;
+      return ((data ?? []) as RedemptionRow[]).map(mapRedemption);
+    },
+  });
+}
+
+/** Already-used redemptions. The "history". Newest first, capped. */
+export function useUsedRewards(limit: number = 50) {
+  return useQuery({
+    queryKey: rewardKeys.used(),
+    queryFn: async (): Promise<RedemptionEntry[]> => {
+      const { data, error } = await supabase
+        .from('reward_redemption')
+        .select('id, reward_id, redeemed_at, used_at, cost_paid, reward:reward_id ( title, icon, category )')
+        .not('used_at', 'is', null)
+        .order('used_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return ((data ?? []) as RedemptionRow[]).map((r) => {
-        const reward = Array.isArray(r.reward) ? r.reward[0] : r.reward;
-        return {
-          id: r.id,
-          reward_id: r.reward_id,
-          redeemed_at: r.redeemed_at,
-          cost_paid: r.cost_paid,
-          reward_title: reward?.title ?? '(removed reward)',
-          reward_icon: reward?.icon ?? 'gift',
-          reward_category: reward?.category ?? null,
-        };
-      });
+      return ((data ?? []) as RedemptionRow[]).map(mapRedemption);
     },
   });
 }
@@ -260,7 +284,25 @@ export function useRedeemReward() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
-      queryClient.invalidateQueries({ queryKey: rewardKeys.redemptions() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.bank() });
+    },
+  });
+}
+
+/** Mark a banked redemption as used (consumed). */
+export function useUseReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (redemptionId: string) => {
+      const { data, error } = await supabase.rpc('use_reward', {
+        p_redemption_id: redemptionId,
+      });
+      if (error) throw error;
+      return data as { used_at: string };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.bank() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.used() });
     },
   });
 }

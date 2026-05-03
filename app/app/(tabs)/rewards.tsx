@@ -23,10 +23,12 @@ import { useCharacter } from '@/lib/api/character';
 import {
   useAddTemplateToShop,
   useArchiveReward,
+  useBankedRewards,
   useRedeemReward,
-  useRedemptionHistory,
   useRewardTemplates,
   useRewards,
+  useUseReward,
+  useUsedRewards,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { timeAgo } from '@/lib/time';
@@ -34,22 +36,28 @@ import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
 
+type RewardView = 'shop' | 'bank' | 'used';
+
 export default function RewardsScreen() {
   const router = useRouter();
   const character = useCharacter();
   const rewards = useRewards();
   const templates = useRewardTemplates();
   const redeem = useRedeemReward();
+  const useReward = useUseReward();
   const addTemplate = useAddTemplateToShop();
   const archiveReward = useArchiveReward();
-  const redemptions = useRedemptionHistory(50);
+  const banked = useBankedRewards();
+  const used = useUsedRewards(50);
 
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
+  const [usingId, setUsingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<RewardCategory>('indulgence');
-  const [view, setView] = useState<'shop' | 'history'>('shop');
+  const [view, setView] = useState<RewardView>('shop');
 
   const coins = character.data?.character.coins ?? 0;
+  const bankCount = banked.data?.length ?? 0;
 
   const myRewardsByCategory = useMemo(() => {
     const map: Record<RewardCategory, Reward[]> = {
@@ -94,7 +102,7 @@ export default function RewardsScreen() {
   const handleRewardActions = async (reward: Reward) => {
     const ok = await confirmAction(
       `Remove "${reward.title}"?`,
-      'It stops appearing on Rewards. Past redemptions stay in your history.',
+      'It stops appearing in the Shop. Past purchases stay in your Bank/Used.',
       { okText: 'Remove', cancelText: 'Cancel', destructive: true },
     );
     if (!ok) return;
@@ -107,11 +115,15 @@ export default function RewardsScreen() {
     }
   };
 
-  const handleRedeem = async (reward: Reward) => {
+  const handleBuy = async (reward: Reward) => {
+    if (coins < reward.cost) {
+      showInfo('Not enough coins', `You need ${reward.cost - coins} more coins.`);
+      return;
+    }
     const ok = await confirmAction(
-      'Redeem reward?',
-      `Spend ${reward.cost} coins on "${reward.title}"?`,
-      { okText: 'Redeem', cancelText: 'Cancel' },
+      `Buy "${reward.title}"?`,
+      `Spend ${reward.cost} coins. It goes to your Bank — use it whenever you're ready.`,
+      { okText: 'Buy', cancelText: 'Cancel' },
     );
     if (!ok) return;
     setRedeemingId(reward.id);
@@ -120,9 +132,28 @@ export default function RewardsScreen() {
       await redeem.mutateAsync({ rewardId: reward.id, cost: reward.cost });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not redeem', msg);
+      showInfo('Could not buy', msg);
     } finally {
       setRedeemingId(null);
+    }
+  };
+
+  const handleUse = async (entry: { id: string; reward_title: string }) => {
+    const ok = await confirmAction(
+      `Use "${entry.reward_title}"?`,
+      'Mark this reward as redeemed. It moves to your Used list.',
+      { okText: 'Use it', cancelText: 'Cancel' },
+    );
+    if (!ok) return;
+    setUsingId(entry.id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await useReward.mutateAsync(entry.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo('Could not use', msg);
+    } finally {
+      setUsingId(null);
     }
   };
 
@@ -151,13 +182,15 @@ export default function RewardsScreen() {
               rewards.isRefetching ||
               character.isRefetching ||
               templates.isRefetching ||
-              redemptions.isRefetching
+              banked.isRefetching ||
+              used.isRefetching
             }
             onRefresh={() => {
               rewards.refetch();
               character.refetch();
               templates.refetch();
-              redemptions.refetch();
+              banked.refetch();
+              used.refetch();
             }}
             tintColor={tokens.brand.violet2}
           />
@@ -169,7 +202,11 @@ export default function RewardsScreen() {
             <CoinIcon size={48} />
             <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
           </View>
-          {character.data?.character.total_xp ? (
+          {bankCount > 0 ? (
+            <Text style={styles.balanceSub}>
+              {bankCount} {bankCount === 1 ? 'reward' : 'rewards'} in your bank
+            </Text>
+          ) : character.data?.character.total_xp ? (
             <Text style={styles.balanceSub}>
               {character.data.character.total_xp.toLocaleString()} XP earned lifetime
             </Text>
@@ -179,15 +216,16 @@ export default function RewardsScreen() {
         <View style={styles.viewToggle}>
           <SegmentedControl
             options={[
-              { value: 'shop', label: 'Shop' },
-              { value: 'history', label: 'Collected' },
+              { value: 'shop' as RewardView, label: 'Shop' },
+              { value: 'bank' as RewardView, label: bankCount > 0 ? `Bank (${bankCount})` : 'Bank' },
+              { value: 'used' as RewardView, label: 'Used' },
             ]}
             value={view}
             onChange={setView}
           />
         </View>
 
-        {view === 'shop' ? (
+        {view === 'shop' && (
           <>
             <View style={styles.tabs}>
               {REWARD_CATEGORY_ORDER.map((cat) => {
@@ -253,7 +291,7 @@ export default function RewardsScreen() {
                       reward={reward}
                       affordable={coins >= reward.cost}
                       deficit={Math.max(0, reward.cost - coins)}
-                      onRedeem={() => handleRedeem(reward)}
+                      onRedeem={() => handleBuy(reward)}
                       onEdit={() => handleRewardActions(reward)}
                       onLongPress={() => handleRewardActions(reward)}
                       isRedeeming={redeemingId === reward.id}
@@ -287,44 +325,123 @@ export default function RewardsScreen() {
               </>
             )}
           </>
-        ) : (
+        )}
+
+        {view === 'bank' && (
           <>
-            {redemptions.isLoading ? (
+            {banked.isLoading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator color={tokens.brand.violet2} />
               </View>
-            ) : (redemptions.data?.length ?? 0) === 0 ? (
+            ) : (banked.data?.length ?? 0) === 0 ? (
               <View style={styles.emptyBox}>
-                <EmptyHero tone="coin" iconName="gift" size={140} />
-                <Text style={styles.emptyTitle}>Nothing redeemed yet</Text>
+                <EmptyHero tone="coin" iconName="wallet" size={140} />
+                <Text style={styles.emptyTitle}>Your bank is empty</Text>
                 <Text style={styles.emptySub}>
-                  When you spend coins on a reward, it shows up here.
+                  Buy a reward from the Shop. It lands here for whenever you&apos;re ready to use it.
                 </Text>
               </View>
             ) : (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Collected</Text>
+                  <Text style={styles.sectionTitle}>Ready to use</Text>
                   <Text style={styles.sectionMeta}>
-                    {redemptions.data!.length}{' '}
-                    {redemptions.data!.length === 1 ? 'item' : 'items'}
+                    {banked.data!.length}{' '}
+                    {banked.data!.length === 1 ? 'item' : 'items'}
+                  </Text>
+                </View>
+                <View style={styles.bankList}>
+                  {banked.data!.map((b) => (
+                    <View key={b.id} style={styles.bankCard}>
+                      <View style={styles.bankIconWrap}>
+                        <Ionicons
+                          name={b.reward_icon as never}
+                          size={20}
+                          color={tokens.semantic.coin}
+                        />
+                      </View>
+                      <View style={styles.bankBody}>
+                        <Text style={styles.bankTitle} numberOfLines={1}>
+                          {b.reward_title}
+                        </Text>
+                        <View style={styles.bankMetaRow}>
+                          <CoinIcon size={10} />
+                          <Text style={styles.bankMetaCost}>
+                            {b.cost_paid.toLocaleString()}
+                          </Text>
+                          <Text style={styles.bankMetaDot}>·</Text>
+                          <Text style={styles.bankMetaTime}>
+                            bought {timeAgo(b.redeemed_at)}
+                          </Text>
+                        </View>
+                      </View>
+                      <Pressable
+                        disabled={usingId === b.id}
+                        onPress={() => handleUse(b)}
+                        style={({ pressed }) => [
+                          styles.useBtn,
+                          pressed && { opacity: 0.85 },
+                          usingId === b.id && { opacity: 0.6 },
+                        ]}
+                        hitSlop={6}
+                      >
+                        {usingId === b.id ? (
+                          <ActivityIndicator size="small" color={tokens.text.hi} />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle" size={14} color={tokens.text.hi} />
+                            <Text style={styles.useBtnText}>Use</Text>
+                          </>
+                        )}
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
+        )}
+
+        {view === 'used' && (
+          <>
+            {used.isLoading ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator color={tokens.brand.violet2} />
+              </View>
+            ) : (used.data?.length ?? 0) === 0 ? (
+              <View style={styles.emptyBox}>
+                <EmptyHero tone="coin" iconName="gift" size={140} />
+                <Text style={styles.emptyTitle}>Nothing used yet</Text>
+                <Text style={styles.emptySub}>
+                  Once you use a reward from your Bank, it shows up here.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Used</Text>
+                  <Text style={styles.sectionMeta}>
+                    {used.data!.length}{' '}
+                    {used.data!.length === 1 ? 'item' : 'items'}
                   </Text>
                 </View>
                 <View style={styles.historyList}>
-                  {redemptions.data!.map((r) => (
+                  {used.data!.map((r) => (
                     <View key={r.id} style={styles.historyRow}>
                       <View style={styles.historyIconWrap}>
                         <Ionicons
                           name={r.reward_icon as never}
                           size={16}
-                          color={tokens.semantic.coin}
+                          color={tokens.text.mid}
                         />
                       </View>
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={styles.historyTitle} numberOfLines={1}>
                           {r.reward_title}
                         </Text>
-                        <Text style={styles.historyMeta}>{timeAgo(r.redeemed_at)}</Text>
+                        <Text style={styles.historyMeta}>
+                          used {r.used_at ? timeAgo(r.used_at) : ''}
+                        </Text>
                       </View>
                       <View style={styles.historyCost}>
                         <CoinIcon size={11} />
@@ -487,6 +604,77 @@ const styles = StyleSheet.create({
     width: '48%',
     flexGrow: 1,
   },
+
+  // BANK — hero rows with the explicit "Use" CTA
+  bankList: {
+    gap: tokens.space[3],
+  },
+  bankCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[3],
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,61,0.25)',
+  },
+  bankIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(255, 200, 61, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  bankTitle: {
+    ...tokens.type.bodyLg,
+    fontFamily: 'Manrope_700Bold',
+    color: tokens.text.hi,
+  },
+  bankMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  bankMetaCost: {
+    ...tokens.type.caption,
+    color: tokens.semantic.coin,
+    fontFamily: 'Manrope_700Bold',
+  },
+  bankMetaDot: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+  },
+  bankMetaTime: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+  },
+  useBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[2],
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.semantic.xp,
+    minWidth: 64,
+    justifyContent: 'center',
+  },
+  useBtnText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.text.hi,
+    letterSpacing: 0.3,
+  },
+
+  // USED history (compact list)
   historyList: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
@@ -507,7 +695,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: tokens.radius.sm,
-    backgroundColor: 'rgba(255, 200, 61, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -528,9 +716,10 @@ const styles = StyleSheet.create({
   },
   historyCostText: {
     ...tokens.type.caption,
-    color: tokens.semantic.coin,
+    color: tokens.text.dim,
     fontFamily: 'Manrope_700Bold',
   },
+
   fab: {
     position: 'absolute',
     right: tokens.space[5],

@@ -100,7 +100,7 @@ export function RewardCard({
               end={{ x: 0, y: 1 }}
               style={[styles.redeemButton, styles.redeemAffordable]}
             >
-              <Text style={styles.redeemText}>REDEEM</Text>
+              <Text style={styles.redeemText}>BUY</Text>
             </LinearGradient>
           ) : (
             <View style={[styles.redeemButton, styles.redeemDisabled]}>

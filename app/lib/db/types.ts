@@ -163,6 +163,8 @@ export interface RewardRedemption {
   character_id: string;
   redeemed_at: string;
   cost_paid: number;
+  /** NULL = banked (available to "Use"). Non-null = consumed at this time. */
+  used_at: string | null;
 }
 
 export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';
