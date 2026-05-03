@@ -1,14 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  Line,
-  Polygon,
-  RadialGradient,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg';
+import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
 import type { SubId } from '@/lib/db/types';
 import { tokens } from '@/theme';
@@ -95,18 +87,12 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
   return (
     <View>
       <Svg width={size} height={size} viewBox={`0 0 ${VIEWBOX} ${VIEWBOX}`}>
-        <Defs>
-          <RadialGradient
-            id="hexGradA"
-            cx={CX}
-            cy={CY}
-            r={R}
-            gradientUnits="userSpaceOnUse"
-          >
-            <Stop offset={0} stopColor="#9B82FF" stopOpacity={0.5} />
-            <Stop offset={1} stopColor="#7B5CFF" stopOpacity={0.18} />
-          </RadialGradient>
-        </Defs>
+        {/*
+          Gradient deliberately omitted on Android: react-native-svg 15.12.1
+          has a known NPE in Brush.getVal when RadialGradient props arrive
+          before SVGLength is resolved. We use a flat semi-transparent
+          violet fill instead — same visual class, zero crash risk.
+        */}
 
         {/* Concentric hex rings */}
         {rings.map((g, i) => {
@@ -143,10 +129,10 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
           );
         })}
 
-        {/* Score polygon */}
+        {/* Score polygon — flat fill (gradient avoided on Android) */}
         <Polygon
           points={scorePts}
-          fill="url(#hexGradA)"
+          fill="rgba(155,130,255,0.28)"
           stroke="#9B82FF"
           strokeWidth={2}
           strokeLinejoin="round"
@@ -165,13 +151,19 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
             />
           );
         })}
+        {/*
+          Note: SvgText `fontFamily` is intentionally not set. On Android,
+          react-native-svg looks up native typefaces; expo-font-loaded
+          fonts like "Manrope_800ExtraBold" aren't always resolvable from
+          the SVG renderer and can crash. fontWeight gets us close enough.
+        */}
         {verts.map((v, j) => (
           <SvgText
             key={`disc-text-${j}`}
             x={v.x}
             y={v.y + 4}
             textAnchor="middle"
-            fontFamily="Manrope_800ExtraBold"
+            fontWeight="800"
             fontSize={13}
             fill="#0E1230"
           >
@@ -186,7 +178,7 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
             x={v.lx}
             y={v.ly + 4}
             textAnchor="middle"
-            fontFamily="Manrope_800ExtraBold"
+            fontWeight="800"
             fontSize={10}
             fill={DIMENSION_META[v.dim].color}
           >
@@ -199,7 +191,7 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
           x={CX}
           y={CY + 9}
           textAnchor="middle"
-          fontFamily="Manrope_800ExtraBold"
+          fontWeight="800"
           fontSize={26}
           fill="#F2F3FF"
         >
