@@ -1,14 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
-import { useCharacter } from '@/lib/api/character';
-import type { DimensionId } from '@/lib/db/types';
+import { ScreenBackground } from '@/components/ScreenBackground';
+import { SubBlock } from '@/components/SubBlock';
+import { pickSubScores, useCharacter } from '@/lib/api/character';
+import { useAssessmentHistoryAll } from '@/lib/api/questionnaire';
+import { useTaskTemplates } from '@/lib/api/tasks';
+import type { DimensionId, SubId, TaskTemplate } from '@/lib/db/types';
 import { levelProgress } from '@/lib/xp';
 import { tokens } from '@/theme';
-import { DIMENSION_META, DIMENSION_ORDER } from '@/theme/dimensions';
+import { DIMENSION_META, DIMENSION_ORDER, SUBS_BY_DIM } from '@/theme/dimensions';
 
 const DIMENSION_IDS = new Set<DimensionId>(DIMENSION_ORDER);
 
@@ -16,10 +28,41 @@ function isDimensionId(v: string | undefined): v is DimensionId {
   return !!v && DIMENSION_IDS.has(v as DimensionId);
 }
 
+/**
+ * Dimension detail — sub-first descriptive surface.
+ *
+ * The user opens a dim card (from Dedicação grid or Avaliação hex legend)
+ * and lands on a screen that explains the dim AND each of its 2 subs in
+ * depth. Per sub: description, recommended tasks (templates the user can
+ * adopt with one tap), score chip + sparkline + 1-line insight.
+ *
+ * Intentionally not listed: the user's own tasks/skills filtered by sub.
+ * This is a guide, not a productivity dashboard. Adoption is the only
+ * write action.
+ */
 export default function DimensionInfoScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const character = useCharacter();
+  const history = useAssessmentHistoryAll('self');
+  const templates = useTaskTemplates();
+
+  const selfScores = useMemo(
+    () => pickSubScores(character.data?.subScores ?? [], 'self'),
+    [character.data?.subScores],
+  );
+
+  const templatesBySub = useMemo(() => {
+    const map = new Map<SubId, TaskTemplate[]>();
+    for (const t of templates.data ?? []) {
+      const arr = map.get(t.sub_id) ?? [];
+      arr.push(t);
+      map.set(t.sub_id, arr);
+    }
+    return map;
+  }, [templates.data]);
+
+  const isLoading = character.isLoading || templates.isLoading;
 
   if (!isDimensionId(params.id)) {
     return (
@@ -35,63 +78,86 @@ export default function DimensionInfoScreen() {
     );
   }
 
-  const meta = DIMENSION_META[params.id];
-  const xp = character.data?.dimensions.find((d) => d.dimension_id === params.id)?.xp ?? 0;
+  const dimId = params.id;
+  const meta = DIMENSION_META[dimId];
+  const subIds = SUBS_BY_DIM[dimId];
+
+  const xp =
+    character.data?.dimensions.find((d) => d.dimension_id === dimId)?.xp ?? 0;
   const lp = levelProgress(xp);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={styles.topBar}>
-        <View style={{ width: 40 }} />
-        <Text style={styles.topTitle}>Dimension</Text>
-        <Pressable hitSlop={12} onPress={() => router.back()} style={styles.closeIconBtn}>
-          <Ionicons name="close" size={24} color={tokens.text.hi} />
-        </Pressable>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={[styles.iconBubble, { backgroundColor: meta.bg }]}>
-          <Ionicons name={meta.iconName as never} size={56} color={meta.color} />
+      <ScreenBackground>
+        <View style={styles.topBar}>
+          <View style={{ width: 40 }} />
+          <Text style={styles.topTitle}>Dimension</Text>
+          <Pressable
+            hitSlop={12}
+            onPress={() => router.back()}
+            style={styles.closeIconBtn}
+          >
+            <Ionicons name="close" size={24} color={tokens.text.hi} />
+          </Pressable>
         </View>
 
-        <Text style={[styles.eyebrow, { color: meta.color }]}>{meta.label.toUpperCase()}</Text>
-        <Text style={styles.title}>{meta.tagline}</Text>
-        <Text style={styles.description}>{meta.description}</Text>
-
-        <View style={styles.statCard}>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Your level</Text>
-            <Text style={[styles.statValue, { color: meta.color }]}>LV {lp.level}</Text>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Hero ─────────────────────────────────────────── */}
+          <View style={[styles.iconBubble, { backgroundColor: meta.bg }]}>
+            <Ionicons name={meta.iconName as never} size={56} color={meta.color} />
           </View>
-          <View style={styles.bar}>
-            <ProgressBar
-              value={lp.xpInLevel}
-              max={lp.xpNeededForLevel}
-              color={meta.color}
-              height={6}
-            />
-          </View>
-          <Text style={styles.statSub}>
-            {lp.xpInLevel} / {lp.xpNeededForLevel} XP to LV {lp.level + 1} · {xp} total
+          <Text style={[styles.eyebrow, { color: meta.color }]}>
+            {meta.label.toUpperCase()}
           </Text>
-        </View>
+          <Text style={styles.title}>{meta.tagline}</Text>
+          <Text style={styles.description}>{meta.description}</Text>
 
-        <Text style={styles.sectionTitle}>Examples of tasks</Text>
-        <View style={styles.examplesList}>
-          {meta.examples.map((ex) => (
-            <View key={ex} style={styles.exampleRow}>
-              <View style={[styles.bullet, { backgroundColor: meta.color }]} />
-              <Text style={styles.exampleText}>{ex}</Text>
+          <View style={styles.statCard}>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Your level</Text>
+              <Text style={[styles.statValue, { color: meta.color }]}>
+                LV {lp.level}
+              </Text>
             </View>
-          ))}
-        </View>
+            <View style={styles.bar}>
+              <ProgressBar
+                value={lp.xpInLevel}
+                max={lp.xpNeededForLevel}
+                color={meta.color}
+                height={6}
+              />
+            </View>
+            <Text style={styles.statSub}>
+              {lp.xpInLevel} / {lp.xpNeededForLevel} XP to LV {lp.level + 1} ·{' '}
+              {xp} total
+            </Text>
+          </View>
 
-        <Text style={styles.footnote}>
-          Tag your tasks with this dimension to earn XP here every time you complete them.
-        </Text>
-      </ScrollView>
+          {/* ── Sub blocks ──────────────────────────────────── */}
+          <Text style={styles.sectionTitle}>Sub-atributos</Text>
+          {isLoading ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator color={tokens.brand.violet2} />
+            </View>
+          ) : (
+            <View style={styles.subList}>
+              {subIds.map((subId) => (
+                <SubBlock
+                  key={subId}
+                  subId={subId}
+                  selfScore={selfScores.get(subId) ?? 0}
+                  history={history.data?.get(subId) ?? []}
+                  templates={templatesBySub.get(subId) ?? []}
+                />
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }
@@ -118,7 +184,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    paddingHorizontal: tokens.space[5],
+    paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.space[8],
     alignItems: 'stretch',
   },
@@ -187,36 +253,12 @@ const styles = StyleSheet.create({
     marginTop: tokens.space[6],
     marginBottom: tokens.space[3],
   },
-  examplesList: {
-    gap: tokens.space[2],
-  },
-  exampleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  subList: {
     gap: tokens.space[3],
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[3],
   },
-  bullet: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  exampleText: {
-    ...tokens.type.body,
-    color: tokens.text.hi,
-    flex: 1,
-  },
-  footnote: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    textAlign: 'center',
-    marginTop: tokens.space[6],
-    paddingHorizontal: tokens.space[3],
+  loadingBox: {
+    paddingVertical: tokens.space[6],
+    alignItems: 'center',
   },
   errorBox: {
     flex: 1,
