@@ -24,7 +24,7 @@ const TAB_LABELS: Record<string, string> = {
   character: 'Hero',
   rewards: 'Rewards',
   history: 'History',
-  profile: 'Profile',
+  profile: 'Settings',
 };
 
 const BAR_HORIZONTAL_MARGIN = 12;

@@ -5,62 +5,43 @@ import * as Updates from 'expo-updates';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScreenBackground } from '@/components/ScreenBackground';
 import { useCharacter } from '@/lib/api/character';
-import { confirmAction } from '@/lib/util/confirm';
+import { useSession } from '@/lib/auth';
 import { useOnboardingStore } from '@/lib/onboarding';
+import {
+  useLoadedSettings,
+  useSettingsStore,
+  type LanguageCode,
+  type ThemeMode,
+  type WeekStart,
+} from '@/lib/settings';
 import { supabase } from '@/lib/supabase';
+import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
-export default function ProfileScreen() {
+import { UsernameEditModal } from '@/components/UsernameEditModal';
+
+export default function SettingsScreen() {
   const router = useRouter();
   const character = useCharacter();
+  const session = useSession();
   const resetOnboarding = useOnboardingStore((s) => s.reset);
+  const settings = useLoadedSettings();
+  const setSetting = useSettingsStore((s) => s.set);
+
   const profile = character.data?.profile;
-
+  const email = session.user?.email ?? '—';
+  const [usernameOpen, setUsernameOpen] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-
-  const handleCheckForUpdate = async () => {
-    if (isCheckingUpdate) return;
-    if (__DEV__) {
-      Alert.alert(
-        'Dev mode',
-        'OTA updates are only available on production builds (the APK), not in Expo Go / dev mode.',
-      );
-      return;
-    }
-    setIsCheckingUpdate(true);
-    try {
-      const result = await Updates.checkForUpdateAsync();
-      if (result.isAvailable) {
-        await Updates.fetchUpdateAsync();
-        Alert.alert(
-          'Update ready',
-          'Restart the app now to apply it?',
-          [
-            { text: 'Later', style: 'cancel' },
-            { text: 'Restart', onPress: () => Updates.reloadAsync() },
-          ],
-        );
-      } else {
-        Alert.alert('Up to date', 'You are on the latest version.');
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not check', msg);
-    } finally {
-      setIsCheckingUpdate(false);
-    }
-  };
 
   const handleSignOut = async () => {
     const ok = await confirmAction(
@@ -72,130 +53,479 @@ export default function ProfileScreen() {
     await supabase.auth.signOut();
   };
 
+  const handleDeleteAccount = async () => {
+    const ok = await confirmAction(
+      'Delete account?',
+      'This will permanently delete your character, tasks, rewards, and history. This cannot be undone.',
+      { okText: 'Delete', cancelText: 'Cancel', destructive: true },
+    );
+    if (!ok) return;
+    showInfo(
+      'Not yet available',
+      'Account deletion is wired to the server but the admin endpoint is not active yet. For now, sign out and contact us if you need the account removed.',
+    );
+  };
+
   const handleReplayOnboarding = async () => {
     await resetOnboarding();
     router.push('/onboarding');
   };
 
+  const handleCheckForUpdate = async () => {
+    if (isCheckingUpdate) return;
+    if (__DEV__) {
+      showInfo(
+        'Dev mode',
+        'OTA updates are only available in the installed APK, not in Expo Go / dev mode.',
+      );
+      return;
+    }
+    setIsCheckingUpdate(true);
+    try {
+      const result = await Updates.checkForUpdateAsync();
+      if (result.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        const ok = await confirmAction(
+          'Update ready',
+          'Restart the app now to apply it?',
+          { okText: 'Restart', cancelText: 'Later' },
+        );
+        if (ok) await Updates.reloadAsync();
+      } else {
+        showInfo('Up to date', 'You are on the latest version.');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo('Could not check', msg);
+    } finally {
+      setIsCheckingUpdate(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenBackground>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profile?.display_name?.charAt(0).toUpperCase() ?? '?'}
-            </Text>
-          </View>
-          <Text style={styles.name}>{profile?.display_name ?? 'Adventurer'}</Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.screenTitle}>Settings</Text>
 
-        <Text style={styles.sectionTitle}>About</Text>
-        <Pressable
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-          onPress={handleReplayOnboarding}
-        >
-          <Ionicons name="play-circle-outline" size={22} color={tokens.brand.violet2} />
-          <Text style={[styles.rowText, { color: tokens.text.hi }]}>Replay onboarding</Text>
-        </Pressable>
+        {/* ───── ACCOUNT ───── */}
+        <SectionHeader icon="person-outline" label="Account" />
+        <Card>
+          <InfoRow label="Email" value={email} />
+          <Divider />
+          <ButtonRow
+            icon="at-outline"
+            label="Username"
+            value={profile?.display_name ?? '—'}
+            onPress={() => setUsernameOpen(true)}
+            chevron
+          />
+          <Divider />
+          <ButtonRow
+            icon="log-out-outline"
+            label="Sign out"
+            onPress={handleSignOut}
+            danger
+          />
+          <Divider />
+          <ButtonRow
+            icon="trash-outline"
+            label="Delete account"
+            onPress={handleDeleteAccount}
+            danger
+          />
+        </Card>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.row,
-            { marginTop: tokens.space[2] },
-            pressed && styles.rowPressed,
-          ]}
-          onPress={handleCheckForUpdate}
-          disabled={isCheckingUpdate}
-        >
-          {isCheckingUpdate ? (
-            <ActivityIndicator color={tokens.brand.violet2} size="small" style={{ width: 22 }} />
-          ) : (
-            <Ionicons name="cloud-download-outline" size={22} color={tokens.brand.violet2} />
-          )}
-          <Text style={[styles.rowText, { color: tokens.text.hi }]}>
-            {isCheckingUpdate ? 'Checking...' : 'Check for updates'}
-          </Text>
-        </Pressable>
+        {/* ───── PREFERENCES ───── */}
+        <SectionHeader icon="options-outline" label="Preferences" />
+        <Card>
+          <SegmentedRow<ThemeMode>
+            label="Theme"
+            value={settings.theme}
+            options={[
+              { value: 'light', label: 'Light' },
+              { value: 'dark', label: 'Dark' },
+              { value: 'system', label: 'System' },
+            ]}
+            onChange={(v) => setSetting('theme', v)}
+            note={
+              settings.theme !== 'dark'
+                ? 'Light/system themes are coming soon — UI follows dark for now.'
+                : undefined
+            }
+          />
+          <Divider />
+          <SegmentedRow<LanguageCode>
+            label="Language"
+            value={settings.language}
+            options={[
+              { value: 'en', label: 'English' },
+              { value: 'pt', label: 'Português' },
+            ]}
+            onChange={(v) => setSetting('language', v)}
+            note={
+              settings.language === 'pt'
+                ? 'Portuguese strings are being translated — most UI is still English.'
+                : undefined
+            }
+          />
+          <Divider />
+          <SegmentedRow<WeekStart>
+            label="Week starts on"
+            value={settings.weekStart}
+            options={[
+              { value: 'sunday', label: 'Sunday' },
+              { value: 'monday', label: 'Monday' },
+            ]}
+            onChange={(v) => setSetting('weekStart', v)}
+          />
+        </Card>
 
-        <Text style={styles.sectionTitle}>Account</Text>
-        <Pressable
-          style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-          onPress={handleSignOut}
-        >
-          <Ionicons name="log-out-outline" size={22} color={tokens.semantic.danger} />
-          <Text style={[styles.rowText, { color: tokens.semantic.danger }]}>Sign out</Text>
-        </Pressable>
+        {/* ───── NOTIFICATIONS ───── */}
+        <SectionHeader icon="notifications-outline" label="Notifications" />
+        <Card>
+          <ToggleRow
+            label="Enable notifications"
+            description="Master switch for all reminders below."
+            value={settings.notificationsEnabled}
+            onChange={(v) => setSetting('notificationsEnabled', v)}
+          />
+          <Divider />
+          <ToggleRow
+            label="Daily reminder"
+            description="A nudge if you have unfinished daily quests."
+            value={settings.dailyReminder}
+            onChange={(v) => setSetting('dailyReminder', v)}
+            disabled={!settings.notificationsEnabled}
+          />
+          <Divider />
+          <ToggleRow
+            label="Quest reminder"
+            description="Heads-up before a quest deadline."
+            value={settings.questReminder}
+            onChange={(v) => setSetting('questReminder', v)}
+            disabled={!settings.notificationsEnabled}
+          />
+          <Divider />
+          <ToggleRow
+            label="Streak reminder"
+            description="Late-evening ping if today's streak is at risk."
+            value={settings.streakReminder}
+            onChange={(v) => setSetting('streakReminder', v)}
+            disabled={!settings.notificationsEnabled}
+          />
+          <NoteText>
+            Notifications need a small native setup pass — the toggles save your choice now and
+            will start firing once that ships.
+          </NoteText>
+        </Card>
+
+        {/* ───── TASKS & PROGRESS ───── */}
+        <SectionHeader icon="trophy-outline" label="Tasks & Progress" />
+        <Card>
+          <ToggleRow
+            label="Confirm hard quests"
+            description="Ask before completing a 4★ or 5★ task. Stops accidental taps."
+            value={settings.confirmHighDifficultyComplete}
+            onChange={(v) => setSetting('confirmHighDifficultyComplete', v)}
+          />
+          <Divider />
+          <InfoRow label="Default rewards" value="Coming soon" muted />
+          <Divider />
+          <InfoRow label="Day reset time" value="Midnight (local)" muted />
+        </Card>
+
+        {/* ───── ABOUT ───── */}
+        <SectionHeader icon="information-circle-outline" label="About" />
+        <Card>
+          <ButtonRow
+            icon="play-circle-outline"
+            label="Replay onboarding"
+            onPress={handleReplayOnboarding}
+          />
+          <Divider />
+          <ButtonRow
+            icon={isCheckingUpdate ? 'sync' : 'cloud-download-outline'}
+            label={isCheckingUpdate ? 'Checking...' : 'Check for updates'}
+            onPress={handleCheckForUpdate}
+            disabled={isCheckingUpdate}
+            spinning={isCheckingUpdate}
+          />
+        </Card>
 
         <Text style={styles.footer}>
           RPG Tasks · v{Constants.expoConfig?.version ?? '0'}
           {Updates.updateId ? `\nupdate ${Updates.updateId.slice(0, 8)}` : ''}
         </Text>
       </ScrollView>
-      </ScreenBackground>
+
+      <UsernameEditModal
+        visible={usernameOpen}
+        currentValue={profile?.display_name ?? ''}
+        onClose={() => setUsernameOpen(false)}
+      />
     </SafeAreaView>
   );
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Building blocks (kept local — they're styled specifically for this screen).
+// ────────────────────────────────────────────────────────────────────────────
+
+function SectionHeader({
+  icon,
+  label,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={14} color={tokens.text.mid} />
+      <Text style={styles.sectionLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return <View style={styles.card}>{children}</View>;
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
+}
+
+function InfoRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, muted && { color: tokens.text.dim }]} numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function ButtonRow({
+  icon,
+  label,
+  value,
+  onPress,
+  chevron,
+  danger,
+  disabled,
+  spinning,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string;
+  onPress: () => void;
+  chevron?: boolean;
+  danger?: boolean;
+  disabled?: boolean;
+  spinning?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [styles.row, pressed && !disabled && { opacity: 0.6 }]}
+    >
+      <View style={styles.buttonLeft}>
+        {spinning ? (
+          <ActivityIndicator size="small" color={tokens.brand.violet2} style={{ width: 22 }} />
+        ) : (
+          <Ionicons
+            name={icon}
+            size={20}
+            color={danger ? tokens.semantic.danger : tokens.brand.violet2}
+          />
+        )}
+        <Text style={[styles.rowLabel, danger && { color: tokens.semantic.danger }]}>
+          {label}
+        </Text>
+      </View>
+      {value ? (
+        <Text style={styles.rowValue} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
+      {chevron ? <Ionicons name="chevron-forward" size={18} color={tokens.text.dim} /> : null}
+    </Pressable>
+  );
+}
+
+function ToggleRow({
+  label,
+  description,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <View style={[styles.row, { alignItems: 'center' }]}>
+      <View style={{ flex: 1, marginRight: tokens.space[3] }}>
+        <Text style={[styles.rowLabel, disabled && { color: tokens.text.dim }]}>
+          {label}
+        </Text>
+        {description ? <Text style={styles.rowDescription}>{description}</Text> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        disabled={disabled}
+        trackColor={{ false: tokens.bg.surface2, true: tokens.brand.violet }}
+        thumbColor={tokens.text.hi}
+      />
+    </View>
+  );
+}
+
+interface SegmentedRowProps<T extends string> {
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  note?: string;
+}
+
+function SegmentedRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  note,
+}: SegmentedRowProps<T>) {
+  return (
+    <View style={[styles.row, { flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <View style={styles.segmented}>
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              style={[styles.segment, active && styles.segmentActive]}
+            >
+              <Text
+                style={[
+                  styles.segmentLabel,
+                  { color: active ? tokens.text.hi : tokens.text.mid },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {note ? <Text style={styles.rowDescription}>{note}</Text> : null}
+    </View>
+  );
+}
+
+function NoteText({ children }: { children: React.ReactNode }) {
+  return <Text style={[styles.rowDescription, { padding: tokens.space[3] }]}>{children}</Text>;
+}
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.deep },
+  safe: { flex: 1, backgroundColor: tokens.bg.base },
   content: {
     padding: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: tokens.space[5],
-    paddingBottom: tokens.space[5],
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: tokens.brand.violetDeep,
-    borderWidth: 2,
-    borderColor: tokens.brand.violet2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: tokens.space[3],
-  },
-  avatarText: {
-    ...tokens.type.numLg,
-    color: tokens.text.hi,
-  },
-  name: {
+  screenTitle: {
     ...tokens.type.h1,
     color: tokens.text.hi,
+    marginTop: tokens.space[2],
+    marginBottom: tokens.space[5],
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: tokens.space[5],
+    marginBottom: tokens.space[2],
+    paddingLeft: tokens.space[1],
+  },
+  sectionLabel: {
     ...tokens.type.eyebrow,
     color: tokens.text.mid,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginTop: tokens.space[5],
-    marginBottom: tokens.space[3],
+  },
+  card: {
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    overflow: 'hidden',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: tokens.border.base,
+    marginHorizontal: tokens.space[4],
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: tokens.space[3],
-    backgroundColor: tokens.bg.surface,
-    padding: tokens.space[4],
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[4],
+  },
+  buttonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    flex: 1,
+  },
+  rowLabel: {
+    ...tokens.type.body,
+    color: tokens.text.hi,
+    fontFamily: 'Manrope_700Bold',
+  },
+  rowValue: {
+    ...tokens.type.body,
+    color: tokens.text.mid,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  rowDescription: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+    marginTop: 4,
+    lineHeight: 16,
+  },
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: tokens.bg.surface2,
     borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
+    padding: 3,
   },
-  rowPressed: {
-    opacity: 0.6,
+  segment: {
+    flex: 1,
+    paddingVertical: tokens.space[2],
+    alignItems: 'center',
+    borderRadius: tokens.radius.sm,
   },
-  rowText: {
-    ...tokens.type.bodyLg,
+  segmentActive: {
+    backgroundColor: tokens.brand.violet,
+  },
+  segmentLabel: {
+    ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
   },
   footer: {
     ...tokens.type.caption,
     color: tokens.text.faint,
     textAlign: 'center',
-    marginTop: tokens.space[8],
+    marginTop: tokens.space[7],
   },
 });

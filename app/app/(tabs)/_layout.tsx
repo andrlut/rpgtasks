@@ -15,7 +15,7 @@ export default function TabLayout() {
       <Tabs.Screen name="character" options={{ title: 'Hero' }} />
       <Tabs.Screen name="rewards" options={{ title: 'Rewards' }} />
       <Tabs.Screen name="history" options={{ title: 'History' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Settings' }} />
     </Tabs>
   );
 }
