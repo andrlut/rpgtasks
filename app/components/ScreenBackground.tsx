@@ -18,7 +18,6 @@ export function ScreenBackground({ children }: Props) {
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <View style={styles.violetGlow} pointerEvents="none" />
       {children}
     </View>
   );
@@ -28,16 +27,5 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: tokens.bg.deep,
-  },
-  violetGlow: {
-    position: 'absolute',
-    top: -120,
-    left: '50%',
-    width: 320,
-    height: 320,
-    marginLeft: -160,
-    borderRadius: 160,
-    backgroundColor: tokens.brand.violet,
-    opacity: 0.18,
   },
 });

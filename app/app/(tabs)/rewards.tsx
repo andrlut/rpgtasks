@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddCard } from '@/components/AddCard';
 import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
 import { RewardCard } from '@/components/RewardCard';
@@ -280,7 +281,7 @@ export default function RewardsScreen() {
                 <Ionicons name={meta.icon as never} size={40} color={meta.color} />
                 <Text style={styles.emptyTitle}>Nothing here yet</Text>
                 <Text style={styles.emptySub}>
-                  Tap a suggestion below to add it, or use + to make your own.
+                  Tap a suggestion below to add it, or create your own.
                 </Text>
               </View>
             ) : (
@@ -300,6 +301,20 @@ export default function RewardsScreen() {
                 ))}
               </View>
             )}
+
+            <View style={styles.addCardWrap}>
+              <AddCard
+                label="New reward"
+                sublabel={`Add a custom ${meta.short.toLowerCase()}`}
+                tint={meta.color}
+                onPress={() =>
+                  router.push({
+                    pathname: '/reward-form',
+                    params: { category: activeCategory },
+                  })
+                }
+              />
+            </View>
 
             {/* INSPIRATION */}
             {tmplList.length > 0 && (
@@ -458,21 +473,6 @@ export default function RewardsScreen() {
         )}
       </ScrollView>
       </ScreenBackground>
-
-      {view === 'shop' && (
-        <Pressable
-          onPress={() =>
-            router.push({
-              pathname: '/reward-form',
-              params: { category: activeCategory },
-            })
-          }
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          hitSlop={8}
-        >
-          <Ionicons name="add" size={28} color={tokens.text.hi} />
-        </Pressable>
-      )}
     </SafeAreaView>
   );
 }
@@ -720,24 +720,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_700Bold',
   },
 
-  fab: {
-    position: 'absolute',
-    right: tokens.space[5],
-    bottom: tokens.layout.bottomNavClearance + tokens.space[3],
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: tokens.brand.violet,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: tokens.brand.violet,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  fabPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.96 }],
+  addCardWrap: {
+    marginTop: tokens.space[4],
   },
 });

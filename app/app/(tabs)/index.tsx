@@ -1,12 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddCard } from '@/components/AddCard';
 import { EmptyHero } from '@/components/EmptyHero';
 import { HeroCard } from '@/components/HeroCard';
 import { QuestChip } from '@/components/QuestChip';
@@ -145,7 +144,9 @@ export default function HomeScreen() {
               />
             )}
 
-            <QuestChip quests={quests.data} />
+            <View style={styles.questsBlock}>
+              <QuestChip quests={quests.data} />
+            </View>
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Today</Text>
@@ -155,11 +156,22 @@ export default function HomeScreen() {
             </View>
 
             {tasks.data?.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <EmptyHero tone="xp" />
-                <Text style={styles.emptyTitle}>All quests cleared.</Text>
-                <Text style={styles.emptySub}>Take the rest, or set a stretch goal.</Text>
-              </View>
+              <>
+                <View style={styles.emptyBox}>
+                  <EmptyHero tone="xp" />
+                  <Text style={styles.emptyTitle}>All quests cleared.</Text>
+                  <Text style={styles.emptySub}>
+                    Take the rest, or queue up a new quest.
+                  </Text>
+                </View>
+                <View style={styles.addCardWrap}>
+                  <AddCard
+                    label="New task"
+                    sublabel="Add a habit or one-shot quest"
+                    onPress={() => router.push('/task-form')}
+                  />
+                </View>
+              </>
             ) : (
               <View style={styles.taskList}>
                 {tasks.data?.map((task) => (
@@ -177,6 +189,11 @@ export default function HomeScreen() {
                     }
                   />
                 ))}
+                <AddCard
+                  label="New task"
+                  sublabel="Add a habit or one-shot quest"
+                  onPress={() => router.push('/task-form')}
+                />
               </View>
             )}
           </>
@@ -193,21 +210,6 @@ export default function HomeScreen() {
         />
       ))}
 
-      <Pressable
-        onPress={() => router.push('/task-form')}
-        style={({ pressed }) => [styles.fabWrap, pressed && styles.fabPressed]}
-        hitSlop={8}
-      >
-        <LinearGradient
-          colors={tokens.gradient.completeBtn}
-          locations={tokens.gradient.completeBtnLocations}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.fab}
-        >
-          <Ionicons name="add" size={28} color={tokens.text.hi} />
-        </LinearGradient>
-      </Pressable>
     </SafeAreaView>
   );
 }
@@ -277,6 +279,12 @@ const styles = StyleSheet.create({
   taskList: {
     gap: tokens.space[3],
   },
+  questsBlock: {
+    marginBottom: tokens.space[5],
+  },
+  addCardWrap: {
+    marginTop: tokens.space[4],
+  },
   emptyBox: {
     paddingVertical: tokens.space[8],
     alignItems: 'center',
@@ -292,31 +300,5 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     textAlign: 'center',
     paddingHorizontal: tokens.space[6],
-  },
-  fabWrap: {
-    position: 'absolute',
-    right: tokens.space[5],
-    bottom: tokens.layout.bottomNavClearance + tokens.space[3],
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    shadowColor: tokens.brand.violet,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.55,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-  },
-  fabPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.96 }],
   },
 });
