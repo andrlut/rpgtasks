@@ -166,6 +166,7 @@ interface TaskRowFull {
   metric_label: string | null;
   base_value: number | string | null;
   increment_per_star: number | string | null;
+  sub_id: string | null;
   task_dimension: { dimension_id: DimensionId }[];
 }
 
@@ -290,6 +291,7 @@ export function useDayDetail(date: Date) {
               metric_label: raw.metric_label,
               base_value: numOrNull(raw.base_value),
               increment_per_star: numOrNull(raw.increment_per_star),
+              sub_id: (raw.sub_id ?? null) as TaskWithDimensions['sub_id'],
               dimensions: (raw.task_dimension ?? []).map((td) => td.dimension_id),
             },
             completedThisDay: completionCountThisDay.get(raw.id) ?? 0,

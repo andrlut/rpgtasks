@@ -9,8 +9,20 @@ export type DimensionId =
   | 'strength'
   | 'mind'
   | 'wealth'
-  | 'social'
-  | 'discipline';
+  | 'bonds'
+  | 'craft';
+
+/**
+ * Sub-dimensions: 2 per dim. Tasks/skills can optionally point at one of
+ * these for finer-grained organization (and per-sub subjective scoring).
+ */
+export type SubId =
+  | 'sleep' | 'nutrition'
+  | 'movement' | 'dexterity'
+  | 'learn' | 'contemplate'
+  | 'money' | 'career'
+  | 'circle' | 'romance'
+  | 'play' | 'build';
 
 export type TaskType = 'one_shot' | 'daily' | 'weekly';
 
@@ -39,6 +51,21 @@ export interface Dimension {
   color: string;
   icon: string;
   sort_order: number;
+}
+
+export interface DimensionSub {
+  id: SubId;
+  dimension_id: DimensionId;
+  display_name: string;
+  icon: string;
+  sort_order: number;
+}
+
+export interface CharacterSub {
+  character_id: string;
+  sub_id: SubId;
+  /** 0-5, set by the user via questionnaire or direct self-assessment. */
+  subjective_score: number;
 }
 
 export interface Profile {
@@ -86,6 +113,7 @@ export interface Task {
   metric_label: string | null;
   base_value: number | null;
   increment_per_star: number | null;
+  sub_id: SubId | null;
 }
 
 /** Task with its linked dimensions (joined via task_dimension). */
@@ -152,6 +180,7 @@ export interface Skill {
   /** NULL = catalog skill (visible to everyone). Non-null = owned by that
    * character (visible/editable only by them). */
   character_id: string | null;
+  sub_id: SubId | null;
 }
 
 export interface SkillTier {

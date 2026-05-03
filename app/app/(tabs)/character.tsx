@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
+import { HexChart } from '@/components/HexChart';
 import { LevelRing } from '@/components/LevelRing';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -50,8 +51,8 @@ const DIM_ABBREV: Record<DimensionId, string> = {
   strength: 'STR',
   mind: 'MIN',
   wealth: 'WEA',
-  social: 'SOC',
-  discipline: 'DIS',
+  bonds: 'BND',
+  craft: 'CRA',
 };
 
 /**
@@ -333,8 +334,14 @@ export default function CharacterScreen() {
             </View>
           </View>
 
-          {/* ── 2. CATEGORIES (RPG stat block, 6 in a row) ────── */}
-          <Text style={styles.sectionTitle}>Categories</Text>
+          {/* ── 2. HEX OF LIFE — subjective scores per sub ──── */}
+          <Text style={styles.sectionTitle}>Self-assessment</Text>
+          <View style={styles.hexCard}>
+            <HexChart subs={character.data.subs} size={280} />
+          </View>
+
+          {/* ── 3. CATEGORIES (RPG stat block, XP per dim) ────── */}
+          <Text style={styles.sectionTitle}>Dedication (XP)</Text>
           <View style={styles.catStatBlock}>
             {DIMENSION_ORDER.map((id) => {
               const meta = DIMENSION_META[id];
@@ -716,6 +723,17 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     color: tokens.text.dim,
     fontFamily: 'Manrope_600SemiBold',
+  },
+
+  // Hex card wrapping the wheel-of-life-style chart
+  hexCard: {
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    paddingHorizontal: tokens.space[3],
+    paddingTop: tokens.space[4],
+    paddingBottom: tokens.space[3],
   },
 
   // Categories — compact stat block, 6 cols across, BG3-inspired
