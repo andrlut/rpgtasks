@@ -27,6 +27,7 @@ import { useStreak } from '@/lib/api/streak';
 import { useCompleteTask, useTasks } from '@/lib/api/tasks';
 import type { TaskWithDimensions } from '@/lib/db/types';
 import { formatLongDate, timeOfDayGreeting } from '@/lib/time';
+import { maybeConfirmHardCompletion } from '@/lib/util/confirmCompletion';
 import { applyStreakMultiplier, rewardForDifficulty, type Difficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -48,11 +49,16 @@ export default function HomeScreen() {
   // Cleared when the day rolls over (handled implicitly: tasks list refetches).
   const [diffOverrides, setDiffOverrides] = useState<Record<string, Difficulty>>({});
 
-  const handleComplete = (task: TaskWithDimensions) => {
+  const handleComplete = async (task: TaskWithDimensions) => {
     if (completeTask.isPending) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
 
     const selected: Difficulty = diffOverrides[task.id] ?? task.difficulty;
+
+    // Optional confirm guard for hard tasks (Settings → Tasks & Progress).
+    if (!(await maybeConfirmHardCompletion(selected, task.title))) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+
     const baseReward = rewardForDifficulty(selected);
     const reward = applyStreakMultiplier(baseReward, streak.data?.currentStreak ?? 0);
     const fid = Date.now();
