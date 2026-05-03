@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 
 import { HexChart } from '@/components/HexChart';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import type { CharacterSubScore, SubId } from '@/lib/db/types';
 import { pickSubScores } from '@/lib/api/character';
 import {
@@ -23,6 +22,73 @@ import { SUB_META } from '@/theme/dimensions';
 type HexSource = 'self' | 'both' | 'questionnaire';
 
 const QUESTIONNAIRE_COLOR = '#4DD0FF';
+
+interface SourceToggleProps {
+  value: HexSource;
+  onChange: (v: HexSource) => void;
+}
+
+/**
+ * Compact 3-icon source toggle — Self · Both · Quiz. Inline (~110px wide)
+ * so it doesn't crowd the hex with a full-width SegmentedControl row.
+ */
+function SourceToggle({ value, onChange }: SourceToggleProps) {
+  const items: {
+    key: HexSource;
+    icon: 'person' | 'git-compare' | 'clipboard';
+    color: string;
+    label: string;
+  }[] = [
+    { key: 'self', icon: 'person', color: tokens.brand.violet2, label: 'Self' },
+    { key: 'both', icon: 'git-compare', color: tokens.text.hi, label: 'Both' },
+    { key: 'questionnaire', icon: 'clipboard', color: QUESTIONNAIRE_COLOR, label: 'Quiz' },
+  ];
+  return (
+    <View style={toggleStyles.row}>
+      {items.map((it) => {
+        const active = it.key === value;
+        return (
+          <Pressable
+            key={it.key}
+            onPress={() => onChange(it.key)}
+            style={({ pressed }) => [
+              toggleStyles.btn,
+              active && { backgroundColor: `${it.color}25`, borderColor: it.color },
+              pressed && { opacity: 0.75 },
+            ]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={it.label}
+          >
+            <Ionicons
+              name={it.icon}
+              size={14}
+              color={active ? it.color : tokens.text.dim}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const toggleStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    gap: 4,
+  },
+  btn: {
+    width: 36,
+    height: 28,
+    borderRadius: tokens.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+});
 
 interface Props {
   subScores: CharacterSubScore[];
@@ -92,39 +158,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
   return (
     <View style={styles.wrap}>
       {hasQuestionnaire && (
-        <View style={styles.toggleWrap}>
-          <SegmentedControl<HexSource>
-            value={hexSource}
-            onChange={setHexSource}
-            options={[
-              { value: 'self', label: 'Self' },
-              { value: 'both', label: 'Both' },
-              { value: 'questionnaire', label: 'Quiz' },
-            ]}
-          />
-          {hexSource === 'both' && (
-            <View style={styles.legendRow}>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    { backgroundColor: tokens.brand.violet2 },
-                  ]}
-                />
-                <Text style={styles.legendText}>Self</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    { backgroundColor: QUESTIONNAIRE_COLOR },
-                  ]}
-                />
-                <Text style={styles.legendText}>Questionário</Text>
-              </View>
-            </View>
-          )}
-        </View>
+        <SourceToggle value={hexSource} onChange={setHexSource} />
       )}
 
       <View style={styles.hexWrap}>
@@ -133,6 +167,9 @@ export function AvaliacaoPanel({ subScores }: Props) {
           secondaryScores={secondary}
           secondaryColor={QUESTIONNAIRE_COLOR}
           size={chartSize}
+          onDimPress={(dim) =>
+            router.push({ pathname: '/dimension/[id]', params: { id: dim } })
+          }
         />
       </View>
 
@@ -174,30 +211,6 @@ export function AvaliacaoPanel({ subScores }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     gap: tokens.space[3],
-  },
-  toggleWrap: {
-    gap: tokens.space[2],
-  },
-  legendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: tokens.space[4],
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  legendText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 11,
-    color: tokens.text.mid,
-    letterSpacing: 0.3,
   },
   hexWrap: {
     alignItems: 'center',
