@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DimensionCrest } from '@/components/DimensionCrest';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { SubBlock } from '@/components/SubBlock';
+import { SubPanel } from '@/components/SubPanel';
 import { pickSubScores, useCharacter } from '@/lib/api/character';
 import { useAssessmentHistoryAll } from '@/lib/api/questionnaire';
 import { useTaskTemplates } from '@/lib/api/tasks';
@@ -29,16 +30,23 @@ function isDimensionId(v: string | undefined): v is DimensionId {
 }
 
 /**
- * Dimension detail — sub-first descriptive surface.
+ * Dimension detail — heraldic crest layout (v2).
  *
- * The user opens a dim card (from Dedicação grid or Avaliação hex legend)
- * and lands on a screen that explains the dim AND each of its 2 subs in
- * depth. Per sub: description, recommended tasks (templates the user can
- * adopt with one tap), score chip + sparkline + 1-line insight.
+ * The user opens a dim from the Dedicação grid or the Avaliação hex
+ * legend and lands on a screen built around a heraldic crest:
  *
- * Intentionally not listed: the user's own tasks/skills filtered by sub.
- * This is a guide, not a productivity dashboard. Adoption is the only
- * write action.
+ *   - Crest at top: round disc split into 2 hemispheres (one sub each),
+ *     sealed by a diamond buckle, crowned by the dim icon, haloed in
+ *     the dim color.
+ *   - Tagline + description (the dim's identity copy).
+ *   - Stat card with the dim's level + XP and a LV pill.
+ *   - "DUAS FACES" spine header introduces the two SubPanels.
+ *   - Two SubPanels stacked vertically, joined by a vertical connector
+ *     (line · diamond · line) that mirrors the crest's seal.
+ *
+ * Each SubPanel carries: score 56pt + tier label, sparkline, 5-segment
+ * tier bar, description, insight, and adoptable templates from the
+ * task_template catalog.
  */
 export default function DimensionInfoScreen() {
   const router = useRouter();
@@ -80,16 +88,21 @@ export default function DimensionInfoScreen() {
 
   const dimId = params.id;
   const meta = DIMENSION_META[dimId];
-  const subIds = SUBS_BY_DIM[dimId];
+  const [subA, subB] = SUBS_BY_DIM[dimId];
 
   const xp =
     character.data?.dimensions.find((d) => d.dimension_id === dimId)?.xp ?? 0;
   const lp = levelProgress(xp);
+  const xpProgressPct =
+    lp.xpNeededForLevel > 0
+      ? Math.min(1, lp.xpInLevel / lp.xpNeededForLevel)
+      : 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenBackground>
+        {/* ── Top bar ─────────────────────────────────────── */}
         <View style={styles.topBar}>
           <View style={{ width: 40 }} />
           <Text style={styles.topTitle}>Dimension</Text>
@@ -106,55 +119,108 @@ export default function DimensionInfoScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Hero ─────────────────────────────────────────── */}
-          <View style={[styles.iconBubble, { backgroundColor: meta.bg }]}>
-            <Ionicons name={meta.iconName as never} size={56} color={meta.color} />
-          </View>
-          <Text style={[styles.eyebrow, { color: meta.color }]}>
-            {meta.label.toUpperCase()}
+          {/* ── Eyebrow ─────────────────────────────────────── */}
+          <Text style={[styles.dimEyebrow, { color: meta.color }]}>
+            DIMENSION · {meta.label.toUpperCase()}
           </Text>
-          <Text style={styles.title}>{meta.tagline}</Text>
+
+          {/* ── Heraldic crest ──────────────────────────────── */}
+          <View style={styles.crestWrap}>
+            <DimensionCrest
+              dimensionId={dimId}
+              size={220}
+              scores={selfScores}
+            />
+          </View>
+
+          {/* ── Tagline + description ───────────────────────── */}
+          <Text style={styles.tagline}>{meta.tagline}</Text>
           <Text style={styles.description}>{meta.description}</Text>
 
-          <View style={styles.statCard}>
+          {/* ── Stat card with LV pill ──────────────────────── */}
+          <View
+            style={[
+              styles.statCard,
+              {
+                borderColor: `${meta.color}4D`,
+                shadowColor: meta.color,
+              },
+            ]}
+          >
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Your level</Text>
-              <Text style={[styles.statValue, { color: meta.color }]}>
-                LV {lp.level}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statLabel}>Your level</Text>
+                <Text style={styles.statSub}>
+                  {lp.xpInLevel} / {lp.xpNeededForLevel} XP to LV{' '}
+                  {lp.level + 1}
+                </Text>
+              </View>
+              <View style={[styles.lvPill, { backgroundColor: meta.color }]}>
+                <Text style={styles.lvPillLabel}>LV</Text>
+                <Text style={styles.lvPillNum}>{lp.level}</Text>
+              </View>
             </View>
-            <View style={styles.bar}>
-              <ProgressBar
-                value={lp.xpInLevel}
-                max={lp.xpNeededForLevel}
-                color={meta.color}
-                height={6}
-              />
-            </View>
-            <Text style={styles.statSub}>
-              {lp.xpInLevel} / {lp.xpNeededForLevel} XP to LV {lp.level + 1} ·{' '}
-              {xp} total
-            </Text>
+            <ProgressBar
+              value={Math.round(xpProgressPct * 100)}
+              max={100}
+              color={meta.color}
+              height={8}
+            />
+            <Text style={styles.statTotal}>{xp.toLocaleString()} XP total</Text>
           </View>
 
-          {/* ── Sub blocks ──────────────────────────────────── */}
-          <Text style={styles.sectionTitle}>Sub-atributos</Text>
+          {/* ── Spine header ───────────────────────────────── */}
+          <View style={styles.spineHead}>
+            <View
+              style={[styles.spineRule, { backgroundColor: `${meta.color}66` }]}
+            />
+            <Text style={[styles.spineLabel, { color: meta.color }]}>
+              ⟢ DUAS FACES ⟣
+            </Text>
+            <View
+              style={[styles.spineRule, { backgroundColor: `${meta.color}66` }]}
+            />
+          </View>
+
+          {/* ── Sub panels with vertical connector ─────────── */}
           {isLoading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator color={tokens.brand.violet2} />
+              <ActivityIndicator color={meta.color} />
             </View>
           ) : (
-            <View style={styles.subList}>
-              {subIds.map((subId) => (
-                <SubBlock
-                  key={subId}
-                  subId={subId}
-                  selfScore={selfScores.get(subId) ?? 0}
-                  history={history.data?.get(subId) ?? []}
-                  templates={templatesBySub.get(subId) ?? []}
+            <>
+              <SubPanel
+                subId={subA}
+                selfScore={selfScores.get(subA) ?? 0}
+                history={history.data?.get(subA) ?? []}
+                templates={templatesBySub.get(subA) ?? []}
+                side="left"
+              />
+              <View style={styles.connector}>
+                <View
+                  style={[
+                    styles.connectorLine,
+                    { backgroundColor: `${meta.color}80` },
+                  ]}
                 />
-              ))}
-            </View>
+                <View
+                  style={[styles.connectorDiamond, { backgroundColor: meta.color }]}
+                />
+                <View
+                  style={[
+                    styles.connectorLine,
+                    { backgroundColor: `${meta.color}80` },
+                  ]}
+                />
+              </View>
+              <SubPanel
+                subId={subB}
+                selfScore={selfScores.get(subB) ?? 0}
+                history={history.data?.get(subB) ?? []}
+                templates={templatesBySub.get(subB) ?? []}
+                side="right"
+              />
+            </>
           )}
         </ScrollView>
       </ScreenBackground>
@@ -163,7 +229,7 @@ export default function DimensionInfoScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -172,10 +238,11 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.space[3],
   },
   topTitle: {
-    ...tokens.type.eyebrow,
-    color: tokens.text.mid,
-    textTransform: 'uppercase',
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
     letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: tokens.text.mid,
   },
   closeIconBtn: {
     width: 40,
@@ -184,47 +251,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: {
-    paddingHorizontal: tokens.space[4],
+    paddingHorizontal: tokens.space[5],
     paddingBottom: tokens.space[8],
-    alignItems: 'stretch',
   },
-  iconBubble: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    marginTop: tokens.space[4],
-    marginBottom: tokens.space[4],
-  },
-  eyebrow: {
-    ...tokens.type.eyebrow,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+
+  dimEyebrow: {
     textAlign: 'center',
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 2,
+    marginTop: tokens.space[1],
   },
-  title: {
-    ...tokens.type.h1,
+  crestWrap: {
+    alignItems: 'center',
+    marginTop: tokens.space[4],
+    marginBottom: tokens.space[3],
+  },
+  tagline: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 28,
     color: tokens.text.hi,
     textAlign: 'center',
+    letterSpacing: -0.5,
     marginTop: tokens.space[2],
   },
   description: {
-    ...tokens.type.bodyLg,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 15,
+    lineHeight: 22,
     color: tokens.text.mid,
     textAlign: 'center',
     marginTop: tokens.space[3],
     paddingHorizontal: tokens.space[2],
   },
+
   statCard: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
+    borderWidth: 1.5,
     padding: tokens.space[4],
     marginTop: tokens.space[6],
-    gap: tokens.space[2],
+    gap: tokens.space[3],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 4,
   },
   statRow: {
     flexDirection: 'row',
@@ -232,30 +303,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statLabel: {
-    ...tokens.type.body,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 14,
     color: tokens.text.mid,
-  },
-  statValue: {
-    ...tokens.type.h2,
-  },
-  bar: {
-    marginTop: tokens.space[1],
   },
   statSub: {
-    ...tokens.type.caption,
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 11,
     color: tokens.text.dim,
+    marginTop: 2,
   },
-  sectionTitle: {
-    ...tokens.type.eyebrow,
-    color: tokens.text.mid,
-    textTransform: 'uppercase',
+  lvPill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: tokens.radius.pill,
+  },
+  lvPillLabel: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
     letterSpacing: 1,
-    marginTop: tokens.space[6],
-    marginBottom: tokens.space[3],
+    color: 'rgba(0,0,0,0.6)',
   },
-  subList: {
+  lvPillNum: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 22,
+    color: '#0E1230',
+  },
+  statTotal: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 11,
+    color: tokens.text.dim,
+    textAlign: 'right',
+  },
+
+  spineHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: tokens.space[3],
+    marginTop: tokens.space[7],
+    marginBottom: tokens.space[5],
   },
+  spineRule: {
+    flex: 1,
+    height: 1,
+  },
+  spineLabel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 2.5,
+  },
+
+  connector: {
+    alignItems: 'center',
+    paddingVertical: tokens.space[2],
+    gap: 4,
+  },
+  connectorLine: {
+    width: 2,
+    height: 18,
+  },
+  connectorDiamond: {
+    width: 12,
+    height: 12,
+    transform: [{ rotate: '45deg' }],
+  },
+
   loadingBox: {
     paddingVertical: tokens.space[6],
     alignItems: 'center',
@@ -267,7 +382,8 @@ const styles = StyleSheet.create({
     gap: tokens.space[4],
   },
   errorText: {
-    ...tokens.type.body,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 14,
     color: tokens.text.mid,
   },
   closeBtn: {
@@ -277,8 +393,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md,
   },
   closeText: {
-    ...tokens.type.body,
-    color: tokens.text.hi,
     fontFamily: 'Manrope_700Bold',
+    fontSize: 14,
+    color: tokens.text.hi,
   },
 });
