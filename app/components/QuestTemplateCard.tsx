@@ -5,6 +5,8 @@ import type { QuestTemplate } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { getQuestCategoryMeta } from '@/theme/quests';
 
+import { CoinIcon } from './CoinIcon';
+
 interface Props {
   template: QuestTemplate;
   onStart: () => void;
@@ -61,7 +63,7 @@ export function QuestTemplateCard({ template, onStart, isStarting }: Props) {
           </Text>
         </View>
         <View style={styles.rewardItem}>
-          <Ionicons name="ellipse" size={10} color={tokens.semantic.coin} />
+          <CoinIcon size={12} />
           <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
             +{template.reward_coins}
           </Text>

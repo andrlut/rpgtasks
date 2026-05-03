@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { QuestWithProgress } from '@/lib/db/types';
 import { tokens } from '@/theme';
 
+import { CoinIcon } from './CoinIcon';
 import { ProgressBar } from './ProgressBar';
 
 interface Props {
@@ -144,7 +145,7 @@ export function QuestCard({ data, onClaim, onAbandon }: Props) {
           </Text>
         </View>
         <View style={styles.rewardItem}>
-          <Ionicons name="ellipse" size={10} color={tokens.semantic.coin} />
+          <CoinIcon size={12} />
           <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
             +{quest.reward_coins}
           </Text>

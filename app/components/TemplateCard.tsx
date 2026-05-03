@@ -5,6 +5,8 @@ import type { RewardTemplate } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
+import { CoinIcon } from './CoinIcon';
+
 interface Props {
   template: RewardTemplate;
   onAdd: () => void;
@@ -35,7 +37,7 @@ export function TemplateCard({ template, onAdd, isAdding }: Props) {
           </Text>
         ) : null}
         <View style={styles.costRow}>
-          <Ionicons name="ellipse" size={10} color={tokens.semantic.coin} />
+          <CoinIcon size={12} />
           <Text style={styles.cost}>{template.cost.toLocaleString()}</Text>
         </View>
       </View>

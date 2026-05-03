@@ -13,6 +13,8 @@ import Animated, {
 
 import { tokens } from '@/theme';
 
+import { CoinIcon } from './CoinIcon';
+
 interface Props {
   xp: number;
   coins: number;
@@ -53,7 +55,7 @@ export function XPCoinFloat({ xp, coins, onDone }: Props) {
         <Text style={[styles.text, { color: tokens.semantic.xp }]}>+{xp} XP</Text>
       </View>
       <View style={[styles.badge, styles.coinBadge]}>
-        <Ionicons name="ellipse" size={14} color={tokens.semantic.coin} />
+        <CoinIcon size={14} />
         <Text style={[styles.text, { color: tokens.semantic.coin }]}>+{coins}</Text>
       </View>
     </Animated.View>

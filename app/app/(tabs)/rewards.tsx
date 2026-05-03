@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinIcon } from '@/components/CoinIcon';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -162,7 +163,7 @@ export default function RewardsScreen() {
         }
       >
         <View style={styles.balanceCard}>
-          <Ionicons name="ellipse" size={28} color={tokens.semantic.coin} />
+          <CoinIcon size={32} />
           <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
           <Text style={styles.balanceLabel}>coins available</Text>
         </View>
@@ -316,7 +317,7 @@ export default function RewardsScreen() {
                         <Text style={styles.historyMeta}>{timeAgo(r.redeemed_at)}</Text>
                       </View>
                       <View style={styles.historyCost}>
-                        <Ionicons name="ellipse" size={9} color={tokens.semantic.coin} />
+                        <CoinIcon size={11} />
                         <Text style={styles.historyCostText}>
                           −{r.cost_paid.toLocaleString()}
                         </Text>

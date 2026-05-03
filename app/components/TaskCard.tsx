@@ -24,6 +24,7 @@ import {
 } from '@/lib/xp';
 import { tokens } from '@/theme';
 
+import { CoinIcon } from './CoinIcon';
 import { DifficultyStars } from './DifficultyStars';
 import { DimensionChip } from './DimensionChip';
 
@@ -176,7 +177,7 @@ export function TaskCard({
                 </Text>
               </View>
               <View style={styles.rewardItem}>
-                <Ionicons name="ellipse" size={10} color={tokens.semantic.coin} />
+                <CoinIcon size={12} />
                 <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
                   +{reward.coins}
                 </Text>

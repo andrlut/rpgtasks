@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CoinIcon } from '@/components/CoinIcon';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillRow } from '@/components/SkillRow';
@@ -89,7 +90,7 @@ export default function CharacterScreen() {
             />
           </View>
           <View style={styles.coinRow}>
-            <Ionicons name="ellipse" size={14} color={tokens.semantic.coin} />
+            <CoinIcon size={16} />
             <Text style={styles.coinText}>{char.coins.toLocaleString()} coins</Text>
           </View>
         </View>
@@ -108,6 +109,10 @@ export default function CharacterScreen() {
                 style={({ pressed }) => [styles.dimCard, pressed && styles.dimCardPressed]}
                 onPress={() => router.push({ pathname: '/dimension/[id]', params: { id } })}
               >
+                <View
+                  style={[styles.dimBlob, { backgroundColor: meta.color }]}
+                  pointerEvents="none"
+                />
                 <View style={[styles.dimIconWrap, { backgroundColor: meta.bg }]}>
                   <Ionicons name={meta.iconName as never} size={20} color={meta.color} />
                 </View>
@@ -239,6 +244,16 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.base,
     padding: tokens.space[4],
     gap: 4,
+    overflow: 'hidden',
+  },
+  dimBlob: {
+    position: 'absolute',
+    top: -28,
+    right: -28,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    opacity: 0.14,
   },
   dimCardPressed: {
     opacity: 0.7,

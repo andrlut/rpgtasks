@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CalendarMonthModal } from '@/components/CalendarMonthModal';
+import { CoinIcon } from '@/components/CoinIcon';
 import { DifficultyStars } from '@/components/DifficultyStars';
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -298,7 +299,7 @@ export default function HistoryScreen() {
                         </Text>
                       </View>
                       <View style={styles.rewardItem}>
-                        <Ionicons name="ellipse" size={9} color={tokens.semantic.coin} />
+                        <CoinIcon size={11} />
                         <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
                           +{c.coinsGranted}
                         </Text>

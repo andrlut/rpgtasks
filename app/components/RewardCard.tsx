@@ -11,6 +11,8 @@ import type { Reward } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
+import { CoinIcon } from './CoinIcon';
+
 interface Props {
   reward: Reward;
   affordable: boolean;
@@ -63,7 +65,7 @@ export function RewardCard({
             </Text>
           ) : null}
           <View style={styles.costRow}>
-            <Ionicons name="ellipse" size={10} color={tokens.semantic.coin} />
+            <CoinIcon size={12} />
             <Text style={styles.cost}>{reward.cost.toLocaleString()}</Text>
           </View>
         </View>
