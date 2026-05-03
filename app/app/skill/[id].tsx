@@ -37,6 +37,9 @@ export default function SkillDetailScreen() {
   const logPR = useLogSkillPR();
 
   const [valueStr, setValueStr] = useState('');
+  // Details panel — description + population stat live behind a tap so the
+  // primary screen stays focused on "log a PR".
+  const [showDetails, setShowDetails] = useState(false);
 
   const state = skillStates.data?.find((s) => s.skill.id === skillId);
 
@@ -101,7 +104,25 @@ export default function SkillDetailScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
-          <View style={{ width: 40 }} />
+          {(state.skill.description || state.skill.population_stat) && (
+            <Pressable
+              onPress={() => setShowDetails((v) => !v)}
+              style={({ pressed }) => [
+                styles.iconButton,
+                showDetails && { backgroundColor: 'rgba(155,130,255,0.18)' },
+                pressed && { opacity: 0.6 },
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons
+                name={showDetails ? 'information-circle' : 'information-circle-outline'}
+                size={22}
+                color={
+                  showDetails ? tokens.brand.violet2 : tokens.text.hi
+                }
+              />
+            </Pressable>
+          )}
         </View>
 
         <KeyboardAvoidingView
@@ -123,6 +144,29 @@ export default function SkillDetailScreen() {
                 <Text style={styles.prUnit}>{state.skill.unit}</Text>
               </View>
             </View>
+
+            {showDetails &&
+              (state.skill.description || state.skill.population_stat) && (
+                <View style={styles.detailsCard}>
+                  {state.skill.description && (
+                    <Text style={styles.detailsDescription}>
+                      {state.skill.description}
+                    </Text>
+                  )}
+                  {state.skill.population_stat && (
+                    <View style={styles.popStatBlock}>
+                      <Ionicons
+                        name="people"
+                        size={14}
+                        color={tokens.brand.violet2}
+                      />
+                      <Text style={styles.popStatText}>
+                        {state.skill.population_stat}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
             {state.nextTier ? (
               <View style={styles.nextTierCard}>
@@ -308,6 +352,35 @@ const styles = StyleSheet.create({
     ...tokens.type.body,
     color: tokens.text.mid,
     fontFamily: 'Manrope_600SemiBold',
+  },
+  detailsCard: {
+    marginTop: tokens.space[3],
+    backgroundColor: tokens.bg.surface,
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(155, 130, 255, 0.22)',
+    padding: tokens.space[4],
+    gap: tokens.space[3],
+  },
+  detailsDescription: {
+    ...tokens.type.body,
+    color: tokens.text.base,
+    lineHeight: 20,
+  },
+  popStatBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.space[2],
+    paddingTop: tokens.space[3],
+    borderTopWidth: 1,
+    borderTopColor: tokens.border.divider,
+  },
+  popStatText: {
+    flex: 1,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12.5,
+    color: tokens.brand.violet2,
+    lineHeight: 18,
   },
   nextTierCard: {
     marginTop: tokens.space[4],
