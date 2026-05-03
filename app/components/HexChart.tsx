@@ -345,23 +345,20 @@ export function HexChart({
                       <View key={subId} style={styles.subRow}>
                         <Ionicons
                           name={subMeta.iconName as never}
-                          size={10}
+                          size={12}
                           color={meta.color}
                         />
-                        <Text style={styles.subLabel} numberOfLines={1}>
-                          {subMeta.label}
-                        </Text>
-                        <View style={styles.pips}>
+                        <View style={styles.segments}>
                           {[1, 2, 3, 4, 5].map((p) => (
                             <View
                               key={p}
                               style={[
-                                styles.pip,
+                                styles.segment,
                                 {
                                   backgroundColor:
                                     p <= score
                                       ? meta.color
-                                      : 'rgba(255,255,255,0.10)',
+                                      : `${meta.color}1A`,
                                 },
                               ]}
                             />
@@ -473,23 +470,17 @@ const styles = StyleSheet.create({
   subRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 5,
+    gap: 6,
+    marginTop: 6,
   },
-  subLabel: {
+  segments: {
     flex: 1,
-    minWidth: 0,
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 10,
-    color: tokens.text.mid,
-  },
-  pips: {
     flexDirection: 'row',
-    gap: 2,
+    gap: 3,
   },
-  pip: {
-    width: 6,
-    height: 6,
+  segment: {
+    flex: 1,
+    height: 5,
     borderRadius: 2,
   },
 });
