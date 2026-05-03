@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EmptyHero } from '@/components/EmptyHero';
 import { HeroCard } from '@/components/HeroCard';
 import { QuestChip } from '@/components/QuestChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -134,6 +135,7 @@ export default function HomeScreen() {
                 displayName={character.data.profile.display_name}
                 totalXp={character.data.character.total_xp}
                 coins={character.data.character.coins}
+                streakDays={streak.data?.currentStreak ?? 0}
               />
             )}
 
@@ -148,7 +150,7 @@ export default function HomeScreen() {
 
             {tasks.data?.length === 0 ? (
               <View style={styles.emptyBox}>
-                <Ionicons name="checkmark-circle" size={48} color={tokens.semantic.xp} />
+                <EmptyHero tone="xp" />
                 <Text style={styles.emptyTitle}>All quests cleared.</Text>
                 <Text style={styles.emptySub}>Take the rest, or set a stretch goal.</Text>
               </View>

@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
+import { EmptyHero } from '@/components/EmptyHero';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -285,7 +286,7 @@ export default function RewardsScreen() {
               </View>
             ) : (redemptions.data?.length ?? 0) === 0 ? (
               <View style={styles.emptyBox}>
-                <Ionicons name="receipt-outline" size={40} color={tokens.text.dim} />
+                <EmptyHero tone="coin" iconName="gift" size={140} />
                 <Text style={styles.emptyTitle}>Nothing redeemed yet</Text>
                 <Text style={styles.emptySub}>
                   When you spend coins on a reward, it shows up here.

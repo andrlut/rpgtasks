@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -11,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScreenBackground } from '@/components/ScreenBackground';
 import { useOnboardingStore } from '@/lib/onboarding';
 import { tokens } from '@/theme';
 
@@ -75,6 +77,7 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ScreenBackground>
 
       <View style={styles.topBar}>
         <Text style={styles.brand}>
@@ -155,15 +158,23 @@ export default function OnboardingScreen() {
               ctaScale.value = withSpring(1, tokens.motion.springBouncy);
             }}
             onPress={next}
-            style={styles.cta}
           >
-            <Text style={styles.ctaText}>
-              {isLast ? 'Start your journey' : 'Continue'}
-            </Text>
-            {isLast && <Ionicons name="arrow-forward" size={20} color={tokens.text.hi} />}
+            <LinearGradient
+              colors={tokens.gradient.completeBtn}
+              locations={tokens.gradient.completeBtnLocations}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.cta}
+            >
+              <Text style={styles.ctaText}>
+                {isLast ? 'Start your journey' : 'Continue'}
+              </Text>
+              {isLast && <Ionicons name="arrow-forward" size={20} color={tokens.text.hi} />}
+            </LinearGradient>
           </Pressable>
         </Animated.View>
       </View>
+      </ScreenBackground>
     </SafeAreaView>
   );
 }
@@ -171,7 +182,7 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: tokens.bg.base,
+    backgroundColor: tokens.bg.deep,
   },
   topBar: {
     flexDirection: 'row',
@@ -282,11 +293,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: tokens.brand.violet,
     borderRadius: tokens.radius.md,
     paddingVertical: tokens.space[4],
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   ctaText: {
     ...tokens.type.h3,
