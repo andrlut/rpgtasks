@@ -188,23 +188,13 @@ export function HexChart({ scores, size = 340 }: HexChartProps) {
           </SvgText>
         ))}
 
-        {/* Center stamp */}
+        {/* Center stamp — overall avg, no label */}
         <SvgText
           x={CX}
-          y={CY - 6}
-          textAnchor="middle"
-          fontFamily="Manrope_700Bold"
-          fontSize={9}
-          fill="#9AA0D4"
-        >
-          OVERALL
-        </SvgText>
-        <SvgText
-          x={CX}
-          y={CY + 18}
+          y={CY + 9}
           textAnchor="middle"
           fontFamily="Manrope_800ExtraBold"
-          fontSize={24}
+          fontSize={26}
           fill="#F2F3FF"
         >
           {overall.toFixed(1)}

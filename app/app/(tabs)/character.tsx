@@ -159,8 +159,8 @@ export default function CharacterScreen() {
   const streak = useStreak();
   const rewards = useRewards();
   const { width: screenWidth } = useWindowDimensions();
-  // Chart fits the card (screen padding + card padding subtracted).
-  const chartSize = Math.min(screenWidth - tokens.space[4] * 2 - 36, 360);
+  // Chart bleeds outside the content padding to use the full screen width.
+  const chartSize = Math.min(screenWidth - tokens.space[2] * 2, 480);
 
   useHydrateHeroSkillsExpand();
   const expanded = useHeroSkillsExpand((s) => s.expanded);
@@ -339,18 +339,18 @@ export default function CharacterScreen() {
           </View>
 
           {/* ── 2. HEX OF LIFE — subjective scores per sub ──── */}
+          <View style={styles.hexHeader}>
+            <Text style={styles.hexEyebrow}>SELF-ASSESSMENT</Text>
+            <Text style={styles.hexEdit}>TAP TO EDIT</Text>
+          </View>
           <Pressable
             onPress={() => router.push('/self-assessment')}
             style={({ pressed }) => [
-              styles.hexCard,
+              styles.hexBleed,
               pressed && { opacity: 0.85 },
             ]}
             hitSlop={4}
           >
-            <View style={styles.hexHeader}>
-              <Text style={styles.hexEyebrow}>SELF-ASSESSMENT</Text>
-              <Text style={styles.hexEdit}>TAP TO EDIT</Text>
-            </View>
             <HexChart
               scores={pickSubScores(character.data.subScores, 'self')}
               size={chartSize}
@@ -742,23 +742,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_600SemiBold',
   },
 
-  // Hex card — matches the design handoff frame
-  hexCard: {
-    marginTop: tokens.space[5],
-    backgroundColor: tokens.bg.surface,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 18,
-    gap: tokens.space[2],
-  },
+  // Hex header sits in the normal padded content; chart below bleeds wider.
   hexHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: tokens.space[1],
+    marginTop: tokens.space[5],
+    marginBottom: tokens.space[3],
   },
   hexEyebrow: {
     fontFamily: 'Manrope_700Bold',
@@ -773,6 +763,10 @@ const styles = StyleSheet.create({
     color: tokens.brand.violet2,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
+  },
+  hexBleed: {
+    marginHorizontal: -tokens.space[4],
+    paddingHorizontal: tokens.space[2],
   },
 
   // Categories — compact stat block, 6 cols across, BG3-inspired
