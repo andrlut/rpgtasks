@@ -111,6 +111,48 @@ export interface LogPRResult {
   isPR: boolean;
 }
 
+// ─── Custom skill creation ──────────────────────────────────────────────────
+
+export interface CustomSkillTierInput {
+  tier_name: TierName;
+  threshold: number;
+  description?: string | null;
+  percentile?: number | null;
+}
+
+export interface CustomSkillInput {
+  display_name: string;
+  unit: string;
+  dimension_id: string;
+  icon?: string;
+  description?: string | null;
+  /** Must be exactly 5 entries: beginner / bronze / silver / gold / master. */
+  tiers: CustomSkillTierInput[];
+}
+
+/**
+ * Atomically creates a user-owned skill with its 5-tier ladder via the
+ * `create_custom_skill` RPC. Returns the new skill id (custom_<uuid>).
+ */
+export function useCreateCustomSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CustomSkillInput): Promise<string> => {
+      const { data, error } = await supabase.rpc('create_custom_skill', {
+        p_payload: payload,
+      });
+      if (error) throw error;
+      if (typeof data !== 'string') {
+        throw new Error('create_custom_skill returned no skill id');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: skillKeys.states() });
+    },
+  });
+}
+
 /**
  * Inserts a new skill_log row. Returns whether this crossed a tier threshold
  * (so caller can show a tier-up animation).
