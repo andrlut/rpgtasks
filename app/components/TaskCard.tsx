@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { TaskWithDimensions } from '@/lib/db/types';
+import type { TaskWithDimension } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import {
   applyStreakMultiplier,
@@ -29,7 +29,7 @@ import { DifficultyStars } from './DifficultyStars';
 import { DimensionChip } from './DimensionChip';
 
 interface Props {
-  task: TaskWithDimensions;
+  task: TaskWithDimension;
   /** Star difficulty selected by the user via swipe; falls back to task.difficulty. */
   selectedDifficulty?: Difficulty;
   onSelectDifficulty?: (next: Difficulty) => void;
@@ -156,13 +156,9 @@ export function TaskCard({
             </Text>
             <View style={styles.metaRow}>
               <DifficultyStars difficulty={effectiveDifficulty} />
-              {task.dimensions.length > 0 && (
-                <View style={styles.chipsRow}>
-                  {task.dimensions.slice(0, 2).map((d) => (
-                    <DimensionChip key={d} id={d} size="sm" />
-                  ))}
-                </View>
-              )}
+              <View style={styles.chipsRow}>
+                <DimensionChip id={task.dimension_id} size="sm" />
+              </View>
             </View>
             {showRecurrenceNote && (
               <Text style={styles.recurrenceNote} numberOfLines={1}>

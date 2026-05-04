@@ -21,7 +21,7 @@ import { XpHeatmap } from '@/components/XpHeatmap';
 import { useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
-import type { TaskWithDimensions } from '@/lib/db/types';
+import type { TaskWithDimension } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForDifficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
@@ -107,7 +107,7 @@ export default function HistoryScreen() {
     });
   };
 
-  const handleRetroComplete = async (task: TaskWithDimensions) => {
+  const handleRetroComplete = async (task: TaskWithDimension) => {
     const reward = rewardForDifficulty(task.difficulty);
     const ok = await confirmAction(
       'Log retroactively?',
@@ -125,7 +125,7 @@ export default function HistoryScreen() {
         taskId: task.id,
         expectedXp: reward.xp,
         expectedCoins: reward.coins,
-        dimensions: task.dimensions,
+        dimensionId: task.dimension_id,
         completedAt: stamp.toISOString(),
       },
       {
@@ -283,11 +283,13 @@ export default function HistoryScreen() {
                           })}
                         </Text>
                       </View>
-                      {c.dimensions.length > 0 && (
+                      {c.dimensionId && (
                         <View style={styles.chipsRow}>
-                          {c.dimensions.map((d) => (
-                            <DimensionChip key={d} id={d} size="sm" pressable={false} />
-                          ))}
+                          <DimensionChip
+                            id={c.dimensionId}
+                            size="sm"
+                            pressable={false}
+                          />
                         </View>
                       )}
                     </View>
@@ -360,18 +362,13 @@ export default function HistoryScreen() {
                               {describeRecurrence(task.recurrence, task.target_count)}
                             </Text>
                           )}
-                          {task.dimensions.length > 0 && (
-                            <View style={styles.chipsRow}>
-                              {task.dimensions.map((d) => (
-                                <DimensionChip
-                                  key={d}
-                                  id={d}
-                                  size="sm"
-                                  pressable={false}
-                                />
-                              ))}
-                            </View>
-                          )}
+                          <View style={styles.chipsRow}>
+                            <DimensionChip
+                              id={task.dimension_id}
+                              size="sm"
+                              pressable={false}
+                            />
+                          </View>
                         </View>
                         <View style={styles.completionRewards}>
                           <View style={styles.rewardItem}>

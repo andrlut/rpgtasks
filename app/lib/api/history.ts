@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { DimensionId, TaskWithDimensions } from '@/lib/db/types';
+import { dimensionForSub } from '@/lib/api/tasks';
+import type { DimensionId, SubId, TaskWithDimension } from '@/lib/db/types';
 import { isDueOn, parseRecurrence } from '@/lib/recurrence';
 import { supabase } from '@/lib/supabase';
 
@@ -27,11 +28,6 @@ interface CompletionRow {
   xp_granted: number;
   coins_granted: number;
   task: { id: string; title: string; difficulty: 1 | 2 | 3 | 4 | 5 } | null;
-}
-
-interface CompletionWithDimsRow extends CompletionRow {
-  // joined via task → task_dimension
-  task_dimensions: { dimension_id: DimensionId }[] | null;
 }
 
 /**
@@ -71,8 +67,9 @@ export function useDailySummary(from: Date, to: Date) {
   return useQuery({
     queryKey: historyKeys.daily(fromIso, toIso),
     queryFn: async (): Promise<Map<string, DailySummaryEntry>> => {
-      // We need per-completion XP plus the dimensions linked to each task.
-      // Two fetches keep the join surface small and predictable.
+      // We need per-completion XP plus the parent dim of each task. Each
+      // task has one sub_id (NOT NULL), and each sub maps to one dim — so
+      // a single fetch of (task_id, sub_id) is enough.
       const { data: completions, error: compErr } = await supabase
         .from('task_completion')
         .select('id, task_id, completed_at, xp_granted, coins_granted')
@@ -81,17 +78,15 @@ export function useDailySummary(from: Date, to: Date) {
       if (compErr) throw compErr;
 
       const taskIds = Array.from(new Set((completions ?? []).map((c) => c.task_id)));
-      const dimsByTask = new Map<string, DimensionId[]>();
+      const dimByTask = new Map<string, DimensionId>();
       if (taskIds.length > 0) {
-        const { data: dimRows, error: dimErr } = await supabase
-          .from('task_dimension')
-          .select('task_id, dimension_id')
-          .in('task_id', taskIds);
-        if (dimErr) throw dimErr;
-        (dimRows ?? []).forEach((r) => {
-          const arr = dimsByTask.get(r.task_id) ?? [];
-          arr.push(r.dimension_id as DimensionId);
-          dimsByTask.set(r.task_id, arr);
+        const { data: taskRows, error: taskErr } = await supabase
+          .from('task')
+          .select('id, sub_id')
+          .in('id', taskIds);
+        if (taskErr) throw taskErr;
+        (taskRows ?? []).forEach((t) => {
+          dimByTask.set(t.id, dimensionForSub(t.sub_id as SubId));
         });
       }
 
@@ -108,10 +103,10 @@ export function useDailySummary(from: Date, to: Date) {
         entry.totalXp += c.xp_granted;
         entry.totalCoins += c.coins_granted;
         entry.completionCount += 1;
-        const dims = dimsByTask.get(c.task_id) ?? [];
-        dims.forEach((d) => {
-          entry.byDimension[d] = (entry.byDimension[d] ?? 0) + c.xp_granted;
-        });
+        const dim = dimByTask.get(c.task_id);
+        if (dim) {
+          entry.byDimension[dim] = (entry.byDimension[dim] ?? 0) + c.xp_granted;
+        }
         map.set(key, entry);
       });
 
@@ -125,7 +120,8 @@ export interface DayCompletion {
   taskId: string;
   taskTitle: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
-  dimensions: DimensionId[];
+  /** Parent dim derived from the task's sub. null if the task was deleted. */
+  dimensionId: DimensionId | null;
   xpGranted: number;
   coinsGranted: number;
   completedAt: string;
@@ -137,7 +133,7 @@ export interface DayCompletion {
  * something?" / "Still open today" list.
  */
 export interface OpenTaskOnDay {
-  task: TaskWithDimensions;
+  task: TaskWithDimension;
   completedThisDay: number;
 }
 
@@ -166,8 +162,7 @@ interface TaskRowFull {
   metric_label: string | null;
   base_value: number | string | null;
   increment_per_star: number | string | null;
-  sub_id: string | null;
-  task_dimension: { dimension_id: DimensionId }[];
+  sub_id: SubId;
 }
 
 /**
@@ -196,19 +191,17 @@ export function useDayDetail(date: Date) {
         .order('completed_at', { ascending: true });
       if (compErr) throw compErr;
 
-      const compRows = (comps ?? []) as unknown as CompletionWithDimsRow[];
+      const compRows = (comps ?? []) as unknown as CompletionRow[];
       const taskIds = Array.from(new Set(compRows.map((c) => c.task_id)));
-      const dimsByTask = new Map<string, DimensionId[]>();
+      const dimByTask = new Map<string, DimensionId>();
       if (taskIds.length > 0) {
-        const { data: dimRows, error: dimErr } = await supabase
-          .from('task_dimension')
-          .select('task_id, dimension_id')
-          .in('task_id', taskIds);
-        if (dimErr) throw dimErr;
-        (dimRows ?? []).forEach((r) => {
-          const arr = dimsByTask.get(r.task_id) ?? [];
-          arr.push(r.dimension_id as DimensionId);
-          dimsByTask.set(r.task_id, arr);
+        const { data: taskRows, error: taskErr } = await supabase
+          .from('task')
+          .select('id, sub_id')
+          .in('id', taskIds);
+        if (taskErr) throw taskErr;
+        (taskRows ?? []).forEach((t) => {
+          dimByTask.set(t.id, dimensionForSub(t.sub_id as SubId));
         });
       }
 
@@ -217,7 +210,7 @@ export function useDayDetail(date: Date) {
         taskId: c.task_id,
         taskTitle: c.task?.title ?? '(deleted task)',
         difficulty: (c.task?.difficulty ?? 1) as 1 | 2 | 3 | 4 | 5,
-        dimensions: dimsByTask.get(c.task_id) ?? [],
+        dimensionId: dimByTask.get(c.task_id) ?? null,
         xpGranted: c.xp_granted,
         coinsGranted: c.coins_granted,
         completedAt: c.completed_at,
@@ -235,7 +228,7 @@ export function useDayDetail(date: Date) {
       // Active tasks created on or before this day.
       const { data: tasks, error: taskErr } = await supabase
         .from('task')
-        .select('*, task_dimension(dimension_id)')
+        .select('*')
         .eq('is_archived', false)
         .lte('created_at', dayEnd.toISOString())
         .order('created_at', { ascending: true });
@@ -291,8 +284,8 @@ export function useDayDetail(date: Date) {
               metric_label: raw.metric_label,
               base_value: numOrNull(raw.base_value),
               increment_per_star: numOrNull(raw.increment_per_star),
-              sub_id: (raw.sub_id ?? null) as TaskWithDimensions['sub_id'],
-              dimensions: (raw.task_dimension ?? []).map((td) => td.dimension_id),
+              sub_id: raw.sub_id,
+              dimension_id: dimensionForSub(raw.sub_id),
             },
             completedThisDay: completionCountThisDay.get(raw.id) ?? 0,
           };
