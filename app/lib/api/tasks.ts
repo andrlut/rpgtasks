@@ -6,10 +6,11 @@ import type {
   Recurrence,
   SubId,
   TaskTemplate,
-  TaskWithDimensions,
+  TaskWithDimension,
 } from '@/lib/db/types';
 import { isDueOn, parseRecurrence } from '@/lib/recurrence';
 import { supabase } from '@/lib/supabase';
+import { SUB_META } from '@/theme/dimensions';
 
 import { characterKeys, type CharacterWithProfile } from './character';
 import { historyKeys } from './history';
@@ -32,7 +33,8 @@ export interface TaskFormInput {
   task_type: 'one_shot' | 'daily' | 'weekly';
   recurrence: Recurrence;
   target_count: number;
-  dimensions: DimensionId[];
+  /** Required: every task lives under exactly one sub. Parent dim is derived. */
+  sub_id: SubId;
   /**
    * Optional metric scaling. When metric_type is set, base_value and
    * increment_per_star must also be set. When null, the task has no
@@ -60,8 +62,7 @@ interface TaskRow {
   metric_label: string | null;
   base_value: number | string | null;
   increment_per_star: number | string | null;
-  sub_id: string | null;
-  task_dimension: { dimension_id: DimensionId }[];
+  sub_id: SubId;
 }
 
 // Postgres numeric columns can come back as strings via PostgREST.
@@ -71,7 +72,16 @@ function numericOrNull(v: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function mapTaskRow(t: TaskRow): TaskWithDimensions {
+/** Resolve a sub's parent dim. Throws on unknown sub — should be impossible
+ *  given the DB FK + NOT NULL constraint, but we want a loud failure mode
+ *  rather than a silent miscategorization. */
+export function dimensionForSub(subId: SubId): DimensionId {
+  const meta = SUB_META[subId];
+  if (!meta) throw new Error(`Unknown sub_id: ${subId}`);
+  return meta.dimensionId;
+}
+
+function mapTaskRow(t: TaskRow): TaskWithDimension {
   return {
     id: t.id,
     character_id: t.character_id,
@@ -88,8 +98,8 @@ function mapTaskRow(t: TaskRow): TaskWithDimensions {
     metric_label: t.metric_label,
     base_value: numericOrNull(t.base_value),
     increment_per_star: numericOrNull(t.increment_per_star),
-    sub_id: (t.sub_id ?? null) as TaskWithDimensions['sub_id'],
-    dimensions: (t.task_dimension ?? []).map((td) => td.dimension_id),
+    sub_id: t.sub_id,
+    dimension_id: dimensionForSub(t.sub_id),
   };
 }
 
@@ -98,14 +108,14 @@ function mapTaskRow(t: TaskRow): TaskWithDimensions {
  * due *today* AND that hasn't already met its `target_count` for today.
  * Plus one_shot tasks that have never been completed.
  */
-async function fetchPendingTasks(): Promise<TaskWithDimensions[]> {
+async function fetchPendingTasks(): Promise<TaskWithDimension[]> {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const today = new Date();
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
-    .select('*, task_dimension(dimension_id)')
+    .select('*')
     .eq('is_archived', false)
     .order('created_at', { ascending: true });
   if (taskErr) throw taskErr;
@@ -176,7 +186,9 @@ export function useCompleteTask() {
       taskId: string;
       expectedXp: number;
       expectedCoins: number;
-      dimensions: DimensionId[];
+      /** Parent dim of the task (derived from sub_id) — used to bump the
+       *  matching character_dimension row optimistically. */
+      dimensionId: DimensionId;
       // Optional ISO timestamp for retroactive logging. Omit for "now".
       completedAt?: string;
       // Optional star difficulty override. When omitted, server uses
@@ -200,7 +212,7 @@ export function useCompleteTask() {
         queryClient.cancelQueries({ queryKey: characterKeys.me() }),
       ]);
 
-      const prevTasks = queryClient.getQueryData<TaskWithDimensions[]>(taskKeys.pending());
+      const prevTasks = queryClient.getQueryData<TaskWithDimension[]>(taskKeys.pending());
       const prevChar = queryClient.getQueryData<CharacterWithProfile>(characterKeys.me());
 
       // Optimistic removal from "pending today" only when:
@@ -211,7 +223,7 @@ export function useCompleteTask() {
       const t = prevTasks?.find((x) => x.id === params.taskId);
       const singleTarget = !t || (t.target_count ?? 1) === 1;
       if (prevTasks && isLive && singleTarget) {
-        queryClient.setQueryData<TaskWithDimensions[]>(
+        queryClient.setQueryData<TaskWithDimension[]>(
           taskKeys.pending(),
           prevTasks.filter((x) => x.id !== params.taskId),
         );
@@ -226,7 +238,7 @@ export function useCompleteTask() {
             coins: prevChar.character.coins + params.expectedCoins,
           },
           dimensions: prevChar.dimensions.map((d) =>
-            params.dimensions.includes(d.dimension_id)
+            d.dimension_id === params.dimensionId
               ? { ...d, xp: d.xp + params.expectedXp }
               : d,
           ),
@@ -259,32 +271,17 @@ export function useTask(id: string | null | undefined) {
   return useQuery({
     queryKey: id ? taskKeys.detail(id) : ['tasks', 'detail', 'none'],
     enabled: !!id,
-    queryFn: async (): Promise<TaskWithDimensions | null> => {
+    queryFn: async (): Promise<TaskWithDimension | null> => {
       if (!id) return null;
       const { data, error } = await supabase
         .from('task')
-        .select('*, task_dimension(dimension_id)')
+        .select('*')
         .eq('id', id)
         .single();
       if (error) throw error;
       return mapTaskRow(data as TaskRow);
     },
   });
-}
-
-async function setTaskDimensions(taskId: string, dimensions: DimensionId[]) {
-  // simple approach for V0: wipe and re-insert
-  const { error: delErr } = await supabase
-    .from('task_dimension')
-    .delete()
-    .eq('task_id', taskId);
-  if (delErr) throw delErr;
-
-  if (dimensions.length === 0) return;
-
-  const rows = dimensions.map((d) => ({ task_id: taskId, dimension_id: d }));
-  const { error: insErr } = await supabase.from('task_dimension').insert(rows);
-  if (insErr) throw insErr;
 }
 
 export function useCreateTask() {
@@ -306,6 +303,7 @@ export function useCreateTask() {
           task_type: input.task_type,
           recurrence: input.recurrence,
           target_count: input.target_count,
+          sub_id: input.sub_id,
           metric_type: input.metric_type,
           metric_label: input.metric_label,
           base_value: input.base_value,
@@ -314,10 +312,7 @@ export function useCreateTask() {
         .select('id')
         .single();
       if (error) throw error;
-      const taskId = (data as { id: string }).id;
-
-      await setTaskDimensions(taskId, input.dimensions);
-      return taskId;
+      return (data as { id: string }).id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
@@ -338,6 +333,7 @@ export function useUpdateTask(taskId: string) {
           task_type: input.task_type,
           recurrence: input.recurrence,
           target_count: input.target_count,
+          sub_id: input.sub_id,
           metric_type: input.metric_type,
           metric_label: input.metric_label,
           base_value: input.base_value,
@@ -345,8 +341,6 @@ export function useUpdateTask(taskId: string) {
         })
         .eq('id', taskId);
       if (error) throw error;
-
-      await setTaskDimensions(taskId, input.dimensions);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });

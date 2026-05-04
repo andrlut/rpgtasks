@@ -24,7 +24,7 @@ import { useCharacter } from '@/lib/api/character';
 import { useQuests } from '@/lib/api/quests';
 import { useStreak } from '@/lib/api/streak';
 import { useCompleteTask, useTasks } from '@/lib/api/tasks';
-import type { TaskWithDimensions } from '@/lib/db/types';
+import type { TaskWithDimension } from '@/lib/db/types';
 import { formatLongDate, timeOfDayGreeting } from '@/lib/time';
 import { maybeConfirmHardCompletion } from '@/lib/util/confirmCompletion';
 import { applyStreakMultiplier, rewardForDifficulty, type Difficulty } from '@/lib/xp';
@@ -48,7 +48,7 @@ export default function HomeScreen() {
   // Cleared when the day rolls over (handled implicitly: tasks list refetches).
   const [diffOverrides, setDiffOverrides] = useState<Record<string, Difficulty>>({});
 
-  const handleComplete = async (task: TaskWithDimensions) => {
+  const handleComplete = async (task: TaskWithDimension) => {
     if (completeTask.isPending) return;
 
     const selected: Difficulty = diffOverrides[task.id] ?? task.difficulty;
@@ -68,7 +68,7 @@ export default function HomeScreen() {
         taskId: task.id,
         expectedXp: reward.xp,
         expectedCoins: reward.coins,
-        dimensions: task.dimensions,
+        dimensionId: task.dimension_id,
         selectedDifficulty: selected,
       },
       {

@@ -71,19 +71,20 @@ export function useQuests() {
         if (!error) progressByReqId.set(requirement.id, count ?? 0);
       }
 
-      // 2b. complete_any_in_dim — count completions on tasks linked to dim
+      // 2b. complete_any_in_dim — count completions on tasks under any sub
+      // belonging to the given dim. Resolved via task → dimension_sub.
       const dimReqs = allReqs.filter(
         ({ requirement }) =>
           requirement.kind === 'complete_any_in_dim' && requirement.dimension_id,
       );
       for (const { quest, requirement } of dimReqs) {
-        // tasks linked to this dimension
+        // Tasks whose sub belongs to this dim.
         const { data: linkedTasks, error: ltErr } = await supabase
-          .from('task_dimension')
-          .select('task_id')
-          .eq('dimension_id', requirement.dimension_id!);
+          .from('task')
+          .select('id, dimension_sub!inner(dimension_id)')
+          .eq('dimension_sub.dimension_id', requirement.dimension_id!);
         if (ltErr) continue;
-        const taskIds = (linkedTasks ?? []).map((r) => r.task_id);
+        const taskIds = (linkedTasks ?? []).map((r) => (r as { id: string }).id);
         if (taskIds.length === 0) {
           progressByReqId.set(requirement.id, 0);
           continue;

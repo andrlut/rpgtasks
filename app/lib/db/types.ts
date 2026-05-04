@@ -168,9 +168,11 @@ export interface TaskTemplate {
   sort_order: number;
 }
 
-/** Task with its linked dimensions (joined via task_dimension). */
-export interface TaskWithDimensions extends Task {
-  dimensions: DimensionId[];
+/** Task with its derived parent dimension (resolved via sub_id). After
+ *  the sub-first migration, every task has exactly one dim, so this is a
+ *  single id rather than an array. */
+export interface TaskWithDimension extends Task {
+  dimension_id: DimensionId;
 }
 
 export interface TaskCompletion {

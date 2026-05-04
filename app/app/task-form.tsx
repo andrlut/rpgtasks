@@ -16,8 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DifficultyPicker } from '@/components/DifficultyPicker';
-import { DimensionMultiSelect } from '@/components/DimensionMultiSelect';
 import { RecurrencePicker } from '@/components/RecurrencePicker';
+import { SubPicker } from '@/components/SubPicker';
 import {
   useArchiveTask,
   useCreateTask,
@@ -25,7 +25,7 @@ import {
   useUpdateTask,
   type TaskFormInput,
 } from '@/lib/api/tasks';
-import type { DimensionId, MetricType, Recurrence } from '@/lib/db/types';
+import type { MetricType, Recurrence, SubId } from '@/lib/db/types';
 import { confirmAction } from '@/lib/util/confirm';
 import { formatScaledValue, scaledTargetValue, type Difficulty } from '@/lib/xp';
 import { tokens } from '@/theme';
@@ -59,7 +59,7 @@ export default function TaskFormScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty>(2);
   const [recurrence, setRecurrence] = useState<Recurrence>({ type: 'daily' });
   const [targetCount, setTargetCount] = useState<number>(1);
-  const [dimensions, setDimensions] = useState<DimensionId[]>([]);
+  const [subId, setSubId] = useState<SubId | null>(null);
 
   // Optional metric scaling fields
   const [scalingEnabled, setScalingEnabled] = useState(false);
@@ -76,7 +76,7 @@ export default function TaskFormScreen() {
       setDifficulty(existing.data.difficulty);
       setRecurrence(existing.data.recurrence);
       setTargetCount(existing.data.target_count ?? 1);
-      setDimensions(existing.data.dimensions);
+      setSubId(existing.data.sub_id);
       if (existing.data.metric_type) {
         setScalingEnabled(true);
         setMetricType(existing.data.metric_type);
@@ -100,30 +100,38 @@ export default function TaskFormScreen() {
   const incrementValid = scalingEnabled && Number.isFinite(incrementPerStar) && incrementPerStar >= 0;
   const scalingValid = !scalingEnabled || (baseValid && incrementValid);
 
-  const formInput = useMemo<TaskFormInput>(
-    () => ({
-      title: title.trim(),
-      description: description.trim() === '' ? null : description.trim(),
-      difficulty,
-      task_type: legacyTypeFor(recurrence),
-      recurrence,
-      target_count: recurrence.type === 'one_shot' ? 1 : targetCount,
-      dimensions,
-      metric_type: scalingEnabled ? metricType : null,
-      metric_label: scalingEnabled ? (metricLabel.trim() || null) : null,
-      base_value: scalingEnabled && baseValid ? baseValue : null,
-      increment_per_star: scalingEnabled && incrementValid ? incrementPerStar : null,
-    }),
+  // Build the input only when sub_id is set — TaskFormInput requires it.
+  const formInput = useMemo<TaskFormInput | null>(
+    () => {
+      if (!subId) return null;
+      return {
+        title: title.trim(),
+        description: description.trim() === '' ? null : description.trim(),
+        difficulty,
+        task_type: legacyTypeFor(recurrence),
+        recurrence,
+        target_count: recurrence.type === 'one_shot' ? 1 : targetCount,
+        sub_id: subId,
+        metric_type: scalingEnabled ? metricType : null,
+        metric_label: scalingEnabled ? (metricLabel.trim() || null) : null,
+        base_value: scalingEnabled && baseValid ? baseValue : null,
+        increment_per_star: scalingEnabled && incrementValid ? incrementPerStar : null,
+      };
+    },
     [
-      title, description, difficulty, recurrence, targetCount, dimensions,
+      title, description, difficulty, recurrence, targetCount, subId,
       scalingEnabled, metricType, metricLabel, baseValid, baseValue,
       incrementValid, incrementPerStar,
     ],
   );
 
   const handleSave = async () => {
-    if (!formInput.title) {
+    if (!title.trim()) {
       Alert.alert('Title required', 'Give your quest a title.');
+      return;
+    }
+    if (!subId || !formInput) {
+      Alert.alert('Pick a sub-dimension', 'Choose where this quest contributes.');
       return;
     }
     if (!scalingValid) {
@@ -381,9 +389,11 @@ export default function TaskFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Dimensions</Text>
-            <Text style={styles.hint}>Pick which stats this quest grants XP in.</Text>
-            <DimensionMultiSelect value={dimensions} onChange={setDimensions} />
+            <Text style={styles.label}>Sub-dimension</Text>
+            <Text style={styles.hint}>
+              Pick the sub this quest contributes to. The parent dimension gets the XP automatically.
+            </Text>
+            <SubPicker value={subId} onChange={setSubId} />
           </View>
 
           {isEdit && (
