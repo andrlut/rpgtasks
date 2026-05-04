@@ -107,15 +107,58 @@ function mapTaskRow(t: TaskRow): TaskWithDimension {
   };
 }
 
+export interface HomeBuckets {
+  /** Daily-cadence work pending today: dailies + weeklies-due-today +
+   *  monthlies-due-today, where today's target_count isn't yet met. */
+  today: TaskWithDimension[];
+  /** Weeklies/monthlies pending elsewhere this week (not today). Lets the
+   *  user see what's coming without leaving Home. */
+  thisWeek: TaskWithDimension[];
+  /** One-shot tasks that have never been completed. */
+  oneTime: TaskWithDimension[];
+}
+
+/** Monday-anchored start of the current week, in local time. */
+function startOfThisWeek(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  // JS getDay: 0=Sun..6=Sat. Convert to Monday=0..Sunday=6.
+  const offset = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - offset);
+  return d;
+}
+
+/** Number of times this task is scheduled across the 7 days starting at
+ *  weekStart. Reuses isDueOn so weekly/monthly semantics stay consistent. */
+function countScheduledThisWeek(rec: TaskWithDimension['recurrence'], weekStart: Date): number {
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    if (isDueOn(rec, d)) count++;
+  }
+  return count;
+}
+
 /**
- * Tasks pending right now: every active task whose recurrence says it's
- * due *today* AND that hasn't already met its `target_count` for today.
- * Plus one_shot tasks that have never been completed.
+ * The three Home sections in one shot. Single batch of fetches keeps the
+ * payload small and the loading state simple — Home renders all three or
+ * none. The bucketing logic:
+ *
+ *   - One-time: any one_shot task that has never been completed.
+ *   - Today: non-one_shot tasks that are due today AND haven't met their
+ *            target_count for today yet.
+ *   - This Week: weekly/monthly tasks that are NOT in Today, but still
+ *                have at least one pending scheduled occurrence this week
+ *                (scheduled occurrences × target_count > completions this
+ *                week). Daily tasks that are met for today don't show
+ *                here — they'll come back tomorrow.
  */
-async function fetchPendingTasks(): Promise<TaskWithDimension[]> {
+async function fetchHomeBuckets(): Promise<HomeBuckets> {
+  const today = new Date();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  const today = new Date();
+  const weekStart = startOfThisWeek();
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
@@ -126,24 +169,32 @@ async function fetchPendingTasks(): Promise<TaskWithDimension[]> {
 
   const allTasks = ((tasks ?? []) as TaskRow[]).map(mapTaskRow);
 
-  // Today's completion counts (per task) — used to decide "still pending today".
+  // Today completions (per task)
   const { data: completionsToday, error: compErr } = await supabase
     .from('task_completion')
     .select('task_id')
     .gte('completed_at', startOfToday.toISOString());
   if (compErr) throw compErr;
-
-  const completionCountToday = new Map<string, number>();
+  const doneToday = new Map<string, number>();
   (completionsToday ?? []).forEach((c) => {
-    completionCountToday.set(c.task_id, (completionCountToday.get(c.task_id) ?? 0) + 1);
+    doneToday.set(c.task_id, (doneToday.get(c.task_id) ?? 0) + 1);
   });
 
-  // For one_shot tasks we additionally need to know "ever completed?". Only
-  // query if there's at least one one_shot among the active tasks.
+  // Week completions (per task) — used by the This Week bucket.
+  const { data: completionsWeek, error: weekErr } = await supabase
+    .from('task_completion')
+    .select('task_id')
+    .gte('completed_at', weekStart.toISOString());
+  if (weekErr) throw weekErr;
+  const doneWeek = new Map<string, number>();
+  (completionsWeek ?? []).forEach((c) => {
+    doneWeek.set(c.task_id, (doneWeek.get(c.task_id) ?? 0) + 1);
+  });
+
+  // One-shots: ever completed?
   const oneShotIds = allTasks
     .filter((t) => t.recurrence.type === 'one_shot')
     .map((t) => t.id);
-
   let everCompletedOneShots = new Set<string>();
   if (oneShotIds.length > 0) {
     const { data: anyComp, error: anyErr } = await supabase
@@ -154,20 +205,39 @@ async function fetchPendingTasks(): Promise<TaskWithDimension[]> {
     everCompletedOneShots = new Set((anyComp ?? []).map((r) => r.task_id));
   }
 
-  return allTasks.filter((t) => {
+  const buckets: HomeBuckets = { today: [], thisWeek: [], oneTime: [] };
+
+  for (const t of allTasks) {
     if (t.recurrence.type === 'one_shot') {
-      return !everCompletedOneShots.has(t.id);
+      if (!everCompletedOneShots.has(t.id)) buckets.oneTime.push(t);
+      continue;
     }
-    if (!isDueOn(t.recurrence, today)) return false;
-    const doneToday = completionCountToday.get(t.id) ?? 0;
-    return doneToday < t.target_count;
-  });
+
+    const dueToday = isDueOn(t.recurrence, today);
+    const todayCount = doneToday.get(t.id) ?? 0;
+    if (dueToday && todayCount < t.target_count) {
+      buckets.today.push(t);
+      continue;
+    }
+
+    // Not in Today. For weekly/monthly, check if any other day this week
+    // still has a pending occurrence (or the user is short on the week's
+    // expected reps). Daily tasks completed today simply roll to tomorrow.
+    if (t.recurrence.type === 'weekly' || t.recurrence.type === 'monthly') {
+      const scheduled = countScheduledThisWeek(t.recurrence, weekStart);
+      const expected = scheduled * t.target_count;
+      const weekCount = doneWeek.get(t.id) ?? 0;
+      if (expected > weekCount) buckets.thisWeek.push(t);
+    }
+  }
+
+  return buckets;
 }
 
-export function useTasks() {
+export function useHomeBuckets() {
   return useQuery({
     queryKey: taskKeys.pending(),
-    queryFn: fetchPendingTasks,
+    queryFn: fetchHomeBuckets,
   });
 }
 
