@@ -14,6 +14,17 @@ export function formatLongDate(date: Date = new Date()): string {
   });
 }
 
+/** Compact uppercase format for dense headers — e.g. "SUN, MAY 3". */
+export function formatCompactDate(date: Date = new Date()): string {
+  const dow = date
+    .toLocaleDateString('en-US', { weekday: 'short' })
+    .toUpperCase();
+  const md = date
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    .toUpperCase();
+  return `${dow}, ${md}`;
+}
+
 /**
  * Friendly relative time for past timestamps. Used in lists like
  * recent redemptions / completions so users get "5m ago" rather than

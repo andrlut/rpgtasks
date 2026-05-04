@@ -14,15 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AddCard } from '@/components/AddCard';
-import { EmptyHero } from '@/components/EmptyHero';
-import { HeroCard } from '@/components/HeroCard';
-import { QuestChip } from '@/components/QuestChip';
+import { CompactHeader } from '@/components/CompactHeader';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { useCharacter } from '@/lib/api/character';
-import { useQuests } from '@/lib/api/quests';
 import { useStreak } from '@/lib/api/streak';
 import { useCompleteTask, useHomeBuckets } from '@/lib/api/tasks';
 import type { TaskWithDimension } from '@/lib/db/types';
@@ -31,9 +27,14 @@ import {
   useLoadHomeBuckets,
   type HomeBucket,
 } from '@/lib/homeBuckets';
-import { formatLongDate, timeOfDayGreeting } from '@/lib/time';
+import { formatCompactDate } from '@/lib/time';
 import { maybeConfirmHardCompletion } from '@/lib/util/confirmCompletion';
-import { applyStreakMultiplier, rewardForDifficulty, type Difficulty } from '@/lib/xp';
+import {
+  applyStreakMultiplier,
+  levelProgress,
+  rewardForDifficulty,
+  type Difficulty,
+} from '@/lib/xp';
 import { tokens } from '@/theme';
 
 interface FloatItem {
@@ -46,12 +47,14 @@ interface BucketMeta {
   id: HomeBucket;
   label: string;
   iconName: keyof typeof Ionicons.glyphMap;
+  color: string;
 }
 
 const BUCKET_META: BucketMeta[] = [
-  { id: 'today', label: 'Today', iconName: 'sunny' },
-  { id: 'this_week', label: 'This Week', iconName: 'calendar' },
-  { id: 'one_time', label: 'One-time', iconName: 'flag' },
+  { id: 'today',      label: 'Today',     iconName: 'time',     color: tokens.brand.violet2 },
+  { id: 'this_week',  label: 'This Week', iconName: 'calendar', color: '#4DD0FF' },
+  { id: 'this_month', label: 'This Month',iconName: 'calendar-outline', color: tokens.semantic.coin },
+  { id: 'one_time',   label: 'One-time',  iconName: 'flag',     color: '#FF8A3D' },
 ];
 
 export default function HomeScreen() {
@@ -59,14 +62,12 @@ export default function HomeScreen() {
   const character = useCharacter();
   const buckets = useHomeBuckets();
   const streak = useStreak();
-  const quests = useQuests();
   const completeTask = useCompleteTask();
   useLoadHomeBuckets();
   const collapsed = useHomeBucketsStore((s) => s.collapsed);
   const toggleBucket = useHomeBucketsStore((s) => s.toggle);
   const [floats, setFloats] = useState<FloatItem[]>([]);
   // Per-task overrides for star difficulty, applied via swipe on the card.
-  // Cleared when the day rolls over (handled implicitly: tasks list refetches).
   const [diffOverrides, setDiffOverrides] = useState<Record<string, Difficulty>>({});
 
   const handleComplete = async (task: TaskWithDimension) => {
@@ -123,14 +124,21 @@ export default function HomeScreen() {
   const totalPending =
     (data?.today.length ?? 0) +
     (data?.thisWeek.length ?? 0) +
+    (data?.thisMonth.length ?? 0) +
     (data?.oneTime.length ?? 0);
 
   const tasksFor = (b: HomeBucket): TaskWithDimension[] => {
     if (!data) return [];
     if (b === 'today') return data.today;
     if (b === 'this_week') return data.thisWeek;
+    if (b === 'this_month') return data.thisMonth;
     return data.oneTime;
   };
+
+  // Pre-compute level progress so the header always renders something
+  // sensible, even on first load when character hasn't resolved yet.
+  const charXp = character.data?.character.total_xp ?? 0;
+  const lp = levelProgress(charXp);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -148,12 +156,16 @@ export default function HomeScreen() {
             />
           }
         >
-          {/* Date + greeting only — name lives in HeroCard below, no need to
-            * repeat it here (and the QuestChip card was crowding it visually). */}
-          <View style={styles.header}>
-            <Text style={styles.dateText}>{formatLongDate()}</Text>
-            <Text style={styles.greeting}>{timeOfDayGreeting()}</Text>
-          </View>
+          <CompactHeader
+            displayName={character.data?.profile.display_name ?? 'adventurer'}
+            totalXp={charXp}
+            level={lp.level}
+            xpInLevel={lp.xpInLevel}
+            xpNeededForLevel={lp.xpNeededForLevel}
+            coins={character.data?.character.coins ?? 0}
+            streakDays={streak.data?.currentStreak ?? 0}
+            dateLabel={formatCompactDate()}
+          />
 
           {isLoading ? (
             <View style={styles.loadingBox}>
@@ -166,100 +178,77 @@ export default function HomeScreen() {
                 Something went wrong loading your data. Pull to retry.
               </Text>
             </View>
+          ) : totalPending === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="checkmark-circle" size={42} color={tokens.semantic.xp} />
+              <Text style={styles.emptyTitle}>All clear.</Text>
+              <Text style={styles.emptySub}>
+                Nothing pending right now. Add a task to get started.
+              </Text>
+              <Pressable
+                onPress={() => router.push('/tasks')}
+                style={({ pressed }) => [
+                  styles.emptyCta,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="add" size={18} color={tokens.text.hi} />
+                <Text style={styles.emptyCtaText}>Manage tasks</Text>
+              </Pressable>
+            </View>
           ) : (
-            <>
-              {character.data && (
-                <HeroCard
-                  displayName={character.data.profile.display_name}
-                  totalXp={character.data.character.total_xp}
-                  coins={character.data.character.coins}
-                  streakDays={streak.data?.currentStreak ?? 0}
-                />
-              )}
+            <View style={styles.bucketsList}>
+              {BUCKET_META.map((meta) => {
+                const items = tasksFor(meta.id);
+                const isCollapsed = collapsed[meta.id];
+                // Skip rendering empty This Week / This Month / One-time
+                // sections — keeps the surface tight when nothing's pending.
+                if (items.length === 0 && meta.id !== 'today') return null;
+                return (
+                  <BucketSection
+                    key={meta.id}
+                    meta={meta}
+                    count={items.length}
+                    collapsed={isCollapsed}
+                    onToggle={() => toggleBucket(meta.id)}
+                  >
+                    {items.length === 0 ? (
+                      <Text style={styles.bucketEmpty}>All clear for today.</Text>
+                    ) : (
+                      items.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          task={task}
+                          selectedDifficulty={diffOverrides[task.id]}
+                          onSelectDifficulty={(d) =>
+                            setDiffOverrides((prev) => ({ ...prev, [task.id]: d }))
+                          }
+                          streakDays={streak.data?.currentStreak ?? 0}
+                          onComplete={() => handleComplete(task)}
+                          onEdit={() =>
+                            router.push({ pathname: '/task-form', params: { id: task.id } })
+                          }
+                        />
+                      ))
+                    )}
+                  </BucketSection>
+                );
+              })}
 
-              <View style={styles.questsBlock}>
-                <QuestChip quests={quests.data} emptyAsPill />
-              </View>
-
-              {/* Section bar — title + Manage shortcut */}
-              <View style={styles.sectionBar}>
-                <Text style={styles.sectionTitle}>Tasks</Text>
-                <Pressable
-                  onPress={() => router.push('/tasks')}
-                  style={({ pressed }) => [
-                    styles.manageBtn,
-                    pressed && { opacity: 0.6 },
-                  ]}
-                  hitSlop={6}
-                  accessibilityLabel="Manage tasks"
-                >
-                  <Ionicons name="list" size={14} color={tokens.brand.violet2} />
-                  <Text style={styles.manageBtnText}>Manage</Text>
-                </Pressable>
-              </View>
-
-              {totalPending === 0 ? (
-                <View style={styles.zeroBox}>
-                  <View style={styles.emptyBox}>
-                    <EmptyHero tone="xp" />
-                    <Text style={styles.emptyTitle}>All quests cleared.</Text>
-                    <Text style={styles.emptySub}>
-                      Take the rest, or queue up a new quest.
-                    </Text>
-                  </View>
-                  <View style={styles.addCardWrap}>
-                    <AddCard
-                      label="New task"
-                      sublabel="Add a habit or one-shot quest"
-                      onPress={() => router.push('/task-form')}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.bucketsList}>
-                  {BUCKET_META.map((meta) => {
-                    const items = tasksFor(meta.id);
-                    const isCollapsed = collapsed[meta.id];
-                    return (
-                      <BucketSection
-                        key={meta.id}
-                        meta={meta}
-                        count={items.length}
-                        collapsed={isCollapsed}
-                        onToggle={() => toggleBucket(meta.id)}
-                      >
-                        {items.length === 0 ? (
-                          <Text style={styles.bucketEmpty}>
-                            Nothing here.
-                          </Text>
-                        ) : (
-                          items.map((task) => (
-                            <TaskCard
-                              key={task.id}
-                              task={task}
-                              selectedDifficulty={diffOverrides[task.id]}
-                              onSelectDifficulty={(d) =>
-                                setDiffOverrides((prev) => ({ ...prev, [task.id]: d }))
-                              }
-                              streakDays={streak.data?.currentStreak ?? 0}
-                              onComplete={() => handleComplete(task)}
-                              onEdit={() =>
-                                router.push({ pathname: '/task-form', params: { id: task.id } })
-                              }
-                            />
-                          ))
-                        )}
-                      </BucketSection>
-                    );
-                  })}
-                  <AddCard
-                    label="New task"
-                    sublabel="Add a habit or one-shot quest"
-                    onPress={() => router.push('/task-form')}
-                  />
-                </View>
-              )}
-            </>
+              {/* Manage shortcut at the bottom — replaces the old "+ New task"
+                  card since adoption from the catalog lives on /tasks. */}
+              <Pressable
+                onPress={() => router.push('/tasks')}
+                style={({ pressed }) => [
+                  styles.manageCta,
+                  pressed && { opacity: 0.7 },
+                ]}
+                hitSlop={4}
+              >
+                <Ionicons name="list" size={16} color={tokens.brand.violet2} />
+                <Text style={styles.manageCtaText}>Manage tasks</Text>
+              </Pressable>
+            </View>
           )}
         </ScrollView>
       </ScreenBackground>
@@ -291,23 +280,21 @@ function BucketSection({
   onToggle,
   children,
 }: BucketSectionProps) {
-  // Empty + collapsed = render only the header to keep the surface tidy.
-  // Empty + expanded = show the "Nothing here" hint via children.
   return (
-    <View style={styles.bucket}>
+    <View style={bucketStyles.wrap}>
       <Pressable
         onPress={onToggle}
         style={({ pressed }) => [
-          styles.bucketHeader,
+          bucketStyles.header,
           pressed && { opacity: 0.7 },
         ]}
       >
-        <View style={styles.bucketIconWrap}>
-          <Ionicons name={meta.iconName} size={14} color={tokens.brand.violet2} />
+        <View style={bucketStyles.iconWrap}>
+          <Ionicons name={meta.iconName} size={14} color={meta.color} />
         </View>
-        <Text style={styles.bucketLabel}>{meta.label}</Text>
-        <View style={styles.bucketCountChip}>
-          <Text style={styles.bucketCountText}>{count}</Text>
+        <Text style={bucketStyles.label}>{meta.label}</Text>
+        <View style={bucketStyles.countChip}>
+          <Text style={bucketStyles.countText}>{count}</Text>
         </View>
         <View style={{ flex: 1 }} />
         <Ionicons
@@ -316,37 +303,16 @@ function BucketSection({
           color={tokens.text.dim}
         />
       </Pressable>
-      {!collapsed && <View style={styles.bucketBody}>{children}</View>}
+      {!collapsed && <View style={bucketStyles.body}>{children}</View>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: tokens.bg.deep,
-  },
-  scroll: {
-    flex: 1,
-  },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
+  scroll: { flex: 1 },
   scrollContent: {
-    paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.layout.bottomNavClearance,
-  },
-  header: {
-    paddingTop: tokens.space[2],
-    paddingBottom: tokens.space[3],
-  },
-  dateText: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: tokens.space[2],
-  },
-  greeting: {
-    ...tokens.type.body,
-    color: tokens.text.mid,
   },
   loadingBox: {
     paddingVertical: tokens.space[10],
@@ -363,107 +329,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: tokens.space[5],
   },
-  sectionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: tokens.space[6],
-    marginBottom: tokens.space[3],
-  },
-  sectionTitle: {
-    ...tokens.type.h2,
-    color: tokens.text.hi,
-  },
-  manageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: 6,
-    borderRadius: tokens.radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(123,92,255,0.4)',
-    backgroundColor: 'rgba(123,92,255,0.12)',
-  },
-  manageBtnText: {
-    ...tokens.type.caption,
-    color: tokens.brand.violet2,
-    fontFamily: 'Manrope_700Bold',
-    letterSpacing: 0.4,
-  },
-  questsBlock: {
-    marginBottom: tokens.space[5],
-  },
-  bucketsList: {
-    gap: tokens.space[3],
-  },
-  bucket: {
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    overflow: 'hidden',
-  },
-  bucketHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[2],
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[3],
-  },
-  bucketIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: tokens.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(123,92,255,0.18)',
-  },
-  bucketLabel: {
-    ...tokens.type.bodyLg,
-    color: tokens.text.hi,
-    fontFamily: 'Manrope_800ExtraBold',
-  },
-  bucketCountChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: tokens.radius.pill,
-    backgroundColor: tokens.bg.base,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    minWidth: 24,
-    alignItems: 'center',
-  },
-  bucketCountText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    color: tokens.text.mid,
-  },
-  bucketBody: {
-    paddingHorizontal: tokens.space[3],
-    paddingTop: tokens.space[2],
-    paddingBottom: tokens.space[3],
-    gap: tokens.space[3],
-    borderTopWidth: 1,
-    borderTopColor: tokens.border.divider,
-  },
-  bucketEmpty: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    fontStyle: 'italic',
-    paddingVertical: tokens.space[3],
-    textAlign: 'center',
-  },
-  zeroBox: {
-    marginTop: tokens.space[3],
-  },
-  addCardWrap: {
-    marginTop: tokens.space[4],
-  },
   emptyBox: {
-    paddingVertical: tokens.space[8],
+    paddingVertical: tokens.space[10],
     alignItems: 'center',
     gap: tokens.space[2],
+    paddingHorizontal: tokens.space[6],
   },
   emptyTitle: {
     ...tokens.type.h2,
@@ -474,6 +344,91 @@ const styles = StyleSheet.create({
     ...tokens.type.body,
     color: tokens.text.mid,
     textAlign: 'center',
-    paddingHorizontal: tokens.space[6],
+  },
+  emptyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.brand.violet,
+    marginTop: tokens.space[4],
+  },
+  emptyCtaText: {
+    ...tokens.type.body,
+    color: tokens.text.hi,
+    fontFamily: 'Manrope_700Bold',
+  },
+  bucketsList: {
+    paddingHorizontal: tokens.space[3],
+    gap: tokens.space[3],
+  },
+  bucketEmpty: {
+    ...tokens.type.caption,
+    color: tokens.text.dim,
+    fontStyle: 'italic',
+    paddingVertical: tokens.space[3],
+    textAlign: 'center',
+  },
+  manageCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: tokens.space[3],
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(123,92,255,0.4)',
+    backgroundColor: 'rgba(123,92,255,0.08)',
+  },
+  manageCtaText: {
+    ...tokens.type.body,
+    color: tokens.brand.violet2,
+    fontFamily: 'Manrope_700Bold',
+  },
+});
+
+const bucketStyles = StyleSheet.create({
+  wrap: {
+    gap: 6,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+  },
+  iconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.bg.surface,
+  },
+  label: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.text.hi,
+    letterSpacing: 0.2,
+  },
+  countChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: tokens.bg.surface,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 10,
+    color: tokens.text.mid,
+  },
+  body: {
+    gap: 8,
   },
 });

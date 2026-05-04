@@ -111,9 +111,12 @@ export interface HomeBuckets {
   /** Daily-cadence work pending today: dailies + weeklies-due-today +
    *  monthlies-due-today, where today's target_count isn't yet met. */
   today: TaskWithDimension[];
-  /** Weeklies/monthlies pending elsewhere this week (not today). Lets the
-   *  user see what's coming without leaving Home. */
+  /** Weekly tasks that aren't in Today but still have pending occurrences
+   *  this week. Daily tasks that are met for today don't appear — they
+   *  roll back to Today tomorrow. */
   thisWeek: TaskWithDimension[];
+  /** Monthly tasks that aren't in Today but are due later this month. */
+  thisMonth: TaskWithDimension[];
   /** One-shot tasks that have never been completed. */
   oneTime: TaskWithDimension[];
 }
@@ -125,6 +128,23 @@ function startOfThisWeek(): Date {
   // JS getDay: 0=Sun..6=Sat. Convert to Monday=0..Sunday=6.
   const offset = (d.getDay() + 6) % 7;
   d.setDate(d.getDate() - offset);
+  return d;
+}
+
+/** First-of-month at 00:00 local. */
+function startOfThisMonth(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(1);
+  return d;
+}
+
+/** Last day of the current month at 23:59:59.999 local. */
+function endOfThisMonth(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  // setDate(0) of next month = last day of current month
+  d.setMonth(d.getMonth() + 1, 0);
   return d;
 }
 
@@ -141,24 +161,27 @@ function countScheduledThisWeek(rec: TaskWithDimension['recurrence'], weekStart:
 }
 
 /**
- * The three Home sections in one shot. Single batch of fetches keeps the
- * payload small and the loading state simple — Home renders all three or
+ * The four Home sections in one shot. Single batch of fetches keeps the
+ * payload small and the loading state simple — Home renders all four or
  * none. The bucketing logic:
  *
  *   - One-time: any one_shot task that has never been completed.
- *   - Today: non-one_shot tasks that are due today AND haven't met their
- *            target_count for today yet.
- *   - This Week: weekly/monthly tasks that are NOT in Today, but still
- *                have at least one pending scheduled occurrence this week
- *                (scheduled occurrences × target_count > completions this
- *                week). Daily tasks that are met for today don't show
- *                here — they'll come back tomorrow.
+ *   - Today: non-one_shot tasks due today AND today's target_count not met.
+ *   - This Week: WEEKLY tasks not in Today but with pending occurrences
+ *                this week (scheduled × target_count > completions).
+ *   - This Month: MONTHLY tasks not in Today but with pending occurrences
+ *                this month (target_count > completions this month).
+ *
+ * Daily tasks completed for today don't appear in any below-Today bucket;
+ * they roll back to Today tomorrow.
  */
 async function fetchHomeBuckets(): Promise<HomeBuckets> {
   const today = new Date();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const weekStart = startOfThisWeek();
+  const monthStart = startOfThisMonth();
+  const monthEnd = endOfThisMonth();
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
@@ -191,6 +214,18 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
     doneWeek.set(c.task_id, (doneWeek.get(c.task_id) ?? 0) + 1);
   });
 
+  // Month completions (per task) — used by the This Month bucket.
+  const { data: completionsMonth, error: monthErr } = await supabase
+    .from('task_completion')
+    .select('task_id')
+    .gte('completed_at', monthStart.toISOString())
+    .lte('completed_at', monthEnd.toISOString());
+  if (monthErr) throw monthErr;
+  const doneMonth = new Map<string, number>();
+  (completionsMonth ?? []).forEach((c) => {
+    doneMonth.set(c.task_id, (doneMonth.get(c.task_id) ?? 0) + 1);
+  });
+
   // One-shots: ever completed?
   const oneShotIds = allTasks
     .filter((t) => t.recurrence.type === 'one_shot')
@@ -205,7 +240,12 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
     everCompletedOneShots = new Set((anyComp ?? []).map((r) => r.task_id));
   }
 
-  const buckets: HomeBuckets = { today: [], thisWeek: [], oneTime: [] };
+  const buckets: HomeBuckets = {
+    today: [],
+    thisWeek: [],
+    thisMonth: [],
+    oneTime: [],
+  };
 
   for (const t of allTasks) {
     if (t.recurrence.type === 'one_shot') {
@@ -220,14 +260,17 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
       continue;
     }
 
-    // Not in Today. For weekly/monthly, check if any other day this week
-    // still has a pending occurrence (or the user is short on the week's
-    // expected reps). Daily tasks completed today simply roll to tomorrow.
-    if (t.recurrence.type === 'weekly' || t.recurrence.type === 'monthly') {
+    // Not in Today. Weekly tasks → This Week if pending scheduled
+    // occurrences this week. Monthly tasks → This Month if pending
+    // this month.
+    if (t.recurrence.type === 'weekly') {
       const scheduled = countScheduledThisWeek(t.recurrence, weekStart);
       const expected = scheduled * t.target_count;
       const weekCount = doneWeek.get(t.id) ?? 0;
       if (expected > weekCount) buckets.thisWeek.push(t);
+    } else if (t.recurrence.type === 'monthly') {
+      const monthCount = doneMonth.get(t.id) ?? 0;
+      if (t.target_count > monthCount) buckets.thisMonth.push(t);
     }
   }
 

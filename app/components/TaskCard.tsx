@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -23,10 +22,11 @@ import {
   type Difficulty,
 } from '@/lib/xp';
 import { tokens } from '@/theme';
+import { DIMENSION_META, SUB_META } from '@/theme/dimensions';
 
 import { CoinIcon } from './CoinIcon';
-import { DifficultyStars } from './DifficultyStars';
-import { DimensionChip } from './DimensionChip';
+import { DiffPips } from './DiffPips';
+import { SubStack } from './SubStack';
 
 interface Props {
   task: TaskWithDimension;
@@ -47,6 +47,24 @@ const clampDifficulty = (n: number): Difficulty => {
   return Math.max(1, Math.min(5, Math.round(n))) as Difficulty;
 };
 
+/**
+ * Compact task card following the Tasks v2 visual:
+ *
+ *   ┌────────────────────────────────────────────────┐
+ *   │ ▎ Title                              ┌─────┐  │
+ *   │   [sub] [pips] +XP +coins            │ ✓   │  │
+ *   │                                       └─────┘  │
+ *   └────────────────────────────────────────────────┘
+ *
+ * The vertical accent bar on the left picks up the primary sub's dim
+ * color so each card reads as belonging to a particular pillar at a
+ * glance. The big violet button on the right is the single primary
+ * action — tap it to log a completion.
+ *
+ * Swipe-to-change-difficulty is preserved for scaling tasks (the metric
+ * scaling feature on the task) so users can bump a daily run from 5km
+ * to 7km without leaving the card.
+ */
 export function TaskCard({
   task,
   selectedDifficulty,
@@ -65,6 +83,10 @@ export function TaskCard({
 
   const baseReward = rewardForDifficulty(effectiveDifficulty);
   const reward = applyStreakMultiplier(baseReward, streakDays);
+
+  const subMeta = SUB_META[task.sub_id];
+  const dimMeta = DIMENSION_META[task.dimension_id];
+  const accent = dimMeta.color;
 
   const scaledTarget =
     scalingEnabled && task.base_value !== null && task.increment_per_star !== null
@@ -144,36 +166,39 @@ export function TaskCard({
 
   return (
     <View style={styles.container}>
+      {/* Vertical accent bar on the left, tinted by the task's parent dim */}
+      <View
+        style={[
+          styles.accentBar,
+          { backgroundColor: accent, opacity: 0.6 },
+        ]}
+      />
+
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={[{ flex: 1, minWidth: 0 }, bodyAnimStyle]}>
+        <Animated.View style={[styles.bodyWrap, bodyAnimStyle]}>
           <Pressable
-            style={({ pressed }) => [styles.body, pressed && onEdit && { opacity: 0.7 }]}
+            style={({ pressed }) => [
+              styles.body,
+              pressed && onEdit && { opacity: 0.85 },
+            ]}
             onPress={onEdit}
             disabled={!onEdit}
           >
             <Text style={styles.title} numberOfLines={2}>
               {titleText}
             </Text>
+
             <View style={styles.metaRow}>
-              <DifficultyStars difficulty={effectiveDifficulty} />
-              <View style={styles.chipsRow}>
-                <DimensionChip id={task.dimension_id} size="sm" />
-              </View>
-            </View>
-            {showRecurrenceNote && (
-              <Text style={styles.recurrenceNote} numberOfLines={1}>
-                {describeRecurrence(task.recurrence, task.target_count)}
-              </Text>
-            )}
-            <View style={styles.rewardRow}>
+              {subMeta && <SubStack subIds={[task.sub_id]} max={1} size={28} />}
+              <DiffPips value={effectiveDifficulty} color={accent} />
               <View style={styles.rewardItem}>
-                <Ionicons name="flash" size={12} color={tokens.semantic.xp} />
+                <Ionicons name="flag" size={11} color={tokens.semantic.xp} />
                 <Text style={[styles.rewardText, { color: tokens.semantic.xp }]}>
-                  +{reward.xp} XP
+                  +{reward.xp}
                 </Text>
               </View>
               <View style={styles.rewardItem}>
-                <CoinIcon size={12} />
+                <CoinIcon size={11} />
                 <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
                   +{reward.coins}
                 </Text>
@@ -182,13 +207,24 @@ export function TaskCard({
                 <Text
                   style={[
                     styles.tickHint,
-                    { color: hintDirection === 'up' ? tokens.semantic.xp : tokens.text.dim },
+                    {
+                      color:
+                        hintDirection === 'up'
+                          ? tokens.semantic.xp
+                          : tokens.text.dim,
+                    },
                   ]}
                 >
                   {hintDirection === 'up' ? '+1★' : '−1★'}
                 </Text>
               )}
             </View>
+
+            {showRecurrenceNote && (
+              <Text style={styles.recurrenceNote} numberOfLines={1}>
+                {describeRecurrence(task.recurrence, task.target_count)}
+              </Text>
+            )}
           </Pressable>
 
           {scalingEnabled && (
@@ -213,17 +249,12 @@ export function TaskCard({
           onPressOut={handlePressOut}
           disabled={isCompleting}
           hitSlop={8}
-          style={({ pressed }) => [pressed && styles.completeButtonPressed]}
+          style={({ pressed }) => [
+            styles.completeButton,
+            pressed && styles.completeButtonPressed,
+          ]}
         >
-          <LinearGradient
-            colors={tokens.gradient.completeBtn}
-            locations={tokens.gradient.completeBtnLocations}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.completeButton}
-          >
-            <Ionicons name="checkmark" size={26} color={tokens.text.hi} />
-          </LinearGradient>
+          <Ionicons name="checkmark" size={22} color="#fff" />
         </Pressable>
       </Animated.View>
     </View>
@@ -235,50 +266,56 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    padding: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    paddingHorizontal: tokens.space[3],
+    paddingLeft: tokens.space[4],
     backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: tokens.border.base,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  accentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 8,
+    bottom: 8,
+    width: 3,
+    borderRadius: 2,
+  },
+  bodyWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   body: {
     gap: tokens.space[2],
   },
   title: {
-    ...tokens.type.bodyLg,
-    color: tokens.text.hi,
     fontFamily: 'Manrope_700Bold',
+    fontSize: 14,
+    lineHeight: 18,
+    color: tokens.text.hi,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.space[3],
+    gap: 8,
     flexWrap: 'wrap',
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  rewardRow: {
-    flexDirection: 'row',
-    gap: tokens.space[3],
-    alignItems: 'center',
   },
   rewardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   rewardText: {
-    ...tokens.type.caption,
     fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
   },
   tickHint: {
-    ...tokens.type.caption,
     fontFamily: 'Manrope_800ExtraBold',
-    marginLeft: tokens.space[2],
+    fontSize: 11,
+    marginLeft: 4,
   },
   recurrenceNote: {
     ...tokens.type.caption,
@@ -286,21 +323,20 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   completeShadow: {
-    borderRadius: 14,
+    borderRadius: 12,
     shadowColor: tokens.brand.violet,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 8,
+    shadowRadius: 12,
+    elevation: 6,
   },
   completeButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: tokens.brand.violet,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
   },
   completeButtonPressed: {
     opacity: 0.85,

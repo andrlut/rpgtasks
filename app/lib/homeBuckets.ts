@@ -9,16 +9,17 @@ import { create } from 'zustand';
  * AsyncStorage-backed, hydrated once near the app root.
  */
 
-const KEY = 'rpgtasks.homeBuckets.collapsed.v1';
+const KEY = 'rpgtasks.homeBuckets.collapsed.v2';
 
-export type HomeBucket = 'today' | 'this_week' | 'one_time';
+export type HomeBucket = 'today' | 'this_week' | 'this_month' | 'one_time';
 
 type Collapsed = Record<HomeBucket, boolean>;
 
 const DEFAULT: Collapsed = {
-  today: false,      // expanded — the action surface
-  this_week: true,   // collapsed by default — preview, not the focus
-  one_time: true,    // collapsed by default — only matters when the user opts in
+  today: false,       // expanded — the action surface
+  this_week: true,    // collapsed by default — preview, not the focus
+  this_month: true,   // collapsed by default — long-horizon
+  one_time: true,     // collapsed by default — only matters when the user opts in
 };
 
 interface Store {
@@ -41,6 +42,7 @@ export const useHomeBucketsStore = create<Store>((set, get) => ({
           collapsed: {
             today: parsed.today ?? DEFAULT.today,
             this_week: parsed.this_week ?? DEFAULT.this_week,
+            this_month: parsed.this_month ?? DEFAULT.this_month,
             one_time: parsed.one_time ?? DEFAULT.one_time,
           },
           hydrated: true,
