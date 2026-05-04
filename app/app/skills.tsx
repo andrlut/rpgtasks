@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { TierMedal } from '@/components/TierMedal';
+import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import { useSkillStates } from '@/lib/api/skills';
 import type { DimensionId, SkillState, SubId, TierName } from '@/lib/db/types';
 import { tokens } from '@/theme';
@@ -168,7 +168,12 @@ export default function SkillsHubScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={[styles.statBlock, { alignItems: 'center' }]}>
-              <TierMedal tier={summary.topTier} size={28} />
+              <SkillMedallionOrbital
+                tier={summary.topTier}
+                pr={0}
+                size={32}
+                showGlyph={false}
+              />
               <Text style={styles.statLabel}>Best tier</Text>
             </View>
           </View>
@@ -327,9 +332,11 @@ export default function SkillsHubScreen() {
                               })
                             }
                           >
-                            <TierMedal
+                            <SkillMedallionOrbital
                               tier={s.currentTier.tier_name}
-                              size={36}
+                              pr={s.currentPr}
+                              size={44}
+                              showGlyph={false}
                             />
                             <View style={styles.skillItemBody}>
                               <View style={styles.skillItemTitleRow}>

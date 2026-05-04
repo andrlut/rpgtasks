@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { TierMedal } from '@/components/TierMedal';
+import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import {
   useCreateCustomSkill,
   type CustomSkillTierInput,
@@ -279,7 +279,12 @@ export default function SkillFormScreen() {
               {TIER_NAMES.map((name, i) => (
                 <View key={name} style={styles.tierCard}>
                   <View style={styles.tierHeader}>
-                    <TierMedal tier={name} size={32} />
+                    <SkillMedallionOrbital
+                      tier={name}
+                      pr={0}
+                      size={36}
+                      showGlyph={false}
+                    />
                     <Text style={styles.tierName}>{name.toUpperCase()}</Text>
                   </View>
                   <View style={styles.tierFieldsRow}>
