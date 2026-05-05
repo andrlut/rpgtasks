@@ -131,7 +131,7 @@ export const SUB_META: Record<SubId, SubMeta> = {
     description: 'Quality of what you eat and drink. Real food, hydration, restraint.',
   },
   strength: {
-    label: 'Strength', iconName: 'walk', dimensionId: 'body',
+    label: 'Strength', iconName: 'barbell', dimensionId: 'body',
     description: 'Cardio, lifting, walking — the raw amount you move your body.',
   },
   dexterity: {

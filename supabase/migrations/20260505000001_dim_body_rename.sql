@@ -28,7 +28,7 @@ delete from public.dimension where id = 'strength';
 
 -- ─── 4. Insert new sub `strength` (under `body`) ─────────────────────────
 insert into public.dimension_sub (id, dimension_id, display_name, icon, sort_order)
-values ('strength', 'body', 'Strength', 'walk', 1);
+values ('strength', 'body', 'Strength', 'barbell', 1);
 
 -- ─── 5. Migrate FKs from sub `movement` → `strength` ─────────────────────
 update public.task                 set sub_id = 'strength' where sub_id = 'movement';
