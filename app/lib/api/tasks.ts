@@ -180,15 +180,6 @@ function endOfThisMonth(): Date {
   return d;
 }
 
-function countScheduledThisWeek(rec: TaskWithSubs['recurrence'], weekStart: Date): number {
-  let count = 0;
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    if (isDueOn(rec, d)) count++;
-  }
-  return count;
-}
 
 async function fetchHomeBuckets(): Promise<HomeBuckets> {
   const today = new Date();
@@ -259,28 +250,44 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
   };
 
   for (const t of allTasks) {
+    const todayCount = doneToday.get(t.id) ?? 0;
+
     if (t.recurrence.type === 'one_shot') {
       if (!everCompletedOneShots.has(t.id)) buckets.oneTime.push(t);
       continue;
     }
 
-    const dueToday = isDueOn(t.recurrence, today);
-    const todayCount = doneToday.get(t.id) ?? 0;
-    if (dueToday && todayCount < t.target_count) {
-      buckets.today.push(t);
+    if (t.recurrence.type === 'daily') {
+      // Daily clears once today's target is met. Weekly/monthly only
+      // need 1 completion today to clear from Today (the rest of the
+      // period target is tracked in This Week/Month).
+      if (todayCount < t.target_count) buckets.today.push(t);
       continue;
     }
 
+    // weekly / monthly: optional schedule decides Today promotion;
+    // period target decides This Week / This Month presence.
+    const scheduledToday = isDueOn(t.recurrence, today);
+    if (scheduledToday && todayCount === 0) {
+      buckets.today.push(t);
+    }
+
     if (t.recurrence.type === 'weekly') {
-      const scheduled = countScheduledThisWeek(t.recurrence, weekStart);
-      const expected = scheduled * t.target_count;
       const weekCount = doneWeek.get(t.id) ?? 0;
-      if (expected > weekCount) buckets.thisWeek.push(t);
-    } else if (t.recurrence.type === 'monthly') {
+      if (weekCount < t.target_count) buckets.thisWeek.push(t);
+    } else {
+      // monthly
       const monthCount = doneMonth.get(t.id) ?? 0;
-      if (t.target_count > monthCount) buckets.thisMonth.push(t);
+      if (monthCount < t.target_count) buckets.thisMonth.push(t);
     }
   }
+
+  // Tasks promoted to Today (scheduled day) shouldn't appear ALSO in
+  // This Week / This Month — would be double-listing. Filter out any
+  // task already in Today from the period buckets.
+  const todayIds = new Set(buckets.today.map((t) => t.id));
+  buckets.thisWeek = buckets.thisWeek.filter((t) => !todayIds.has(t.id));
+  buckets.thisMonth = buckets.thisMonth.filter((t) => !todayIds.has(t.id));
 
   return buckets;
 }

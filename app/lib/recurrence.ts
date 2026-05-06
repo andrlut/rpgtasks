@@ -3,51 +3,60 @@ import type { Recurrence } from '@/lib/db/types';
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
- * Is the task due on the given local date?
+ * Is the task **scheduled** on the given local date?
  *
- * Note: this only answers the *schedule* question. Whether the user has
- * already met the day's target is a separate concern (compute completion
- * counts and compare to `target_count`).
+ * Scheduling = "show in Today as a reminder". For weekly/monthly with no
+ * days/day set, this returns false (no schedule hint, only This Week/Month).
+ * For one_shot, it returns true (the One-time bucket handles the
+ * "completed already?" filter on top).
  */
-export function isDueOn(rec: Recurrence, date: Date): boolean {
+export function isScheduledOn(rec: Recurrence, date: Date): boolean {
   switch (rec.type) {
     case 'one_shot':
-      // one_shot is "due" on every date until first completed; the caller
-      // applies the "any past completion exists?" check on top.
       return true;
     case 'daily':
       return true;
     case 'weekly':
-      return rec.days.includes(date.getDay());
+      return Array.isArray(rec.days) && rec.days.includes(date.getDay());
     case 'monthly':
-      return date.getDate() === rec.day;
+      return typeof rec.day === 'number' && date.getDate() === rec.day;
   }
 }
 
+// Backwards-compatible alias — earlier code calls isDueOn. Same semantics
+// as isScheduledOn under the new model.
+export const isDueOn = isScheduledOn;
+
 /**
  * Human-readable summary used by cards and forms.
- *   one_shot      → "One-shot"
- *   daily         → "Every day"
- *   daily, n=3    → "3× every day"
- *   weekly [0,3]  → "Sun, Wed"
- *   monthly day=15→ "Day 15 each month"
+ *   one_shot                     → "One-shot"
+ *   daily, n=1                   → "Every day"
+ *   daily, n=3                   → "3× every day"
+ *   weekly, n=3, no days         → "3× per week"
+ *   weekly, n=3, days [1,3,5]    → "3× per week · Mon, Wed, Fri"
+ *   weekly, n=7, days all        → "Every day"
+ *   monthly, n=1, day=15         → "1× per month · day 15"
+ *   monthly, n=2, no day         → "2× per month"
  */
 export function describeRecurrence(rec: Recurrence, targetCount = 1): string {
-  const prefix = targetCount > 1 ? `${targetCount}× ` : '';
   switch (rec.type) {
     case 'one_shot':
       return 'One-shot';
     case 'daily':
-      return `${prefix}every day`;
+      return targetCount > 1 ? `${targetCount}× every day` : 'Every day';
     case 'weekly': {
-      if (rec.days.length === 0) return 'Weekly (no days picked)';
-      if (rec.days.length === 7) return `${prefix}every day`;
-      const sorted = [...rec.days].sort((a, b) => a - b);
+      const days = rec.days ?? [];
+      if (days.length === 7) return 'Every day';
+      const base = `${targetCount}× per week`;
+      if (days.length === 0) return base;
+      const sorted = [...days].sort((a, b) => a - b);
       const labels = sorted.map((d) => WEEKDAY_NAMES[d]).filter(Boolean);
-      return `${prefix}${labels.join(', ')}`;
+      return `${base} · ${labels.join(', ')}`;
     }
-    case 'monthly':
-      return `Day ${rec.day} each month`;
+    case 'monthly': {
+      const base = targetCount === 1 ? 'Once a month' : `${targetCount}× per month`;
+      return rec.day ? `${base} · day ${rec.day}` : base;
+    }
   }
 }
 
@@ -57,11 +66,17 @@ export function parseRecurrence(raw: unknown): Recurrence {
     const r = raw as { type: string; days?: number[]; day?: number };
     if (r.type === 'one_shot') return { type: 'one_shot' };
     if (r.type === 'daily') return { type: 'daily' };
-    if (r.type === 'weekly' && Array.isArray(r.days)) {
-      return { type: 'weekly', days: r.days.filter((d) => d >= 0 && d <= 6) };
+    if (r.type === 'weekly') {
+      const days = Array.isArray(r.days)
+        ? r.days.filter((d) => d >= 0 && d <= 6)
+        : undefined;
+      // Empty array collapses to "no schedule" semantically.
+      return days && days.length > 0 ? { type: 'weekly', days } : { type: 'weekly' };
     }
-    if (r.type === 'monthly' && typeof r.day === 'number' && r.day >= 1 && r.day <= 31) {
-      return { type: 'monthly', day: r.day };
+    if (r.type === 'monthly') {
+      const day =
+        typeof r.day === 'number' && r.day >= 1 && r.day <= 31 ? r.day : undefined;
+      return day ? { type: 'monthly', day } : { type: 'monthly' };
     }
   }
   return { type: 'daily' };

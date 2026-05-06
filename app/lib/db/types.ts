@@ -27,21 +27,30 @@ export type SubId =
 export type TaskType = 'one_shot' | 'daily' | 'weekly';
 
 /**
- * Source of truth for when a task is "due". `task_type` is preserved as
- * a legacy hint but `recurrence` is what queries should consult.
+ * Source of truth for cadence. `task_type` is preserved as a legacy hint
+ * but `recurrence` is what queries should consult.
  *
- * - one_shot: due once, ever. Disappears from "today" after first completion.
- * - daily: due every day. `target_count > 1` lets a single task be done
- *   multiple times per day (e.g. brush teeth 3x).
- * - weekly: due only on the listed weekdays (0=Sun, 6=Sat).
- * - monthly: due on the given day-of-month (skipped silently in months
- *   without that day, e.g. day=31 in February).
+ * Semantics (target_count = N times PER PERIOD):
+ *   - one_shot: 1 time, ever. Disappears from One-time after first completion.
+ *   - daily: N times per day. Cleared from Today once doneToday >= N.
+ *   - weekly: N times per week. ALWAYS shows in This Week until met.
+ *             Optional `days` schedule promotes the task into Today on
+ *             those days as a reminder — completing on a scheduled day
+ *             clears it from Today (but it stays in This Week if the
+ *             week target isn't met yet, and reappears on the next
+ *             scheduled day).
+ *   - monthly: N times per month. ALWAYS shows in This Month until met.
+ *              Optional `day` schedule promotes into Today on that day.
+ *
+ * `days` (0=Sun..6=Sat) and `day` (1..31) are PURELY Today-promotion
+ * hints. They do NOT gate completion — user can log a completion any
+ * day and it counts toward the period target.
  */
 export type Recurrence =
   | { type: 'one_shot' }
   | { type: 'daily' }
-  | { type: 'weekly'; days: number[] }
-  | { type: 'monthly'; day: number };
+  | { type: 'weekly'; days?: number[] }
+  | { type: 'monthly'; day?: number };
 
 export type RecurrenceType = Recurrence['type'];
 

@@ -62,8 +62,8 @@ const BUCKETS: BucketMeta[] = [
 function bucketFor(rec: Recurrence): Bucket {
   if (rec.type === 'one_shot') return 'one_time';
   if (rec.type === 'daily') return 'daily';
-  if (rec.type === 'weekly' && rec.days.length === 7) return 'daily';
-  return 'weekly'; // weekly subset OR monthly
+  if (rec.type === 'weekly' && (rec.days?.length ?? 0) === 7) return 'daily';
+  return 'weekly'; // weekly (any subset or flex) OR monthly
 }
 
 export default function TasksHubScreen() {
