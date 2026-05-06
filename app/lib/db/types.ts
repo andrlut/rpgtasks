@@ -6,7 +6,7 @@
 
 export type DimensionId =
   | 'health'
-  | 'strength'
+  | 'body'
   | 'mind'
   | 'wealth'
   | 'bonds'
@@ -18,7 +18,7 @@ export type DimensionId =
  */
 export type SubId =
   | 'sleep' | 'nutrition'
-  | 'movement' | 'dexterity'
+  | 'strength' | 'dexterity'
   | 'learn' | 'contemplate'
   | 'money' | 'career'
   | 'circle' | 'romance'

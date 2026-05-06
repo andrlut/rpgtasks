@@ -46,7 +46,7 @@ export const tokens = {
   },
   dimension: {
     health: '#FF6B7A',
-    strength: '#FF8A3D',
+    body: '#FF8A3D',
     mind: '#B07BFF',
     wealth: '#FFC83D',
     bonds: '#4DD0FF',
@@ -54,7 +54,7 @@ export const tokens = {
   },
   dimensionBg: {
     health: 'rgba(255, 107, 122, 0.16)',
-    strength: 'rgba(255, 138, 61, 0.16)',
+    body: 'rgba(255, 138, 61, 0.16)',
     mind: 'rgba(176, 123, 255, 0.18)',
     wealth: 'rgba(255, 200, 61, 0.16)',
     bonds: 'rgba(77, 208, 255, 0.16)',

@@ -14,7 +14,7 @@ interface CategoryMeta {
 export const QUEST_CATEGORY_META: Record<string, CategoryMeta> = {
   fitness: {
     label: 'Fitness',
-    color: tokens.dimension.strength,
+    color: tokens.dimension.body,
     bg: 'rgba(255, 138, 61, 0.16)',
     icon: 'fitness',
   },

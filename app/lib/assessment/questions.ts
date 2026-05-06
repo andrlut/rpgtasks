@@ -113,10 +113,10 @@ const RAW_QUESTIONS = [
     ],
   },
 
-  // ── Strength / Movement ─────────────────────────────────────────────────
+  // ── Body / Strength ─────────────────────────────────────────────────────
   {
-    id: 'movement_frequency',
-    sub_id: 'movement',
+    id: 'strength_frequency',
+    sub_id: 'strength',
     source: 'custom',
     prompt:
       'Em uma semana típica, em quantos dias você faz atividade física que tira do sedentarismo (treino de força, cardio, esporte) por 20+ minutos?',
@@ -129,8 +129,8 @@ const RAW_QUESTIONS = [
     ],
   },
   {
-    id: 'movement_capable',
-    sub_id: 'movement',
+    id: 'strength_capable',
+    sub_id: 'strength',
     source: 'custom',
     prompt:
       'Meu corpo se sente forte e capaz no dia a dia — subo escada, carrego peso, jogo um esporte sem travar.',
@@ -143,7 +143,7 @@ const RAW_QUESTIONS = [
     ],
   },
 
-  // ── Strength / Dexterity ────────────────────────────────────────────────
+  // ── Body / Dexterity ────────────────────────────────────────────────────
   {
     id: 'dexterity_practice',
     sub_id: 'dexterity',

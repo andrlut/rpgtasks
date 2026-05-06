@@ -16,7 +16,7 @@ interface Props {
 /** 3-letter abbreviation per dim — keeps the grid airy at small widths. */
 const DIM_ABBREV: Record<DimensionId, string> = {
   health: 'HEA',
-  strength: 'STR',
+  body: 'BOD',
   mind: 'MIN',
   wealth: 'WEA',
   bonds: 'BND',

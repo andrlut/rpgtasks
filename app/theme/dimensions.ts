@@ -28,14 +28,14 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
       'No screens 1h before bed',
     ],
   },
-  strength: {
-    label: 'Strength',
-    color: tokens.dimension.strength,
-    bg: tokens.dimensionBg.strength,
+  body: {
+    label: 'Body',
+    color: tokens.dimension.body,
+    bg: tokens.dimensionBg.body,
     iconName: 'fitness',
     tagline: 'Earned, not given.',
     description:
-      'Movement + dexterity. Cardio, lifting, sport, mobility. The visible proof of consistency over time.',
+      'Strength + dexterity. Cardio, lifting, sport, mobility. The visible proof of consistency over time.',
     examples: [
       '20 push-ups',
       'Run 5km',
@@ -107,7 +107,7 @@ export const DIMENSION_META: Record<DimensionId, DimensionMeta> = {
 
 export const DIMENSION_ORDER: DimensionId[] = [
   'health',
-  'strength',
+  'body',
   'mind',
   'wealth',
   'bonds',
@@ -130,12 +130,12 @@ export const SUB_META: Record<SubId, SubMeta> = {
     label: 'Nutrition', iconName: 'restaurant', dimensionId: 'health',
     description: 'Quality of what you eat and drink. Real food, hydration, restraint.',
   },
-  movement: {
-    label: 'Movement', iconName: 'walk', dimensionId: 'strength',
+  strength: {
+    label: 'Strength', iconName: 'barbell', dimensionId: 'body',
     description: 'Cardio, lifting, walking — the raw amount you move your body.',
   },
   dexterity: {
-    label: 'Dexterity', iconName: 'body', dimensionId: 'strength',
+    label: 'Dexterity', iconName: 'body', dimensionId: 'body',
     description: 'Coordination, mobility, sport skill — how well your body moves.',
   },
   learn: {
@@ -185,7 +185,7 @@ export const SUB_SCORE_LABELS: Record<number, string> = {
 /** Subs grouped by their parent dim, in display order. */
 export const SUBS_BY_DIM: Record<DimensionId, SubId[]> = {
   health:   ['sleep', 'nutrition'],
-  strength: ['movement', 'dexterity'],
+  body:     ['strength', 'dexterity'],
   mind:     ['learn', 'contemplate'],
   wealth:   ['money', 'career'],
   bonds:    ['circle', 'romance'],
