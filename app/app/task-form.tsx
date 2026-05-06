@@ -204,8 +204,7 @@ export default function TaskFormScreen() {
             <Text style={styles.label}>Sub-dimensions + stars</Text>
             <Text style={styles.hint}>
               Pick which subs this task contributes to and how heavy each
-              effort is. Total stars cap at 5 per task — anything heavier
-              should live as a quest.
+              effort is. Per-sub stars cap at 5 — distribute honestly.
             </Text>
             <SubPicker value={subs} onChange={setSubs} />
             {subs.length > 0 && (

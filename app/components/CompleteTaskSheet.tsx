@@ -23,15 +23,13 @@ interface Props {
   onConfirm: (subs: TaskSub[]) => void;
 }
 
-const MAX_TOTAL_STARS = 5;
-
 /**
  * Bottom-sheet popup that lets the user adjust per-sub stars at completion
  * time before logging. Opens via long-press on the task's check button.
  *
- * Each sub the task touches gets a stepper [− N ★ +]. The total at the
- * top reflects the cap-5 rule; the + button disables when the total is
- * already 5 (or when a sub is at 5 already). Reset returns to defaults.
+ * Each sub the task touches gets a stepper [− N ★ +]. Per-sub stars cap
+ * at 5; no total cap (the exponential XP curve self-regulates). Reset
+ * returns to defaults.
  *
  * Confirming sends the adjusted (sub_id, stars) array as the override
  * payload to complete_task.
@@ -69,9 +67,6 @@ export function CompleteTaskSheet({
       const cur = prev.find((p) => p.sub_id === subId)?.stars ?? 0;
       const next = cur + delta;
       if (next < 1 || next > 5) return prev;
-      // Cap-5 across all subs
-      const newTotal = totalStars - cur + next;
-      if (newTotal > MAX_TOTAL_STARS) return prev;
       return prev.map((p) =>
         p.sub_id === subId ? { ...p, stars: next as TaskSub['stars'] } : p,
       );
@@ -104,10 +99,7 @@ export function CompleteTaskSheet({
 
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total stars</Text>
-            <Text style={styles.totalValue}>
-              {totalStars}
-              <Text style={styles.totalCap}>/{MAX_TOTAL_STARS}</Text>
-            </Text>
+            <Text style={styles.totalValue}>{totalStars}★</Text>
           </View>
 
           {draft.map((s) => {
@@ -115,7 +107,7 @@ export function CompleteTaskSheet({
             const dim = subMeta ? DIMENSION_META[subMeta.dimensionId] : null;
             const color = dim?.color ?? tokens.brand.violet2;
             const canDec = s.stars > 1;
-            const canInc = s.stars < 5 && totalStars < MAX_TOTAL_STARS;
+            const canInc = s.stars < 5;
             return (
               <View key={s.sub_id} style={styles.subRow}>
                 <View
@@ -291,11 +283,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 22,
     color: tokens.text.hi,
-  },
-  totalCap: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 14,
-    color: tokens.text.dim,
   },
   subRow: {
     flexDirection: 'row',

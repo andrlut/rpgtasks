@@ -11,27 +11,25 @@ import {
 } from '@/theme/dimensions';
 
 interface Props {
-  /** Current selection. Sum of stars across the list is capped at 5. */
+  /** Current selection. Per-sub stars capped at 5; no total cap. */
   value: TaskSub[];
   onChange: (next: TaskSub[]) => void;
 }
-
-const MAX_TOTAL_STARS = 5;
 
 /**
  * Multi-sub picker for tasks. The user can:
  *   - Tap any sub chip to add it (defaults to 1★) or remove it.
  *   - Use the [− N★ +] stepper on a selected sub to adjust its stars.
- *   - The total stars across all selected subs is capped at 5 — the +
- *     button on each sub disables when the cap is reached, and tapping
- *     a new sub when at the cap is rejected with a friendly hint.
+ *
+ * Per-sub stars cap at 5 (single hard ceiling). No total cap — the
+ * exponential XP curve self-regulates: filling 10 subs at 1★ each nets
+ * 50 XP, less than a single honest 4★ task. Trust the user.
  *
  * Subs are grouped under their parent dim using the dim's color for the
  * group header and the active chip tint.
  */
 export function SubPicker({ value, onChange }: Props) {
   const totalStars = value.reduce((s, x) => s + x.stars, 0);
-  const atCap = totalStars >= MAX_TOTAL_STARS;
 
   const findIdx = (subId: SubId) => value.findIndex((v) => v.sub_id === subId);
 
@@ -40,7 +38,6 @@ export function SubPicker({ value, onChange }: Props) {
     if (idx >= 0) {
       onChange(value.filter((_, i) => i !== idx));
     } else {
-      if (atCap) return;
       onChange([...value, { sub_id: subId, stars: 1 }]);
     }
   };
@@ -51,7 +48,6 @@ export function SubPicker({ value, onChange }: Props) {
     const cur = value[idx]!.stars;
     const next = cur + delta;
     if (next < 1 || next > 5) return;
-    if (next > cur && totalStars >= MAX_TOTAL_STARS) return;
     onChange(
       value.map((v, i) =>
         i === idx ? { ...v, stars: next as TaskSub['stars'] } : v,
@@ -65,11 +61,8 @@ export function SubPicker({ value, onChange }: Props) {
         <Text style={styles.headerText}>
           {value.length === 0
             ? 'Pick at least one sub'
-            : `${value.length} sub${value.length === 1 ? '' : 's'} · ${totalStars}/${MAX_TOTAL_STARS} stars`}
+            : `${value.length} sub${value.length === 1 ? '' : 's'} · ${totalStars}★ total`}
         </Text>
-        {atCap && (
-          <Text style={styles.headerCap}>Cap reached — drop one to add more.</Text>
-        )}
       </View>
 
       <View style={styles.groups}>
@@ -94,9 +87,8 @@ export function SubPicker({ value, onChange }: Props) {
                   const idx = findIdx(subId);
                   const selected = idx >= 0;
                   const stars = selected ? value[idx]!.stars : 0;
-                  const canAdd = !selected && !atCap;
                   const canDec = selected && stars > 1;
-                  const canInc = selected && stars < 5 && !atCap;
+                  const canInc = selected && stars < 5;
 
                   return (
                     <View
@@ -107,7 +99,6 @@ export function SubPicker({ value, onChange }: Props) {
                           backgroundColor: dimMeta.bg,
                           borderColor: dimMeta.color,
                         },
-                        !selected && !canAdd && { opacity: 0.5 },
                       ]}
                     >
                       <Pressable
@@ -196,11 +187,6 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     color: tokens.text.mid,
     fontFamily: 'Manrope_700Bold',
-  },
-  headerCap: {
-    ...tokens.type.caption,
-    color: tokens.semantic.warn ?? '#FF9F43',
-    fontStyle: 'italic',
   },
   groups: {
     gap: tokens.space[3],
