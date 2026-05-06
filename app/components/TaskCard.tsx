@@ -160,7 +160,8 @@ export function TaskCard({
 }
 
 /** Pips colored per-sub: a 2★+1★+1★ task draws 2 of sub-1's color,
- *  1 of sub-2's, 1 of sub-3's. Total pips = sum of stars (≤ 5). */
+ *  1 of sub-2's, 1 of sub-3's. Total pips = sum of stars — no cap, no
+ *  empty filler. A 9★ task shows 9 pips, a 1★ task shows 1. */
 function SubColoredPips({ subs }: { subs: TaskSub[] }) {
   const pips: string[] = [];
   for (const s of subs) {
@@ -170,13 +171,10 @@ function SubColoredPips({ subs }: { subs: TaskSub[] }) {
       pips.push(color);
     }
   }
-  // Fill remaining slots up to 5 with surface dots so the row width stays stable.
-  while (pips.length < 5) {
-    pips.push(tokens.bg.surface2);
-  }
+  if (pips.length === 0) return null;
   return (
     <View style={styles.pipsRow}>
-      {pips.slice(0, 5).map((color, i) => (
+      {pips.map((color, i) => (
         <View
           key={i}
           style={[styles.pip, { backgroundColor: color }]}
