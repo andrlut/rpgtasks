@@ -208,6 +208,16 @@ export interface TaskCompletionSub {
   coins_granted: number;
 }
 
+/** A "not today" decision for a single date. No XP, doesn't break streak. */
+export interface TaskSkip {
+  task_id: string;
+  character_id: string;
+  /** Local YYYY-MM-DD the user opted out of. */
+  skipped_for: string;
+  reason: string | null;
+  created_at: string;
+}
+
 export type RewardCategory = 'indulgence' | 'good' | 'experience';
 
 export interface Reward {

@@ -181,6 +181,16 @@ function endOfThisMonth(): Date {
 }
 
 
+/** Local YYYY-MM-DD for the device's "today". Skip rows store dates,
+ *  not timestamps. */
+function todayLocalDateKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 async function fetchHomeBuckets(): Promise<HomeBuckets> {
   const today = new Date();
   const startOfToday = new Date();
@@ -188,6 +198,7 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
   const weekStart = startOfThisWeek();
   const monthStart = startOfThisMonth();
   const monthEnd = endOfThisMonth();
+  const todayKey = todayLocalDateKey();
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
@@ -242,6 +253,40 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
     everCompletedOneShots = new Set((anyComp ?? []).map((r) => r.task_id));
   }
 
+  // Today's explicit skips — used to hide tasks the user opted out of.
+  // Also fetch this-week/month skips so we can reduce period targets.
+  const { data: skipsToday, error: skipTodayErr } = await supabase
+    .from('task_skip')
+    .select('task_id')
+    .eq('skipped_for', todayKey);
+  if (skipTodayErr) throw skipTodayErr;
+  const skippedToday = new Set((skipsToday ?? []).map((s) => s.task_id));
+
+  const weekStartKey = weekStart.toISOString().slice(0, 10);
+  const monthStartKey = monthStart.toISOString().slice(0, 10);
+  const monthEndKey = monthEnd.toISOString().slice(0, 10);
+
+  const { data: skipsWeek, error: skipWeekErr } = await supabase
+    .from('task_skip')
+    .select('task_id')
+    .gte('skipped_for', weekStartKey);
+  if (skipWeekErr) throw skipWeekErr;
+  const skippedWeek = new Map<string, number>();
+  (skipsWeek ?? []).forEach((s) => {
+    skippedWeek.set(s.task_id, (skippedWeek.get(s.task_id) ?? 0) + 1);
+  });
+
+  const { data: skipsMonth, error: skipMonthErr } = await supabase
+    .from('task_skip')
+    .select('task_id')
+    .gte('skipped_for', monthStartKey)
+    .lte('skipped_for', monthEndKey);
+  if (skipMonthErr) throw skipMonthErr;
+  const skippedMonth = new Map<string, number>();
+  (skipsMonth ?? []).forEach((s) => {
+    skippedMonth.set(s.task_id, (skippedMonth.get(s.task_id) ?? 0) + 1);
+  });
+
   const buckets: HomeBuckets = {
     today: [],
     thisWeek: [],
@@ -251,34 +296,44 @@ async function fetchHomeBuckets(): Promise<HomeBuckets> {
 
   for (const t of allTasks) {
     const todayCount = doneToday.get(t.id) ?? 0;
+    const skippedTodayHere = skippedToday.has(t.id);
 
     if (t.recurrence.type === 'one_shot') {
-      if (!everCompletedOneShots.has(t.id)) buckets.oneTime.push(t);
+      if (!everCompletedOneShots.has(t.id) && !skippedTodayHere) {
+        buckets.oneTime.push(t);
+      }
       continue;
     }
 
     if (t.recurrence.type === 'daily') {
-      // Daily clears once today's target is met. Weekly/monthly only
-      // need 1 completion today to clear from Today (the rest of the
-      // period target is tracked in This Week/Month).
-      if (todayCount < t.target_count) buckets.today.push(t);
+      // Daily clears once today's target is met OR if explicitly skipped today.
+      if (!skippedTodayHere && todayCount < t.target_count) {
+        buckets.today.push(t);
+      }
       continue;
     }
 
     // weekly / monthly: optional schedule decides Today promotion;
     // period target decides This Week / This Month presence.
+    // Effective need = target - skips this period.
     const scheduledToday = isDueOn(t.recurrence, today);
-    if (scheduledToday && todayCount === 0) {
+    if (scheduledToday && todayCount === 0 && !skippedTodayHere) {
       buckets.today.push(t);
     }
 
     if (t.recurrence.type === 'weekly') {
       const weekCount = doneWeek.get(t.id) ?? 0;
-      if (weekCount < t.target_count) buckets.thisWeek.push(t);
+      const weekSkips = skippedWeek.get(t.id) ?? 0;
+      // Effective target shrinks by skips: a 3×/week task with 1 skip
+      // needs 2 more this week.
+      const effectiveTarget = Math.max(0, t.target_count - weekSkips);
+      if (weekCount < effectiveTarget) buckets.thisWeek.push(t);
     } else {
       // monthly
       const monthCount = doneMonth.get(t.id) ?? 0;
-      if (monthCount < t.target_count) buckets.thisMonth.push(t);
+      const monthSkips = skippedMonth.get(t.id) ?? 0;
+      const effectiveTarget = Math.max(0, t.target_count - monthSkips);
+      if (monthCount < effectiveTarget) buckets.thisMonth.push(t);
     }
   }
 
@@ -421,6 +476,53 @@ export function useCompleteTask() {
       queryClient.invalidateQueries({ queryKey: streakKeys.me() });
       queryClient.invalidateQueries({ queryKey: historyKeys.all });
       queryClient.invalidateQueries({ queryKey: questKeys.active() });
+    },
+  });
+}
+
+// ─── Skip ────────────────────────────────────────────────────────────────
+
+/** Skip a task for today (or a given local date). Hides it from Today /
+ *  This Week / This Month bucket logic without logging a completion. No
+ *  XP, no streak break, doesn't count as a miss either. */
+export function useSkipTaskToday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { taskId: string; date?: string }) => {
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Not authenticated');
+      const { error } = await supabase.from('task_skip').upsert(
+        {
+          task_id: params.taskId,
+          character_id: userId,
+          skipped_for: params.date ?? todayLocalDateKey(),
+        },
+        { onConflict: 'task_id,skipped_for' },
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+    },
+  });
+}
+
+/** Undo a skip — reverses useSkipTaskToday. */
+export function useUnskipTaskToday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { taskId: string; date?: string }) => {
+      const { error } = await supabase
+        .from('task_skip')
+        .delete()
+        .eq('task_id', params.taskId)
+        .eq('skipped_for', params.date ?? todayLocalDateKey());
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
     },
   });
 }

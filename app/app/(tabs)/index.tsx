@@ -17,11 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompactHeader } from '@/components/CompactHeader';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { ScreenBackground } from '@/components/ScreenBackground';
+import { TaskActionSheet } from '@/components/TaskActionSheet';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { useCharacter } from '@/lib/api/character';
 import { useStreak } from '@/lib/api/streak';
-import { useCompleteTask, useHomeBuckets } from '@/lib/api/tasks';
+import {
+  useCompleteTask,
+  useHomeBuckets,
+  useSkipTaskToday,
+} from '@/lib/api/tasks';
 import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
 import {
   useHomeBucketsStore,
@@ -58,11 +63,16 @@ export default function HomeScreen() {
   const buckets = useHomeBuckets();
   const streak = useStreak();
   const completeTask = useCompleteTask();
+  const skipTask = useSkipTaskToday();
   useLoadHomeBuckets();
   const collapsed = useHomeBucketsStore((s) => s.collapsed);
   const toggleBucket = useHomeBucketsStore((s) => s.toggle);
   const [floats, setFloats] = useState<FloatItem[]>([]);
-  /** Long-press opens the per-sub adjust popup against this task. */
+  /** Two stages of the long-press flow:
+   *   actionTask → which task's action menu is open
+   *   sheetTask  → which task's per-sub adjust popup is open (after picking
+   *                "Adjust stars" from the action menu) */
+  const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
 
   const fireCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
@@ -103,7 +113,7 @@ export default function HomeScreen() {
 
   const handleLongPress = (task: TaskWithSubs) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setSheetTask(task);
+    setActionTask(task);
   };
 
   const handleSheetConfirm = (subs: TaskSub[]) => {
@@ -111,6 +121,36 @@ export default function HomeScreen() {
     const t = sheetTask;
     setSheetTask(null);
     fireCompletion(t, subs);
+  };
+
+  const handleActionAdjust = () => {
+    if (!actionTask) return;
+    const t = actionTask;
+    setActionTask(null);
+    setSheetTask(t);
+  };
+
+  const handleActionSkip = () => {
+    if (!actionTask) return;
+    const t = actionTask;
+    setActionTask(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    skipTask.mutate(
+      { taskId: t.id },
+      {
+        onError: (err) => {
+          const e = err as { message?: string };
+          Alert.alert('Could not skip', e.message ?? 'Unknown error.');
+        },
+      },
+    );
+  };
+
+  const handleActionEdit = () => {
+    if (!actionTask) return;
+    const t = actionTask;
+    setActionTask(null);
+    router.push({ pathname: '/task-form', params: { id: t.id } });
   };
 
   const isLoading = character.isLoading || buckets.isLoading;
@@ -271,6 +311,15 @@ export default function HomeScreen() {
         streakDays={streak.data?.currentStreak ?? 0}
         onCancel={() => setSheetTask(null)}
         onConfirm={handleSheetConfirm}
+      />
+
+      <TaskActionSheet
+        visible={actionTask !== null}
+        taskTitle={actionTask?.title ?? ''}
+        onCancel={() => setActionTask(null)}
+        onAdjustStars={handleActionAdjust}
+        onSkipToday={handleActionSkip}
+        onEdit={handleActionEdit}
       />
     </SafeAreaView>
   );
