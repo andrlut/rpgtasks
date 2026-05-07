@@ -163,7 +163,7 @@ export default function ProfileMirrorScreen() {
             </View>
 
             {/* ─── Big Five ────────────────────────────────────────────── */}
-            <BigFiveCard onOpen={() => router.push('/big-five')} />
+            <BigFiveCard onOpen={() => router.replace('/big-five')} />
 
             {/* ─── Schwartz (placeholder) ──────────────────────────────── */}
             <PendingCard
