@@ -254,7 +254,7 @@ function IntroBody({
       </View>
       <Text style={styles.introTitle}>Avaliação</Text>
       <Text style={styles.introSub}>
-        48 perguntas, ~12 min. 4 ângulos por dimensão (comportamento,
+        48 perguntas, 5-10 min. 4 ângulos por dimensão (comportamento,
         qualidade, resultado, atrito) — pra ver onde você tá honestamente,
         sem ficar refém de uma única lente.
       </Text>
