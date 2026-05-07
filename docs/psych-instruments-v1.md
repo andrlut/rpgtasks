@@ -4,7 +4,9 @@ Documento de design pra unificar a Avaliação (questionário 48) e os testes
 de autoconhecimento (Big Five, Schwartz, Apego) sob um mesmo schema, com
 cálculos explicitamente documentados pra facilitar revisão e implementação.
 
-Status: **draft pra revisão**, nada aplicado ainda.
+Status: **decisões fechadas, pronto pra implementação.** Última atualização
+incorporou as respostas da §9 (agora §10 abaixo) e ajustes de schema da
+§4. Nada aplicado no banco ainda.
 
 ---
 
@@ -41,9 +43,10 @@ A interação entre eles acontece em três modos de uso:
 |---|---|---|---|---|
 | `avaliacao_v1` | Avaliação 24 perguntas (existente) | 24 | wellbeing | já em produção |
 | `avaliacao_v2` | Avaliação 96 (pool) / 48 (servidos) | 96 | wellbeing | Fase 1 |
-| `big_five_120` | IPIP-NEO 120 (Big Five) | 120 | self_knowledge | Fase 2 |
-| `schwartz_pvq` | PVQ-RR Valores | 57 | self_knowledge | Fase 5 |
-| `ecr_r` | Apego (ECR-R) | 36 | self_knowledge | Fase 6 |
+| `big_five_120` | IPIP-NEO 120 (Big Five) | 120 | self_knowledge | Fase 4 (lançamento depende de licenciamento) |
+| `schwartz_pvq` | PVQ-RR Valores | 57 | self_knowledge | Fase 5 (bloqueado em licenciamento) |
+| `ecr_r` | Apego (ECR-R) | 36 | self_knowledge | Fase 6 (bloqueado em licença + idade + app store) |
+| `via` | VIA Forças | — | self_knowledge | **fora do MVP** — apenas deep-link se realmente necessário |
 
 ---
 
@@ -77,9 +80,11 @@ psych_instrument (catalog)
                │
 psych_session (per user × instrument × attempt)
        │
+       ├─── psych_session_item (which items were served, in order)
+       │
        ├─── psych_answer (raw responses)
        │
-       └─── psych_score (computed per facet)
+       └─── psych_score (computed per facet, with norm meta)
 ```
 
 ### 4.2 Tabelas
@@ -117,17 +122,37 @@ create table public.psych_item (
   facet_id        text references public.psych_facet(id),
   position        integer not null,
   text_pt         text not null,
+  text_en         text,                    -- bilingual; null falls back to text_pt
   reverse_scored  boolean not null default false,
-  options_jsonb   jsonb not null            -- [{label, value}, ...]
+  options_jsonb   jsonb not null            -- [{label, value, label_en?}, ...]
 );
 
 create table public.psych_session (
-  id                uuid primary key default gen_random_uuid(),
-  character_id      uuid not null references public.character(id) on delete cascade,
-  instrument_id     text not null references public.psych_instrument(id),
-  taken_at          timestamptz not null default now(),
-  duration_seconds  integer,
-  is_complete       boolean not null default false
+  id                  uuid primary key default gen_random_uuid(),
+  character_id        uuid not null references public.character(id) on delete cascade,
+  instrument_id       text not null references public.psych_instrument(id),
+  instrument_version  text not null,                   -- snapshot do version do
+                                                       -- catálogo no momento da
+                                                       -- sessão (audit trail)
+  status              text not null default 'started'
+                      check (status in ('started', 'completed', 'abandoned')),
+  started_at          timestamptz not null default now(),
+  completed_at        timestamptz,
+  taken_at            timestamptz not null default now(),
+  duration_seconds    integer,
+  -- legado pra compat com a v1 atual; novos consumers devem usar `status`
+  is_complete         boolean generated always as (status = 'completed') stored
+);
+
+-- Quais itens foram servidos em cada sessão. Crítico pra Avaliação v2 onde
+-- 48 itens são sorteados de uma pool de 96 — sem isso não dá pra retomar
+-- sessão, auditar nem reproduzir o resultado.
+create table public.psych_session_item (
+  session_id  uuid not null references public.psych_session(id) on delete cascade,
+  item_id     text not null references public.psych_item(id),
+  position    integer not null,
+  primary key (session_id, item_id),
+  unique (session_id, position)
 );
 
 create table public.psych_answer (
@@ -135,13 +160,29 @@ create table public.psych_answer (
   session_id   uuid not null references public.psych_session(id) on delete cascade,
   item_id      text not null references public.psych_item(id),
   raw_value    smallint not null
+               check (raw_value between 1 and 7),     -- guard genérico; a
+                                                      -- validação por escala
+                                                      -- (1-5 vs 1-6 vs 1-7)
+                                                      -- fica na RPC submit
+  unique (session_id, item_id)                        -- 1 resposta por item
+                                                      -- por sessão; o cliente
+                                                      -- faz upsert
 );
 
 create table public.psych_score (
   session_id     uuid not null references public.psych_session(id) on delete cascade,
   facet_id       text not null references public.psych_facet(id),
-  score_decimal  numeric(5, 2) not null,    -- escala depende do instrumento
-  percentile     smallint,                  -- 0..100, null se não tem norma
+  score_decimal  numeric(5, 2) not null,              -- escala depende do
+                                                       -- instrumento
+  percentile     smallint,                            -- 0..100, null se não
+                                                       -- tem norma
+  norm_set_id    text,                                -- e.g. 'ipip_intl_2024',
+                                                       -- 'br_hutz_2018', etc.
+                                                       -- null = score raw sem
+                                                       -- normalização
+  score_meta     jsonb not null default '{}'::jsonb,  -- centragem, raw sum,
+                                                       -- z-score etc por
+                                                       -- instrumento
   primary key (session_id, facet_id)
 );
 ```
@@ -150,23 +191,119 @@ create table public.psych_score (
 
 - `psych_instrument`, `psych_facet`, `psych_item` → **public-read** pra
   authenticated (catálogo).
-- `psych_session`, `psych_answer`, `psych_score` → self-only via
-  `character_id = auth.uid()` (igual hoje).
-- Inserts via RPC com `security definer`.
+- `psych_session`, `psych_session_item`, `psych_answer`, `psych_score` →
+  self-only.
 
-### 4.4 Migration de transição
+A v1 do questionnaire usa `character_id = auth.uid()` direto — funciona
+porque hoje `character.id` é o próprio `auth.uid()`. **Antes de aplicar
+a migration, confirmar se essa identidade ainda vale.** Se em algum
+momento `character` ganhar um `user_id` separado do `id`, as policies
+precisam usar join:
+
+```sql
+create policy "psych_session_self" on public.psych_session
+  for select to authenticated
+  using (
+    exists (
+      select 1 from public.character c
+      where c.id = psych_session.character_id
+        and c.id = auth.uid()
+    )
+  );
+```
+
+Inserts via RPC com `security definer`. Reads diretos (TanStack Query) usam
+as policies acima.
+
+### 4.4.1 RPC `start_psych_session`
+
+Pra Avaliação v2 com pool rotativo de 96 itens, o **servidor** decide
+quais 48 servir. Cliente não escolhe.
+
+```sql
+create function public.start_psych_session(
+  p_instrument_id text
+) returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_session_id uuid;
+  v_user uuid := auth.uid();
+  v_version text;
+begin
+  if v_user is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select version into v_version
+  from public.psych_instrument
+  where id = p_instrument_id and is_active;
+
+  if v_version is null then
+    raise exception 'Instrument not found or inactive';
+  end if;
+
+  insert into public.psych_session (character_id, instrument_id, instrument_version)
+  values (v_user, p_instrument_id, v_version)
+  returning id into v_session_id;
+
+  -- Por instrumento, regra diferente. Avaliação v2: 1 item de cada Q1-Q4
+  -- por sub. Big Five: todos os 120. Schwartz: todos os 57. Etc.
+  -- Implementação por instrumento dispatcher inline ou função auxiliar.
+  perform public.psych_seed_session_items(v_session_id, p_instrument_id);
+
+  return v_session_id;
+end $$;
+```
+
+`psych_seed_session_items` é um dispatcher por `instrument_id`. Pra
+Avaliação v2 ele faz o sorteio rotativo. Pra Big Five/Schwartz, devolve
+todos os itens na ordem do catálogo (com possível embaralhamento entre
+facetas pra reduzir efeito de ordem).
+
+### 4.4.2 RPC `submit_psych_session`
+
+Wrapper genérico que substitui `submit_questionnaire`. Recebe
+`session_id` + `answers[]`, valida que todos os itens batem com
+`psych_session_item`, escreve em `psych_answer`, dispatcha o cálculo de
+score por instrumento, escreve `psych_score` e marca `status='completed'`.
+
+Para Avaliação v1/v2 também escreve em `character_sub_score` e
+`assessment_log` (compat com a UI atual).
+
+### 4.5 Sessão em andamento (decisão: híbrido)
+
+- **Servidor:** cria sessão e fixa os itens no `psych_session_item` no
+  `start_psych_session`. Sessão tem `status='started'` enquanto o usuário
+  responde.
+- **Cliente:** guarda respostas parciais em AsyncStorage. **Não** faz
+  upsert por resposta — só envia o batch no fim via `submit_psych_session`.
+- Se usuário abandonar e voltar: cliente recupera respostas locais, ou
+  começa nova sessão (`status='abandoned'` na anterior).
+
+Vantagem: pool fixado no servidor (auditável + retomada possível); rede
+só é usada uma vez no fim (latência mínima durante o teste).
+
+### 4.6 Migration de transição
+
+**Decisão:** transparente — usuário não percebe a troca de fundação.
 
 A v1 atual vive em `questionnaire_session` + `questionnaire_answer`. A
 migration de transição vai:
 
-1. Criar as novas tabelas.
-2. Inserir `avaliacao_v1` no `psych_instrument`.
+1. Criar as novas tabelas (`psych_*`).
+2. Inserir `avaliacao_v1` no `psych_instrument` (apontando pros itens da
+   v1 já em `app/lib/assessment/questions.ts`).
 3. Migrar dados históricos (`questionnaire_session` → `psych_session` com
-   `instrument_id = 'avaliacao_v1'`).
-4. Manter `submit_questionnaire` funcionando como wrapper que delega pra
-   nova RPC genérica `submit_psych_session(instrument_id, answers, duration)`.
-5. **Não** deletar tabelas antigas no primeiro passo — deprecar e remover
-   numa segunda migration depois que a UI nova for promovida.
+   `instrument_id = 'avaliacao_v1'`, `status = 'completed'`,
+   `instrument_version = 'v1.0'`). Idem pros `psych_answer`.
+4. Manter `submit_questionnaire` como **wrapper** que delega pra nova RPC
+   genérica `submit_psych_session(instrument_id, answers, duration)`. UI
+   v1 continua funcionando sem mudanças.
+5. **Não** deletar `questionnaire_session` / `questionnaire_answer` na
+   primeira migration. Deprecar e remover numa segunda migration depois
+   que a UI nova for promovida e estiver estável em produção.
 
 ---
 
@@ -414,58 +551,138 @@ Conteúdo dinâmico (notas do usuário, série temporal) fica no BD.
 
 ## 8. Plano de fases
 
-| Fase | Entrega | Esforço | PRs |
+Reordenado pra separar **entrega segura** (instrumentos próprios, infra)
+de **entrega dependente de licenciamento** (instrumentos externos).
+
+| Fase | Entrega | Esforço | Status |
 |---|---|---|---|
-| **0 — Foundation** | Migration genérica (psych_*), RPC, RLS, seed `avaliacao_v1` | ~3h | 1 |
-| **1 — Avaliação v2** | 96 itens (48 novos), rotação no servidor, scoring decimal, UI atualizada | ~6h coding + ~2h conteúdo | 1 |
-| **2 — IPIP-NEO 120** | Seed itens PT-BR + facetas + traços + tabela normativa, scoring, telas de resultado | ~6h coding + 1 manhã seeding | 1-2 |
-| **3 — Perfil/Espelho** | Tab Perfil no Character, cards clicáveis, histórico | ~4h | 1 |
-| **4 — Glossário** | Telas de detalhe permanentes pra todos os construtos, acesso via ⓘ | ~3h coding + ~4h conteúdo | 1 |
-| **5 — Schwartz** | Mesmo padrão (infra pronta) | ~3h coding + ~2h conteúdo | 1 |
-| **6 — ECR-R** | Mesmo padrão (infra pronta) | ~2h coding + ~1h conteúdo | 1 |
+| **0 — Foundation** | Migration genérica (psych_*, psych_session_item), RPCs `start_psych_session` + `submit_psych_session`, RLS, seed `avaliacao_v1`, wrapper `submit_questionnaire` | ~3h | ✅ pode fazer agora |
+| **1 — Avaliação v2** | Pool de 96 itens (48 novos a redigir), rotação no servidor, scoring decimal, UI atualizada | ~6h coding + ~2h conteúdo | ✅ pode fazer agora |
+| **2 — Perfil/Espelho** | Tab Perfil no Character, cards clicáveis (Avaliação primeiro; outros como placeholder), histórico | ~4h | ✅ pode fazer agora |
+| **3 — Glossário da Avaliação** | Telas de detalhe permanentes pros 12 subs e 6 dims, acesso via ⓘ. Glossário de instrumentos externos como estrutura vazia. | ~3h coding + ~4h conteúdo | ✅ pode fazer agora |
+| **4 — Big Five (IPIP-NEO 120)** | Seed itens PT-BR + facetas + traços + norma MVP, scoring, telas de resultado, modo 2 (interpretação) | ~6h coding + 1 manhã seeding | ⚠ preparar técnico, **não lançar** sem fechar tradução + norma + copy |
+| **5 — Schwartz PVQ-RR** | Estrutura, telas, scoring com centragem | ~3h coding + ~2h conteúdo | ⛔ **bloqueado** em permissão de uso comercial + tradução |
+| **6 — ECR-R** | Estrutura, telas, scoring + categoria | ~2h coding + ~1h conteúdo | ⛔ **bloqueado** em licença + tradução + idade + revisão app store |
 
-**MVP até Fase 4: ~30h focado.**
+**MVP seguro (0–3) = ~30h focado.** Liberação 4–6 depende de licenciamento.
 
----
-
-## 9. Decisões abertas (pra fechar antes de migrar)
-
-1. **Pool de Avaliação v2 servido por banco ou cliente?**
-   Recomendação: servidor sorteia 48 itens da pool de 96 e devolve no
-   start da session (RPC `start_psych_session`). Reduz adulteração e
-   permite balanceamento futuro (ex: priorizar items menos vistos).
-
-2. **Persistir score_dim ou só score_sub?**
-   Recomendação: só `score_sub` no `psych_score`. Dim é soma de 2 subs,
-   computada on-read.
-
-3. **Migração de dados v1 → novo schema:** transparente (mesma RPC,
-   mesma UI) ou criar nova tela e deprecar a antiga em fases?
-   Recomendação: transparente. Usuário não percebe que mudamos a fundação.
-
-4. **Tabela normativa Big Five:** seedar com normas internacionais (mais
-   simples, menos preciso) ou normas brasileiras (Hutz et al.; mais
-   trabalho, mais preciso)?
-   Recomendação MVP: internacionais. Refinar depois.
-
-5. **Estado "session em andamento":** persistir respostas parciais no
-   banco (custoso) ou só em AsyncStorage local (perde se trocar de
-   device)?
-   Recomendação: AsyncStorage. Sessions inacabadas ficam locais; só
-   submetem no fim. `is_complete` do schema é defensivo.
-
-6. **VIA Forças:** incluir via deep-link agora (V4) ou pular?
-   Recomendação: pular o VIA. Se quiser função similar, escrever
-   inventário próprio (mais trabalho, mas controle total).
+A única mudança estrutural indispensável antes da migration é incluir
+`psych_session_item`. Sem isso o pool rotativo da Avaliação v2 fica
+incompleto.
 
 ---
 
-## 10. Próximos passos imediatos
+## 9. Decisões fechadas
 
-1. Revisar este doc.
-2. Cravar respostas das pendências da seção 9.
-3. Escrever a migration `20260506000001_psych_instruments.sql` baseada em
-   §4.2.
-4. Escrever os 48 novos itens da Avaliação v2 (Q2, Q4 das 12 subs).
-5. Decidir ordem de Fase 1 (Avaliação v2) vs Fase 2 (Big Five) — ambas
-   dependem só da Foundation.
+Resolvidas. Implementação prossegue com base nelas.
+
+1. **Pool da Avaliação v2 — servidor.** Sorteio via `start_psych_session`,
+   48 servidos por sessão. Auditoria, rotação balanceada, retomada futura.
+2. **Persistência de dimensão — só sub/facet.** Dim é soma de 2 subs,
+   computada on-read. Não persistir `score_dim`.
+3. **Migração da v1 — transparente.** `submit_questionnaire` vira wrapper
+   da nova RPC genérica. Tabelas antigas não deletadas na primeira
+   migration.
+4. **Normas Big Five — MVP com normas internacionais ou raw/percentil
+   com aviso.** Não bloquear o MVP por norma BR. Guardar `norm_set_id`
+   no `psych_score` e comunicar na UI que a referência inicial não é
+   norma brasileira.
+5. **Sessão em andamento — híbrido.** Sessão e itens fixados no servidor;
+   respostas parciais em AsyncStorage; submissão no fim.
+6. **VIA Forças — fora do MVP.** No máximo deep-link externo no futuro.
+   Se algo similar, fazer inventário autoral.
+
+---
+
+## 10. Licenciamento e risco de publicação
+
+### Pode lançar sem confirmação adicional
+
+- Foundation `psych_*`
+- Avaliação v1 migrada
+- Avaliação v2 (pool 96/48, scoring decimal)
+- Perfil/Espelho (estrutura)
+- Glossário da Avaliação
+- Regras autorais de interpretação baseadas só na Avaliação
+
+### Pode preparar tecnicamente, **não lançar ainda**
+
+**Big Five / IPIP-NEO 120** — instrumento externo mais seguro pro MVP,
+mas antes de produção precisa fechar:
+- versão exata dos itens;
+- tradução PT-BR usada (recomendado: IPIP-NEO oficial PT-BR ou Hutz et al.);
+- fonte normativa (`norm_set_id`);
+- copy deixando claro se a norma é internacional.
+
+**Schwartz / PVQ-RR** — não lançar até confirmar:
+- uso comercial autorizado;
+- direito de hospedagem dos itens;
+- tradução PT-BR;
+- citação/termos obrigatórios.
+
+**ECR-R** — não lançar no MVP. Além de licença/tradução, traz risco extra
+de classificação etária e revisão em app stores (apego adulto /
+relacionamentos). Se entrar no futuro, recomendado:
+- age gate 18+ ou política explícita;
+- resultado dimensional, não diagnóstico;
+- linguagem de reflexão, não clínica;
+- não usar pra ads / targeting;
+- não posicionar como terapia.
+
+**VIA** — manter fora. Apenas deep-link, se realmente necessário.
+
+### Registro de status (recomendado em código)
+
+```ts
+// app/lib/psych/instrumentStatus.ts
+export const instrumentStatus = {
+  avaliacao_v2: {
+    implementation: 'ready',
+    licensing: 'owned',
+    canLaunch: true,
+  },
+  big_five_120: {
+    implementation: 'prepare_after_foundation',
+    licensing: 'low_risk_but_confirm_translation_and_norms',
+    canLaunch: false,
+  },
+  schwartz_pvq: {
+    implementation: 'prepare_only',
+    licensing: 'requires_permission_for_commercial_use',
+    canLaunch: false,
+  },
+  ecr_r: {
+    implementation: 'prepare_only',
+    licensing: 'requires_translation_permission_and_age_policy',
+    appStoreRisk: 'medium',
+    canLaunch: false,
+  },
+  via: {
+    implementation: 'skip',
+    licensing: 'do_not_host',
+    canLaunch: false,
+  },
+} as const;
+```
+
+A UI deve esconder a CTA de `start_psych_session` para qualquer instrumento
+com `canLaunch: false` em produção (pode mostrar em dev / preview).
+
+---
+
+## 11. Próximos passos imediatos
+
+1. Escrever a migration `20260507000001_psych_foundation.sql` baseada
+   em §4.2 (incluindo `psych_session_item`, `status` enum,
+   `norm_set_id`, `score_meta`).
+2. Escrever os RPCs `start_psych_session` + `submit_psych_session` +
+   `psych_seed_session_items` (dispatcher por instrumento).
+3. Migrar `avaliacao_v1` para o novo schema; manter
+   `submit_questionnaire` como wrapper.
+4. Redigir os 48 itens novos da Avaliação v2 (Q2 Qualidade + Q4 Atrito
+   das 12 subs).
+5. Implementar UI da Avaliação v2 (sessão híbrida com AsyncStorage,
+   submit final).
+6. Implementar Perfil/Espelho e Glossário da Avaliação.
+7. **Antes** de Big Five entrar em produção: fechar §10 (tradução,
+   norma, copy).
