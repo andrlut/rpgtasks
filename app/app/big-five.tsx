@@ -307,8 +307,8 @@ function IntroBody({
       </Text>
       <Text style={styles.introSub}>
         {isPt
-          ? '120 perguntas, ~25 min. 5 traços de personalidade × 6 facetas cada. Não é teste de tipo (tipo "ENTP") — é um perfil multidimensional.'
-          : '120 questions, ~25 min. 5 personality traits × 6 facets each. Not a "type" test — a multidimensional profile.'}
+          ? '120 perguntas, 10-20 min. 5 traços de personalidade × 6 facetas cada. Não é teste de tipo (tipo "ENTP") — é um perfil multidimensional.'
+          : '120 questions, 10-20 min. 5 personality traits × 6 facets each. Not a "type" test — a multidimensional profile.'}
       </Text>
 
       <View style={styles.introBullets}>
@@ -498,8 +498,13 @@ function ResultBody({
       </Text>
       <Text style={styles.resultLede}>
         {isPt
-          ? '5 traços, cada um em um espectro. Não tem perfil "certo" — só o seu.'
-          : "5 traits, each on a spectrum. There's no 'right' profile — just yours."}
+          ? 'Cada traço é um espectro, não uma nota. Os dois extremos têm força e custo — alto em Conscienciosidade ajuda na execução, alto em Neuroticismo dói. O ponto é entender seu padrão, não maximizar todos.'
+          : "Each trait is a spectrum, not a grade. Both ends carry strengths and costs — high Conscientiousness helps execution, high Neuroticism hurts. The point is to understand your pattern, not to max out everything."}
+      </Text>
+      <Text style={styles.resultLedeNote}>
+        {isPt
+          ? 'Toque "Ver outros níveis" em qualquer traço pra ver como seria o outro lado do espectro.'
+          : 'Tap "See other levels" on any trait to see what the other side of the spectrum looks like.'}
       </Text>
 
       <View style={styles.traitList}>
@@ -540,26 +545,24 @@ function TraitCard({
   rawScore: number;
   locale: BigFiveLocale;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const content = getTraitContent(trait, locale);
   const bucket = bucketForTraitScore(rawScore);
   const narrative = getTraitNarrative(trait, bucket, locale);
   const normalized = Math.max(0, Math.min(1, (rawScore - 24) / 96));
   const isPt = locale === 'pt';
-  const bucketLabel = (
-    isPt
-      ? { low: 'baixo', mid: 'médio', high: 'alto' }
-      : { low: 'low', mid: 'mid', high: 'high' }
-  )[bucket as BigFiveBucket];
+
+  // The other two buckets, in spectrum order (low → high), excluding the
+  // user's current one — so the panel reads as "what the rest of the
+  // spectrum looks like".
+  const otherBuckets: BigFiveBucket[] = (['low', 'mid', 'high'] as const).filter(
+    (b) => b !== bucket,
+  );
 
   return (
     <View style={styles.traitCard}>
       <View style={styles.traitHeader}>
         <Text style={styles.traitLabel}>{content.label.toUpperCase()}</Text>
-        <View style={[styles.bucketPill, bucketStyles[bucket]]}>
-          <Text style={[styles.bucketText, bucketTextStyles[bucket]]}>
-            {bucketLabel}
-          </Text>
-        </View>
       </View>
       <Text style={styles.traitOneLiner}>{content.oneLiner}</Text>
 
@@ -571,6 +574,19 @@ function TraitCard({
               { width: `${normalized * 100}%` },
             ]}
           />
+          <View
+            style={[
+              styles.spectrumMarker,
+              // Anchor the marker to the right edge of the fill, then
+              // pull it back by half its own width so it centers on the
+              // tip — looks like a position dot riding the bar.
+              { left: `${normalized * 100}%` },
+            ]}
+          />
+        </View>
+        <View style={styles.spectrumLabels}>
+          <Text style={styles.spectrumEnd}>{isPt ? 'baixo' : 'low'}</Text>
+          <Text style={styles.spectrumEnd}>{isPt ? 'alto' : 'high'}</Text>
         </View>
       </View>
 
@@ -585,21 +601,47 @@ function TraitCard({
         />
         <Text style={styles.traitDayToDay}>{narrative.dayToDay}</Text>
       </View>
+
+      <Pressable
+        onPress={() => setExpanded((v) => !v)}
+        style={({ pressed }) => [
+          styles.expandToggle,
+          pressed && { opacity: 0.7 },
+        ]}
+        hitSlop={6}
+      >
+        <Text style={styles.expandToggleText}>
+          {expanded
+            ? isPt
+              ? 'Esconder outros níveis'
+              : 'Hide other levels'
+            : isPt
+              ? 'Ver outros níveis'
+              : 'See other levels'}
+        </Text>
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={tokens.brand.violet2}
+        />
+      </Pressable>
+
+      {expanded && (
+        <View style={styles.otherLevels}>
+          {otherBuckets.map((b) => {
+            const other = getTraitNarrative(trait, b, locale);
+            return (
+              <View key={b} style={styles.otherLevelBlock}>
+                <Text style={styles.otherLevelHeadline}>{other.headline}</Text>
+                <Text style={styles.otherLevelBody}>{other.body}</Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
-
-const bucketStyles = StyleSheet.create({
-  low: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  mid: { backgroundColor: 'rgba(155, 130, 255, 0.10)' },
-  high: { backgroundColor: 'rgba(155, 130, 255, 0.20)' },
-});
-
-const bucketTextStyles = StyleSheet.create({
-  low: { color: tokens.text.dim },
-  mid: { color: tokens.text.mid },
-  high: { color: tokens.brand.violet2 },
-});
 
 // ─── Styles ───────────────────────────────────────────────────────────────
 
@@ -754,8 +796,14 @@ const styles = StyleSheet.create({
   resultLede: {
     ...tokens.type.body,
     color: tokens.text.mid,
+    lineHeight: 21,
+  },
+  resultLedeNote: {
+    ...tokens.type.body,
+    color: tokens.text.dim,
+    fontSize: 12,
     fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: 17,
     marginBottom: tokens.space[2],
   },
   traitList: { gap: tokens.space[3] },
@@ -770,7 +818,6 @@ const styles = StyleSheet.create({
   traitHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: tokens.space[2],
   },
   traitLabel: {
@@ -779,17 +826,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     color: tokens.text.hi,
   },
-  bucketPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: tokens.radius.pill,
-  },
-  bucketText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
   traitOneLiner: {
     ...tokens.type.body,
     color: tokens.text.dim,
@@ -797,17 +833,39 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontStyle: 'italic',
   },
-  spectrumWrap: { paddingVertical: tokens.space[2] },
+  spectrumWrap: { paddingVertical: tokens.space[2], gap: 4 },
   spectrumBar: {
     height: 6,
     borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
+    position: 'relative',
   },
   spectrumFill: {
     height: '100%',
     backgroundColor: tokens.brand.violet2,
     borderRadius: 3,
+  },
+  spectrumMarker: {
+    position: 'absolute',
+    top: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: tokens.brand.violet2,
+    marginLeft: -6,
+    borderWidth: 2,
+    borderColor: tokens.bg.surface,
+  },
+  spectrumLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  spectrumEnd: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: tokens.text.dim,
+    textTransform: 'uppercase',
   },
   traitHeadline: {
     fontFamily: 'Manrope_800ExtraBold',
@@ -831,6 +889,44 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     fontSize: 13,
     lineHeight: 19,
+  },
+  expandToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: tokens.space[2],
+    paddingVertical: tokens.space[2],
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(155, 130, 255, 0.15)',
+  },
+  expandToggleText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.4,
+    color: tokens.brand.violet2,
+    textTransform: 'uppercase',
+  },
+  otherLevels: {
+    gap: tokens.space[3],
+    paddingTop: tokens.space[2],
+  },
+  otherLevelBlock: {
+    gap: 4,
+    paddingLeft: tokens.space[3],
+    borderLeftWidth: 2,
+    borderLeftColor: 'rgba(155, 130, 255, 0.20)',
+  },
+  otherLevelHeadline: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.text.mid,
+  },
+  otherLevelBody: {
+    ...tokens.type.body,
+    color: tokens.text.dim,
+    fontSize: 12,
+    lineHeight: 18,
   },
   retakeBtn: {
     flexDirection: 'row',

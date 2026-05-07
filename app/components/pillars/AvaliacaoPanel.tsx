@@ -143,7 +143,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
   const sinceDays = daysSince(lastTaken);
   const questionnaireLabel =
     sinceDays === null
-      ? 'Fazer questionário (~10 min)'
+      ? 'Fazer questionário (5-10 min)'
       : sinceDays === 0
         ? 'Refazer questionário · feito hoje'
         : `Refazer questionário · ${sinceDays}d atrás`;

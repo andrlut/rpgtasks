@@ -24,10 +24,8 @@ import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import {
   BIG_FIVE_TRAIT_ORDER,
-  bucketForTraitScore,
   getTraitContent,
   traitFromFacetId,
-  type BigFiveBucket,
   type BigFiveLocale,
   type BigFiveTrait,
 } from '@/lib/psych/big-five-content';
@@ -152,7 +150,7 @@ export default function ProfileMirrorScreen() {
                   ]}
                   hitSlop={4}
                 >
-                  <Text style={styles.ctaText}>Fazer Avaliação (~12 min)</Text>
+                  <Text style={styles.ctaText}>Fazer Avaliação (5-10 min)</Text>
                   <Ionicons
                     name="arrow-forward"
                     size={14}
@@ -317,7 +315,7 @@ function BigFiveCard({ onOpen }: { onOpen: () => void }) {
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
-            {isPt ? 'Fazer Big Five (~25 min)' : 'Take Big Five (~25 min)'}
+            {isPt ? 'Fazer Big Five (10-20 min)' : 'Take Big Five (10-20 min)'}
           </Text>
           <Ionicons
             name="arrow-forward"
@@ -340,14 +338,7 @@ function BigFiveTraitRow({
   locale: BigFiveLocale;
 }) {
   const content = getTraitContent(trait, locale);
-  const bucket = bucketForTraitScore(rawScore);
   const normalized = Math.max(0, Math.min(1, (rawScore - 24) / 96));
-  const isPt = locale === 'pt';
-  const bucketLabel = (
-    isPt
-      ? { low: 'baixo', mid: 'médio', high: 'alto' }
-      : { low: 'low', mid: 'mid', high: 'high' }
-  )[bucket as BigFiveBucket];
 
   return (
     <View style={bfRowStyles.row}>
@@ -356,8 +347,10 @@ function BigFiveTraitRow({
         <View
           style={[bfRowStyles.barFill, { width: `${normalized * 100}%` }]}
         />
+        <View
+          style={[bfRowStyles.marker, { left: `${normalized * 100}%` }]}
+        />
       </View>
-      <Text style={bfRowStyles.bucket}>{bucketLabel}</Text>
     </View>
   );
 }
@@ -534,21 +527,23 @@ const bfRowStyles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
+    position: 'relative',
   },
   barFill: {
     height: '100%',
     backgroundColor: tokens.brand.violet2,
     borderRadius: 2.5,
   },
-  bucket: {
-    width: 48,
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    letterSpacing: 0.4,
-    color: tokens.text.mid,
-    textAlign: 'right',
-    textTransform: 'uppercase',
+  marker: {
+    position: 'absolute',
+    top: -3,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
+    backgroundColor: tokens.brand.violet2,
+    marginLeft: -5.5,
+    borderWidth: 2,
+    borderColor: tokens.bg.surface,
   },
 });
 
