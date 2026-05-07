@@ -1,97 +1,310 @@
-# XP Redesign: Momentum + Flexible Streak
+# XP Redesign: Recent Effort + Flexible Consistency
 
-## Goals
+## Why change this?
 
-Make XP feel less punitive and more encouraging.
+The current XP system is a good starting point, but it can feel too much like a traditional game system:
 
-The system should reward recent effort without making the player feel like all progress is lost after a bad day.
+- XP grows forever.
+- Streaks can become the main source of bonus.
+- Missing a day may feel like losing progress.
 
-## Concepts
+We want the app to feel useful and welcoming even for people who are not into games.
 
-### Total XP
+The goal is to make progress feel like a reflection of real life:
 
-Permanent progression.
+- Some days are productive.
+- Some days are slow.
+- Rest is normal.
+- Coming back matters more than being perfect.
 
-- Never decreases
-- Drives level
-- Unlocks long-term achievements
-- Represents lifetime progress
+## Main concepts
 
-### Momentum
+### Lifetime progress
 
-A moving window of recent effort.
+This is permanent progress.
 
-Momentum represents how active the player has been recently.
+It represents everything the user has completed over time.
 
-Suggested window:
+It should:
 
-- Last 7 days: high weight
-- Days 8-14: medium weight
-- Days 15-30: low weight
+- never decrease;
+- drive levels or long-term milestones;
+- unlock achievements or cosmetic rewards;
+- make the user feel that every completed task counted.
 
-Alternative formula:
+Suggested user-facing labels:
+
+- Progress
+- Total progress
+- Lifetime progress
+- Journey progress
+
+Internally this can still be stored as 	otal_xp.
+
+### Recent effort
+
+This is the friendly version of Momentum.
+
+Recent effort represents how active the user has been in the last period.
+
+It should be based on a moving window, such as the last 30 days, with recent days counting more than older days.
+
+Example weighting:
 
 - Today: 100%
 - Yesterday: 90%
 - 2 days ago: 81%
 - 3 days ago: 73%
-- Continue with decay
+- Older days keep fading gradually
 
-Momentum should provide the main short-term bonus.
+This avoids a harsh reset. If the user misses a day, recent effort goes down slowly instead of disappearing.
 
-### Streak
+Suggested user-facing labels:
 
-Streak should represent consistency, not punishment.
+- Recent effort
+- Current rhythm
+- This month's effort
+- Recent activity
+- Your rhythm
 
-Current behavior is strict consecutive daily completion.
+We can still use momentum internally if that is useful in code.
 
-Proposed behavior:
+### Consistency
 
-- Completing a daily task keeps the streak active
-- Missing one day puts the streak at risk
-- Completing a task during the recovery window restores the streak
-- Planned rest or earned rest shields can protect the streak
-- Streak should support momentum instead of being the only multiplier source
+This is the friendly version of Streak.
 
-## Reward Direction
+Consistency should show regularity, not punish missed days.
 
-Base task reward:
+The old streak idea is strict:
 
-- Based on difficulty/stars
+- complete a daily task every day;
+- miss a day;
+- lose the streak.
 
-Momentum bonus:
+The new idea should be softer:
 
-- Small capped bonus based on recent effort
-- Example: up to +25%
+- completing a daily task keeps consistency active;
+- missing one day puts consistency at risk;
+- completing a task during a recovery window restores the rhythm;
+- earned rest days can protect consistency;
+- the app encourages return instead of highlighting failure.
 
-Streak bonus:
+Suggested user-facing labels:
 
-- Smaller than today
-- Could improve momentum stability
-- Could grant rest shields
-- Should not make the player feel punished after one missed day
+- Consistency
+- Rhythm
+- Routine
+- Current rhythm
+- Steady days
 
-## Suggested UX States
+## What each concept affects
 
-- Building momentum
-- In rhythm
-- On fire
-- Protected rest
-- Streak at risk
-- Comeback available
+### Lifetime progress affects
 
-## Example Messages
+- Level or long-term progress.
+- Permanent achievements.
+- Unlocks.
+- Historical stats.
 
-- You are building momentum. Complete one more task to enter rhythm.
-- Your streak is protected today. Rest counts too.
-- Comeback available: complete any daily task today to recover your rhythm.
-- Great return. Your momentum is rising again.
+It should not go down.
 
-## Initial Implementation Plan
+### Recent effort affects
 
-1. Keep total XP unchanged.
-2. Add a momentum calculation from recent task completions.
-3. Reduce reliance on streak multiplier.
-4. Add streak state: active, at_risk, protected, recovering.
-5. Update the home header to show Momentum alongside Level and Streak.
-6. Tune numbers after testing with real usage.
+Recent effort should be the main short-term feedback system.
+
+It can affect:
+
+- a small bonus on task rewards;
+- encouraging messages;
+- visual state on the home screen;
+- weekly or monthly summaries;
+- suggestions like "you are building rhythm" or "your effort is rising again".
+
+Suggested bonus range:
+
+- 0% to 25% maximum.
+
+This keeps the bonus meaningful without making the user feel weak when recent effort is low.
+
+### Consistency affects
+
+Consistency should support the user emotionally and mechanically.
+
+It can affect:
+
+- protection from one missed day;
+- recovery messages;
+- earned rest shields;
+- slower decay of recent effort;
+- badges or milestones.
+
+Consistency should not be the main XP multiplier anymore.
+
+## Subtasks, main tasks, and categories
+
+### Subtasks
+
+Subtasks should remain the smallest reward unit.
+
+Each subtask has its own effort value, based on stars or difficulty.
+
+Example:
+
+`	ext
+Workout
+- Warm-up: 2 stars = 15 progress
+- Main exercise: 3 stars = 40 progress
+- Stretching: 1 star = 5 progressIf the user completes all subtasks:
+
+Base progress = 15 + 40 + 5 = 60
+
+If the user completes only part of the task, they still receive partial progress.
+
+This is important because real life is often partial. Doing something should feel better than doing nothing.
+
+Main tasks
+
+Main tasks are the visual and organizational layer.
+
+They group subtasks and make the interface easier to understand.
+
+A main task reward is the sum of its completed subtasks.
+
+Example:
+
+Workout completed fully: 60 progress
+Workout completed partially: 55 progress
+Categories
+
+The first version should use one global recent effort score.
+
+That keeps the system easier to understand.
+
+Later, categories can have their own recent effort scores.
+
+Example future categories:
+
+Health
+Learning
+Home
+Work
+Relationships
+Personal projects
+
+These can become attribute-like areas without requiring game-heavy language.
+
+Possible friendly labels:
+
+Health rhythm
+Learning rhythm
+Home care
+Project focus
+
+Possible RPG-style internal mapping for later:
+
+Health -> Vitality
+Learning -> Wisdom
+Home -> Order
+Work/projects -> Mastery
+Social -> Connection
+Example scenario
+Day 1
+
+The user completes:
+
+Workout: 60 progress
+Study session: 100 progress
+
+Result:
+
+Lifetime progress: +160
+Recent effort: rises a lot
+Consistency: 1 active day
+Message: Good start. You are building rhythm.
+Day 2
+
+The user completes nothing.
+
+Result:
+
+Lifetime progress: unchanged
+Recent effort: goes down slightly
+Consistency: at risk, not broken immediately
+Message: A slower day is okay. Complete one small task tomorrow to keep your rhythm.
+Day 3
+
+The user completes a small task:
+
+Read for 10 minutes: 15 progress
+
+Result:
+
+Lifetime progress: +15
+Recent effort: starts rising again
+Consistency: recovered
+Message: Nice comeback. Small steps keep the rhythm going.
+Example reward calculation
+
+A task gives 60 base progress.
+
+The user's recent effort gives an 8% bonus.
+
+Base progress: 60
+Recent effort bonus: +8%
+Bonus progress: +5
+Final progress: 65
+
+The user also has an active consistency state.
+
+Instead of adding a large multiplier, consistency gives support:
+
+Consistency: active
+Effect: recent effort decays slightly slower
+Rest protection: 1 available
+
+This makes consistency valuable without making a missed day feel devastating.
+
+Suggested user-facing states
+
+Use calm and friendly language:
+
+Getting started
+Building rhythm
+In rhythm
+Strong rhythm
+Rest protected
+Rhythm at risk
+Comeback available
+Back on track
+
+Avoid harsh language:
+
+Failed
+Broken streak
+Lost progress
+Penalty
+Punishment
+Suggested messages
+You are building rhythm. One small task is enough to keep going.
+A slower day is okay. Your progress is still here.
+Rest is part of the process. Your rhythm is protected today.
+Comeback available: complete any daily task today to get back on track.
+Nice comeback. Your recent effort is rising again.
+You have been steady this week. Keep it simple and sustainable.
+Initial implementation plan
+Keep total_xp as permanent lifetime progress.
+Add a recent effort calculation from task completions in the last 30 days.
+Use recent effort for a small capped bonus and home-screen feedback.
+Change streak language to consistency or rhythm in the UI.
+Add consistency states: active, at risk, protected, recovering.
+Reduce or replace the current streak multiplier.
+Keep rewards calculated from subtasks first, then summed into main tasks.
+Start with one global recent effort score.
+Add category-level recent effort later if the global version feels good.
+Open questions
+Should the user see numbers, labels, or both?
+Should recent effort affect coins, progress, or only messages and visuals?
+How many recovery days should be allowed?
+How does the user earn rest protection?
+Should weekly tasks count toward consistency, or only daily tasks?
+Should categories have their own rhythm in the first version or a later version?
