@@ -4,11 +4,11 @@
  * Keys are namespaced by feature/screen. Keep groups small and predictable —
  * if a group grows past ~30 entries, split it.
  *
- * For dynamic interpolation use `{name}` placeholders, e.g.
- *   greeting.morning: 'Good morning, {name}'
+ * For dynamic interpolation use `{{name}}` placeholders, e.g.
+ *   greeting.morning: 'Good morning, {{name}}'
  *
  * For pluralization use the i18n-js convention:
- *   tasks.count: { one: '1 task', other: '{count} tasks' }
+ *   tasks.count: { one: '1 task', other: '{{count}} tasks' }
  */
 const en = {
   common: {
@@ -82,7 +82,7 @@ const en = {
       couldNotSend: 'Could not send',
       rateLimited: 'Email service is rate-limited right now. Wait a few minutes and try again, or ask the admin.',
       emailSent: 'Email sent',
-      emailSentBody: 'Check {email} for a link. Open it on this device — the app will pick it up and let you set a new password.',
+      emailSentBody: 'Check {{email}} for a link. Open it on this device — the app will pick it up and let you set a new password.',
       back: 'Back to login',
       done: 'Done',
     },
@@ -177,15 +177,15 @@ const en = {
     },
     streak: {
       label: 'Streak',
-      days: { one: '{count} day', other: '{count} days' },
-      best: 'Best: {count}',
+      days: { one: '{{count}} day', other: '{{count}} days' },
+      best: 'Best: {{count}}',
       atRisk: 'At risk',
     },
     completedDrawer: {
       title: 'Completed today',
       empty: 'Complete your first task to see it here.',
-      completedSummary: '{count} completed',
-      skippedSummary: '{count} skipped',
+      completedSummary: '{{count}} completed',
+      skippedSummary: '{{count}} skipped',
       tapToToggle: ' · tap to ',
       tapHide: 'hide',
       tapView: 'view',
@@ -229,7 +229,7 @@ const en = {
       unarchive: 'Unarchive',
       delete: 'Delete',
       confirmDelete: 'Delete this task? This cannot be undone.',
-      confirmHighDifficulty: 'This is a {stars}-star task. Mark complete?',
+      confirmHighDifficulty: 'This is a {{stars}}-star task. Mark complete?',
     },
     actionSheet: {
       adjustStars: 'Adjust stars',
@@ -246,7 +246,7 @@ const en = {
     },
     subPicker: {
       pickAtLeastOne: 'Pick at least one sub',
-      countSubs: { one: '{count} sub', other: '{count} subs' },
+      countSubs: { one: '{{count}} sub', other: '{{count}} subs' },
       total: 'total',
     },
     difficultyLabel: {
@@ -260,7 +260,7 @@ const en = {
       title: 'History',
       empty: 'No history yet',
       tapToLog: 'Tap a past day to log a retroactive completion.',
-      logFor: 'Log for {date}',
+      logFor: 'Log for {{date}}',
       removeEntry: 'Remove this entry?',
     },
   },
@@ -283,14 +283,14 @@ const en = {
     },
     actions: {
       redeem: 'Redeem',
-      confirmRedeem: 'Spend {cost} coins on "{title}"?',
+      confirmRedeem: 'Spend {{cost}} coins on "{{title}}"?',
       archive: 'Archive',
       unarchive: 'Unarchive',
       delete: 'Delete',
       confirmDelete: 'Delete this reward?',
     },
-    insufficient: 'Not enough coins. You need {short} more.',
-    coins: { one: '{count} coin', other: '{count} coins' },
+    insufficient: 'Not enough coins. You need {{short}} more.',
+    coins: { one: '{{count}} coin', other: '{{count}} coins' },
     history: {
       title: 'Redemption history',
       empty: 'No redemptions yet',
@@ -329,11 +329,11 @@ const en = {
       title: 'Self-assessment',
       subtitle: 'Tap to update your gut-check.',
       cta: 'Update self-assessment',
-      lastUpdated: 'Last updated {when}',
+      lastUpdated: 'Last updated {{when}}',
     },
     questionnaire: {
       cta: 'Take the questionnaire',
-      lastTaken: 'Last taken {when}',
+      lastTaken: 'Last taken {{when}}',
       never: 'Never taken',
       due: 'Due now',
     },
@@ -550,9 +550,9 @@ const en = {
       couldNotCheck: 'Could not check',
       unknownError: 'Unknown error',
     },
-    footer: 'RPG Tasks · v{version}',
-    footerUpdate: 'update {id}',
-    version: 'Version {version}',
+    footer: 'RPG Tasks · v{{version}}',
+    footerUpdate: 'update {{id}}',
+    version: 'Version {{version}}',
   },
 
   skills: {
@@ -610,8 +610,8 @@ const en = {
       abandon: 'Abandon',
       confirmAbandon: 'Abandon this quest?',
     },
-    progress: '{done} / {total}',
-    daysLeft: { one: '{count} day left', other: '{count} days left' },
+    progress: '{{done}} / {{total}}',
+    daysLeft: { one: '{{count}} day left', other: '{{count}} days left' },
     overdue: 'Overdue',
     empty: 'No quests yet. Pick a template to start.',
     templates: {
@@ -623,7 +623,7 @@ const en = {
   selfAssessment: {
     title: 'Self-assessment',
     subtitle: 'Where do you feel each pillar is right now?',
-    pillarPrompt: 'How is your {pillar}?',
+    pillarPrompt: 'How is your {{pillar}}?',
     subAttribute: 'sub-attribute',
     recommendedTasks: 'Recommended tasks',
     scale: {
@@ -650,16 +650,16 @@ const en = {
     title: 'Questionnaire',
     intro: {
       title: 'Periodic check-in',
-      body: 'A deeper read on each pillar. Plan for {minutes} minutes.',
+      body: 'A deeper read on each pillar. Plan for {{minutes}} minutes.',
       cta: 'Begin',
     },
-    progress: '{current} of {total}',
+    progress: '{{current}} of {{total}}',
     submit: 'Submit',
     submitting: 'Saving…',
     result: {
       title: 'Your results',
       subtitle: 'How the questionnaire compares to your self-assessment.',
-      delta: 'Δ {delta}',
+      delta: 'Δ {{delta}}',
       bucketLabel: {
         attention_overestimating: 'Attention — possible blind spot',
         slight_overestimate: 'Slightly overestimating',
@@ -668,11 +668,11 @@ const en = {
         attention_underestimating: 'Attention — possibly underestimating',
       },
       feedback: {
-        attention_overestimating: 'You see yourself better at {label} than the anchor suggests. Worth an honest look.',
-        slight_overestimate: 'Reasonable at {label}, but maybe a slight downward adjustment in your self-view.',
-        aligned: 'Calibrated on {label} — your perception matches the anchor.',
-        slight_underestimate: "Solid at {label} — you might be a little hard on yourself.",
-        attention_underestimating: 'You underestimate yourself on {label}. Acknowledge what is working.',
+        attention_overestimating: 'You see yourself better at {{label}} than the anchor suggests. Worth an honest look.',
+        slight_overestimate: 'Reasonable at {{label}}, but maybe a slight downward adjustment in your self-view.',
+        aligned: 'Calibrated on {{label}} — your perception matches the anchor.',
+        slight_underestimate: "Solid at {{label}} — you might be a little hard on yourself.",
+        attention_underestimating: 'You underestimate yourself on {{label}}. Acknowledge what is working.',
       },
     },
   },
