@@ -35,6 +35,13 @@ import {
   type SchwartzLocale,
   type SchwartzValue,
 } from '@/lib/psych/schwartz-content';
+import {
+  getStyleContent,
+  scaleFromFacetId,
+  styleFromScales,
+  type EcrLocale,
+  type EcrScale,
+} from '@/lib/psych/ecr-r-content';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
@@ -172,13 +179,8 @@ export default function ProfileMirrorScreen() {
             {/* ─── Schwartz ────────────────────────────────────────────── */}
             <SchwartzCard onOpen={() => router.replace('/schwartz')} />
 
-            {/* ─── Apego (placeholder) ─────────────────────────────────── */}
-            <PendingCard
-              icon="link"
-              title="Apego (ECR-R)"
-              subtitle="Como eu me ligo · padrão · anos"
-              note="Em construção — escalas de Ansiedade e Evitação, 36 itens."
-            />
+            {/* ─── Apego (ECR-R) ───────────────────────────────────────── */}
+            <EcrRCard onOpen={() => router.replace('/ecr-r')} />
 
             <View style={{ height: tokens.space[6] }} />
           </ScrollView>
@@ -460,32 +462,102 @@ const swCardStyles = StyleSheet.create({
   },
 });
 
-function PendingCard({
-  icon,
-  title,
-  subtitle,
-  note,
-}: {
-  icon: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  note: string;
-}) {
+function EcrRCard({ onOpen }: { onOpen: () => void }) {
+  const { locale } = useT();
+  const ecrLocale: EcrLocale = locale === 'en' ? 'en' : 'pt';
+  const isPt = ecrLocale === 'pt';
+
+  const lastSession = useLastPsychSession('ecr_r');
+  const scoresQ = useSessionScores(lastSession.data?.id);
+
+  const { anxiety, avoidance } = useMemo(() => {
+    const map = new Map<EcrScale, number>();
+    for (const s of scoresQ.data ?? []) {
+      const sc = scaleFromFacetId(s.facet_id);
+      if (sc) map.set(sc, Number(s.score_decimal));
+    }
+    return {
+      anxiety: map.get('anxiety'),
+      avoidance: map.get('avoidance'),
+    };
+  }, [scoresQ.data]);
+
+  const hasScores = anxiety !== undefined && avoidance !== undefined;
+  const sinceDays = daysSince(lastSession.data?.taken_at);
+  const style = hasScores ? styleFromScales(anxiety, avoidance) : null;
+  const styleContent = style ? getStyleContent(style, ecrLocale) : null;
+
   return (
-    <View style={[styles.card, styles.cardPending]}>
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.card,
+        styles.cardActive,
+        pressed && { opacity: 0.92 },
+      ]}
+      hitSlop={4}
+    >
       <View style={styles.cardHeader}>
         <View style={styles.cardHeaderLeft}>
-          <Ionicons name={icon} size={18} color={tokens.text.mid} />
-          <Text style={[styles.cardTitle, { color: tokens.text.mid }]}>
-            {title}
+          <Ionicons name="link" size={18} color={tokens.brand.violet2} />
+          <Text style={styles.cardTitle}>
+            {isPt ? 'Apego' : 'Attachment'}
           </Text>
         </View>
-        <Text style={styles.cardSub}>{subtitle}</Text>
+        <Text style={styles.cardSub}>
+          {isPt
+            ? 'Como eu me ligo · padrão · anos'
+            : 'How I bond · pattern · years'}
+        </Text>
       </View>
-      <Text style={styles.pendingNote}>{note}</Text>
-    </View>
+
+      {hasScores && styleContent ? (
+        <>
+          <Text style={styles.cardLede}>
+            {isPt ? 'Padrão:' : 'Pattern:'}
+          </Text>
+          <Text style={ecrCardStyles.styleName}>{styleContent.label}</Text>
+          <Text style={ecrCardStyles.styleHeadline}>
+            {styleContent.headline}
+          </Text>
+          <View style={styles.refazerBtn}>
+            <Ionicons name="refresh" size={14} color={tokens.brand.violet2} />
+            <Text style={styles.refazerText}>
+              {sinceDays === null
+                ? isPt ? 'Ver detalhes' : 'See details'
+                : sinceDays === 0
+                  ? isPt ? 'Refeito hoje · ver detalhes' : 'Done today · see details'
+                  : isPt ? `Ver detalhes · ${sinceDays}d atrás` : `See details · ${sinceDays}d ago`}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>
+            {isPt ? 'Fazer Apego (6-12 min)' : 'Take Attachment (6-12 min)'}
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
+        </View>
+      )}
+    </Pressable>
   );
 }
+
+const ecrCardStyles = StyleSheet.create({
+  styleName: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 18,
+    color: tokens.brand.violet2,
+    letterSpacing: 0.3,
+  },
+  styleHeadline: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12,
+    color: tokens.text.mid,
+    lineHeight: 18,
+    fontStyle: 'italic',
+  },
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
