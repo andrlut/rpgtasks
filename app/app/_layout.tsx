@@ -126,6 +126,10 @@ export default function RootLayout() {
               name="questionnaire"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="profile-mirror"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>

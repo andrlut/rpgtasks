@@ -11,11 +11,9 @@ import {
 
 import { HexChart } from '@/components/HexChart';
 import type { CharacterSubScore, SubId } from '@/lib/db/types';
-import { pickSubScores } from '@/lib/api/character';
-import {
-  daysSince,
-  useLastQuestionnaireSession,
-} from '@/lib/api/questionnaire';
+import { pickSubScores, pickSubScoresDecimal } from '@/lib/api/character';
+import { useLastWellbeingSession } from '@/lib/api/psych';
+import { daysSince } from '@/lib/api/questionnaire';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
 import { SUB_META } from '@/theme/dimensions';
@@ -111,7 +109,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
   const router = useRouter();
   const metaLookup = useMetaLookup();
   const { width: screenWidth } = useWindowDimensions();
-  const lastSession = useLastQuestionnaireSession();
+  const lastSession = useLastWellbeingSession();
   const [hexSource, setHexSource] = useState<HexSource>('self');
   // Match the old (pre-pillars) sizing: bleed slightly beyond page padding
   // for visual presence, capped so it doesn't blow up on tablets.
@@ -121,8 +119,10 @@ export function AvaliacaoPanel({ subScores }: Props) {
     () => pickSubScores(subScores, 'self'),
     [subScores],
   );
+  // Decimal precision when available (rows written by avaliacao_v2+) so
+  // the hex's vertex labels render `Sleep 3.8` instead of `Sleep 3`.
   const questionnaireScores = useMemo(
-    () => pickSubScores(subScores, 'questionnaire'),
+    () => pickSubScoresDecimal(subScores, 'questionnaire'),
     [subScores],
   );
   const hasQuestionnaire = questionnaireScores.size > 0;
@@ -223,6 +223,20 @@ export function AvaliacaoPanel({ subScores }: Props) {
         <Ionicons name="clipboard" size={14} color={tokens.brand.violet2} />
         <Text style={styles.ctaSecondaryText}>{questionnaireLabel}</Text>
       </Pressable>
+
+      {hasQuestionnaire && (
+        <Pressable
+          onPress={() => router.push('/profile-mirror')}
+          style={({ pressed }) => [
+            styles.ctaSecondary,
+            pressed && { opacity: 0.85 },
+          ]}
+          hitSlop={4}
+        >
+          <Ionicons name="person-circle" size={14} color={tokens.brand.violet2} />
+          <Text style={styles.ctaSecondaryText}>Ver perfil completo</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

@@ -82,8 +82,12 @@ export interface CharacterSubScore {
   character_id: string;
   source: AssessmentSource;
   sub_id: SubId;
-  /** 0-5. */
+  /** 0-5 integer (legacy, hex pip count, sparkline anchors). */
   score: number;
+  /** 0-5 decimal precision when the score came from a wellbeing psych
+   * session (avaliacao_v2 onward). NULL for self-source rows and for
+   * questionnaire rows that predate the v2 migration. */
+  score_decimal: number | null;
   updated_at: string;
 }
 

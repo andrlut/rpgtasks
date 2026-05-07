@@ -74,6 +74,24 @@ export function pickSubScores(
 }
 
 /**
+ * Like `pickSubScores` but returns `score_decimal` when available (rows
+ * written by avaliacao_v2+), falling back to the integer `score`. Use this
+ * for the hex/sparkline display on the questionnaire side so the user
+ * sees `Sleep 3.8 / 5` instead of `Sleep 3 / 5`.
+ */
+export function pickSubScoresDecimal(
+  rows: CharacterSubScore[],
+  source: AssessmentSource,
+): Map<SubId, number> {
+  const map = new Map<SubId, number>();
+  for (const r of rows) {
+    if (r.source !== source) continue;
+    map.set(r.sub_id, r.score_decimal != null ? Number(r.score_decimal) : r.score);
+  }
+  return map;
+}
+
+/**
  * Atomically upsert a sub score AND append to the assessment_log via the
  * set_sub_score RPC. Optimistic update keeps the hex chart reactive.
  */
@@ -112,6 +130,7 @@ export function useSetSubScore() {
                   source: params.source,
                   sub_id: params.subId,
                   score: params.score,
+                  score_decimal: null,
                   updated_at: nowIso,
                 },
               ];

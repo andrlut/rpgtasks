@@ -14,91 +14,122 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { useSubmitQuestionnaire } from '@/lib/api/questionnaire';
 import { pickSubScores, useCharacter } from '@/lib/api/character';
 import {
-  deriveScoresFromAnswers,
-  type AnswerMap,
-} from '@/lib/assessment/derive';
+  pickSubDecimalScores,
+  useStartPsychSession,
+  useSubmitPsychSession,
+} from '@/lib/api/psych';
 import {
   feedbackForAllDims,
   type DimFeedback,
 } from '@/lib/assessment/feedback';
-import { QUESTIONS, type QuestionId } from '@/lib/assessment/questions';
+import type { PsychSessionItem, SubId } from '@/lib/db/types';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
 
-type Phase = 'intro' | 'answering' | 'submitting' | 'result';
+type Phase = 'intro' | 'starting' | 'answering' | 'submitting' | 'result';
+
+const INSTRUMENT_ID = 'avaliacao_v2';
 
 /**
- * Questionnaire screen — guides the user through 24 questions (12 subs × 2)
- * one at a time, then submits the batch via the submit_questionnaire RPC
- * and shows per-dim feedback comparing the result to the user's
- * self-assessment.
+ * Questionnaire screen — runs avaliacao_v2 (48 items, sampled 1-of-2 per
+ * leaf facet from a 96-item pool). The flow:
  *
- * Phases:
- *   intro      → 1 explanatory screen, "Começar" advances to answering
- *   answering  → one Q per step, tap an option auto-advances; back arrow
- *                lets the user revise; progress bar drives motivation
- *   submitting → loading state while the RPC runs
- *   result     → 6-row feedback list (sorted by |Δ| desc), Concluir closes
+ *   intro      → "Começar" → start_psych_session, server returns 48 items
+ *   answering  → one item per step, tap auto-advances; back arrow revises;
+ *                progress bar drives motivation
+ *   submitting → submit_psych_session writes psych_answer + psych_score,
+ *                bridges character_sub_score (decimal + integer)
+ *   result     → 6-row dim feedback (Δ vs self), Concluir closes
+ *
+ * Note on legacy v1: submit_questionnaire (the v1 wrapper) still exists in
+ * the DB and continues to work for any historical caller, but the screen no
+ * longer uses it. New sessions all flow through psych_session/answer/score.
  */
 export default function QuestionnaireScreen() {
   const router = useRouter();
   const character = useCharacter();
-  const submit = useSubmitQuestionnaire();
+  const startSession = useStartPsychSession();
+  const submitSession = useSubmitPsychSession();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<AnswerMap>(new Map());
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [items, setItems] = useState<PsychSessionItem[]>([]);
+  const [answers, setAnswers] = useState<Map<string, number>>(new Map());
   const [feedback, setFeedback] = useState<DimFeedback[] | null>(null);
   const startedAt = useRef<number | null>(null);
 
-  const total = QUESTIONS.length;
-  const current = QUESTIONS[idx];
+  const total = items.length;
+  const current = items[idx];
 
-  // Reset start timer when the user enters the answering phase.
   useEffect(() => {
     if (phase === 'answering' && startedAt.current === null) {
       startedAt.current = Date.now();
     }
   }, [phase]);
 
+  const handleStart = () => {
+    setPhase('starting');
+    startSession.mutate(INSTRUMENT_ID, {
+      onSuccess: (result) => {
+        setSessionId(result.session_id);
+        setItems(result.items);
+        setIdx(0);
+        setAnswers(new Map());
+        startedAt.current = null;
+        setPhase('answering');
+      },
+      onError: (err) => {
+        const e = err as { message?: string };
+        Alert.alert(
+          'Não foi possível abrir o questionário',
+          e?.message ?? 'Tente novamente.',
+        );
+        setPhase('intro');
+      },
+    });
+  };
+
   const handlePick = (raw: number) => {
     if (!current) return;
     Haptics.selectionAsync().catch(() => {});
     setAnswers((prev) => {
       const next = new Map(prev);
-      next.set(current.id as QuestionId, raw);
+      next.set(current.item_id, raw);
       return next;
     });
 
     if (idx + 1 < total) {
       setIdx(idx + 1);
     } else {
-      // All answered — submit. We need the latest answer reflected, so
-      // build the map locally before the React state catches up.
+      // All answered — submit. Build the latest map locally so the in-flight
+      // pick is included before React state catches up.
       const finalAnswers = new Map(answers);
-      finalAnswers.set(current.id as QuestionId, raw);
+      finalAnswers.set(current.item_id, raw);
       doSubmit(finalAnswers);
     }
   };
 
-  const doSubmit = (finalAnswers: AnswerMap) => {
+  const doSubmit = (finalAnswers: Map<string, number>) => {
+    if (!sessionId) return;
     setPhase('submitting');
     const elapsed =
       startedAt.current !== null
         ? Math.max(0, Math.round((Date.now() - startedAt.current) / 1000))
         : 0;
 
-    submit.mutate(
-      { answers: finalAnswers, durationSeconds: elapsed },
+    const payload = Array.from(finalAnswers.entries()).map(
+      ([item_id, raw_value]) => ({ item_id, raw_value }),
+    );
+
+    submitSession.mutate(
+      { sessionId, answers: payload, durationSeconds: elapsed },
       {
-        onSuccess: () => {
-          // Compute feedback locally from the answers + the user's self
-          // scores. The DB has already been updated by the RPC; this is
-          // just the explanatory layer.
-          const qScores = deriveScoresFromAnswers(finalAnswers);
+        onSuccess: (result) => {
+          // Build qScores from server-returned scores (decimal precision).
+          const qScores = pickSubDecimalScores(result.scores);
           const selfScores = pickSubScores(
             character.data?.subScores ?? [],
             'self',
@@ -122,7 +153,7 @@ export default function QuestionnaireScreen() {
   };
 
   const handleBack = () => {
-    if (phase === 'result' || phase === 'submitting') {
+    if (phase === 'result' || phase === 'submitting' || phase === 'starting') {
       router.back();
       return;
     }
@@ -131,7 +162,6 @@ export default function QuestionnaireScreen() {
       return;
     }
     if (phase === 'answering') {
-      // First question — bail out via confirm
       Alert.alert(
         'Sair do questionário?',
         'Suas respostas até aqui não serão salvas.',
@@ -176,21 +206,26 @@ export default function QuestionnaireScreen() {
         </View>
 
         {phase === 'intro' && (
-          <IntroBody onStart={() => setPhase('answering')} onCancel={() => router.back()} />
+          <IntroBody
+            onStart={handleStart}
+            onCancel={() => router.back()}
+          />
+        )}
+
+        {(phase === 'starting' || phase === 'submitting') && (
+          <View style={styles.center}>
+            <Text style={styles.submittingText}>
+              {phase === 'starting' ? 'Preparando…' : 'Calculando…'}
+            </Text>
+          </View>
         )}
 
         {phase === 'answering' && current && (
           <AnsweringBody
             current={current}
-            currentAnswer={answers.get(current.id as QuestionId)}
+            currentAnswer={answers.get(current.item_id)}
             onPick={handlePick}
           />
-        )}
-
-        {phase === 'submitting' && (
-          <View style={styles.center}>
-            <Text style={styles.submittingText}>Calculando…</Text>
-          </View>
         )}
 
         {phase === 'result' && feedback && (
@@ -217,10 +252,11 @@ function IntroBody({
       <View style={styles.introIconHalo}>
         <Ionicons name="pulse" size={36} color={tokens.brand.violet2} />
       </View>
-      <Text style={styles.introTitle}>Questionário</Text>
+      <Text style={styles.introTitle}>Avaliação</Text>
       <Text style={styles.introSub}>
-        24 perguntas, ~10 min. Compara o que você sente com âncoras de
-        comportamento — pra ver se sua autoavaliação bate ou se há gap.
+        48 perguntas, ~12 min. 4 ângulos por dimensão (comportamento,
+        qualidade, resultado, atrito) — pra ver onde você tá honestamente,
+        sem ficar refém de uma única lente.
       </Text>
 
       <View style={styles.introBullets}>
@@ -278,39 +314,41 @@ function AnsweringBody({
   currentAnswer,
   onPick,
 }: {
-  current: (typeof QUESTIONS)[number];
+  current: PsychSessionItem;
   currentAnswer: number | undefined;
   onPick: (raw: number) => void;
 }) {
   const meta = useMetaLookup();
-  const subMeta = meta.sub(current.sub_id);
-  const dimMeta = meta.dim(subMeta.dimensionId);
+  const subId = parseSubFromFacetId(current.facet_id);
+  const subMeta = subId ? meta.sub(subId) : null;
+  const dimMeta = subMeta ? meta.dim(subMeta.dimensionId) : null;
 
   return (
     <ScrollView
       contentContainerStyle={styles.answeringContent}
       showsVerticalScrollIndicator={false}
     >
-      <View style={[styles.subPill, { borderColor: `${dimMeta.color}55` }]}>
-        <Ionicons
-          name={subMeta.iconName as never}
-          size={12}
-          color={dimMeta.color}
-        />
-        <Text style={[styles.subPillText, { color: dimMeta.color }]}>
-          {subMeta.label.toUpperCase()}
-        </Text>
-      </View>
-      <Text style={styles.prompt}>{current.prompt}</Text>
+      {subMeta && dimMeta && (
+        <View style={[styles.subPill, { borderColor: `${dimMeta.color}55` }]}>
+          <Ionicons
+            name={subMeta.iconName as never}
+            size={12}
+            color={dimMeta.color}
+          />
+          <Text style={[styles.subPillText, { color: dimMeta.color }]}>
+            {subMeta.label.toUpperCase()}
+          </Text>
+        </View>
+      )}
+      <Text style={styles.prompt}>{current.text_pt}</Text>
 
       <View style={styles.options}>
-        {current.options.map((label, i) => {
-          const raw = i + 1;
-          const selected = currentAnswer === raw;
+        {current.options.map((opt) => {
+          const selected = currentAnswer === opt.value;
           return (
             <Pressable
-              key={raw}
-              onPress={() => onPick(raw)}
+              key={opt.value}
+              onPress={() => onPick(opt.value)}
               style={({ pressed }) => [
                 styles.option,
                 selected && styles.optionSelected,
@@ -324,17 +362,28 @@ function AnsweringBody({
                   selected && styles.optionRadioSelected,
                 ]}
               >
-                {selected && (
-                  <View style={styles.optionRadioDot} />
-                )}
+                {selected && <View style={styles.optionRadioDot} />}
               </View>
-              <Text style={styles.optionText}>{label}</Text>
+              <Text style={styles.optionText}>{opt.label}</Text>
             </Pressable>
           );
         })}
       </View>
     </ScrollView>
   );
+}
+
+/**
+ * Pull the sub_id out of a leaf facet id of the form
+ * `<instrument>:sub:<subId>:<facetType>`. Returns null for non-conforming
+ * ids (defensive: a future instrument with a different shape won't crash
+ * the screen).
+ */
+function parseSubFromFacetId(facetId: string | null): SubId | null {
+  if (!facetId) return null;
+  const parts = facetId.split(':');
+  if (parts.length < 3 || parts[1] !== 'sub') return null;
+  return parts[2] as SubId;
 }
 
 // ─── Result ───────────────────────────────────────────────────────────────
@@ -369,6 +418,9 @@ function ResultBody({
         {feedback.map((f) => {
           const meta = metaLookup.dim(f.dim);
           const sign = f.delta > 0 ? '+' : '';
+          // 1-decimal display for readability; the raw delta can be
+          // fractional (decimal qScores - integer self).
+          const deltaText = `${sign}${f.delta.toFixed(1)}`;
           return (
             <View
               key={f.dim}
@@ -390,10 +442,7 @@ function ResultBody({
                 <Text style={[styles.feedbackDim, { color: meta.color }]}>
                   {meta.label.toUpperCase()}
                 </Text>
-                <Text style={styles.feedbackDelta}>
-                  Δ {sign}
-                  {f.delta}
-                </Text>
+                <Text style={styles.feedbackDelta}>Δ {deltaText}</Text>
               </View>
               <Text style={styles.feedbackMessage}>{f.message}</Text>
             </View>
