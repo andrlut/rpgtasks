@@ -33,12 +33,26 @@ export interface DimFeedback {
   needsAttention: boolean;
 }
 
+/**
+ * Δ = questionnaire dim score - self dim score (decimal in [-10, 10]).
+ *
+ *   |Δ| <= 0.5         aligned             — within sub-rating noise
+ *   0.5 < |Δ| <= 1.5   slight over/under   — worth a small adjustment
+ *   |Δ| > 1.5          attention over/under — worth a real second look
+ *
+ * The tolerance band (0.5) is intentionally loose: subjective self-rating
+ * has rounding noise, and reacting to every 0.1 difference would feel
+ * nagging rather than honest. The deep-dive band starts at 1.5 — a real
+ * signal on a 0-10 scale.
+ */
 export function bucketForDelta(delta: number): FeedbackBucket {
-  if (delta <= -3) return 'attention_overestimating';
-  if (delta < 0) return 'slight_overestimate';
-  if (delta === 0) return 'aligned';
-  if (delta < 3) return 'slight_underestimate';
-  return 'attention_underestimating';
+  const abs = Math.abs(delta);
+  if (abs <= 0.5) return 'aligned';
+  if (abs <= 1.5)
+    return delta < 0 ? 'slight_overestimate' : 'slight_underestimate';
+  return delta < 0
+    ? 'attention_overestimating'
+    : 'attention_underestimating';
 }
 
 /**
