@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { QuestTemplate } from '@/lib/db/types';
+import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { tokens } from '@/theme';
 import { getQuestCategoryMeta } from '@/theme/quests';
 
@@ -14,7 +15,10 @@ interface Props {
 }
 
 export function QuestTemplateCard({ template, onStart, isStarting }: Props) {
+  const { pick, pickNullable } = useLocalizedPick();
   const cat = getQuestCategoryMeta(template.category);
+  const title = pick(template.title, template.title_pt);
+  const description = pickNullable(template.description, template.description_pt);
   return (
     <Pressable
       onPress={onStart}
@@ -30,7 +34,7 @@ export function QuestTemplateCard({ template, onStart, isStarting }: Props) {
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
           <Text style={styles.title} numberOfLines={1}>
-            {template.title}
+            {title}
           </Text>
           <Text style={[styles.eyebrow, { color: cat.color }]}>
             {cat.label.toUpperCase()} · {template.suggested_duration_days}D
@@ -49,9 +53,9 @@ export function QuestTemplateCard({ template, onStart, isStarting }: Props) {
         </View>
       </View>
 
-      {template.description ? (
+      {description ? (
         <Text style={styles.description} numberOfLines={2}>
-          {template.description}
+          {description}
         </Text>
       ) : null}
 

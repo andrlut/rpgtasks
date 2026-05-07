@@ -57,6 +57,7 @@ export type RecurrenceType = Recurrence['type'];
 export interface Dimension {
   id: DimensionId;
   display_name: string;
+  display_name_pt: string;
   color: string;
   icon: string;
   sort_order: number;
@@ -66,6 +67,7 @@ export interface DimensionSub {
   id: SubId;
   dimension_id: DimensionId;
   display_name: string;
+  display_name_pt: string;
   icon: string;
   sort_order: number;
 }
@@ -236,7 +238,9 @@ export interface Reward {
 export interface RewardTemplate {
   id: string;
   title: string;
+  title_pt: string;
   description: string | null;
+  description_pt: string | null;
   cost: number;
   icon: string;
   category: RewardCategory;
@@ -264,16 +268,20 @@ export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';
 export interface Skill {
   id: string;
   display_name: string;
+  display_name_pt: string;
   unit: string;
+  unit_pt: string;
   dimension_id: DimensionId;
   icon: string;
   sort_order: number;
   /** 1-3 sentence description shown on the skill detail screen. Catalog skills
    * may have this populated; user-created skills are optional. */
   description: string | null;
+  description_pt: string | null;
   /** Punchy 1-line population stat shown next to the medal — e.g. "Only 0.05%
    * of US adults finish a marathon (RunRepeat 2025)." Catalog only. */
   population_stat: string | null;
+  population_stat_pt: string | null;
   /** NULL = catalog skill (visible to everyone). Non-null = owned by that
    * character (visible/editable only by them). */
   character_id: string | null;
@@ -357,7 +365,9 @@ export interface QuestRequirement {
 export interface QuestTemplate {
   id: string;
   title: string;
+  title_pt: string;
   description: string | null;
+  description_pt: string | null;
   category: string;
   suggested_duration_days: number;
   reward_xp: number;

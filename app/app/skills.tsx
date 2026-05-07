@@ -16,6 +16,7 @@ import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import { useSkillStates } from '@/lib/api/skills';
 import type { DimensionId, SkillState, SubId, TierName } from '@/lib/db/types';
+import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
 import {
@@ -64,6 +65,7 @@ function totals(states: SkillState[]): MedalTotals {
 export default function SkillsHubScreen() {
   const router = useRouter();
   const metaLookup = useMetaLookup();
+  const { pick } = useLocalizedPick();
   const skillStates = useSkillStates();
   const [query, setQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -344,7 +346,7 @@ export default function SkillsHubScreen() {
                                   style={styles.skillItemName}
                                   numberOfLines={1}
                                 >
-                                  {s.skill.display_name}
+                                  {pick(s.skill.display_name, s.skill.display_name_pt)}
                                 </Text>
                                 {isCustom && (
                                   <View style={styles.customChip}>

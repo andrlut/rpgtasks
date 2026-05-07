@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
+import { getCurrentLocale } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
 import { characterKeys, type CharacterWithProfile } from './character';
@@ -225,12 +226,22 @@ export function useAddTemplateToShop() {
       const userId = userData.user?.id;
       if (!userId) throw new Error('Not authenticated');
 
+      // Snapshot the catalog text in the user's current locale at adopt
+      // time. Once it lives on `reward`, the user can rename it freely; we
+      // don't keep it bilingual past the catalog boundary.
+      const locale = getCurrentLocale();
+      const title = locale === 'pt' && template.title_pt ? template.title_pt : template.title;
+      const description =
+        locale === 'pt' && template.description_pt
+          ? template.description_pt
+          : template.description;
+
       const { data, error } = await supabase
         .from('reward')
         .insert({
           character_id: userId,
-          title: template.title,
-          description: template.description,
+          title,
+          description,
           cost: template.cost,
           icon: template.icon,
           category: template.category,

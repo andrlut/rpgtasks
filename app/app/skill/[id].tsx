@@ -26,6 +26,7 @@ import {
   useSkillStates,
 } from '@/lib/api/skills';
 import type { SkillLog, SkillTier, TierName } from '@/lib/db/types';
+import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { tokens } from '@/theme';
 import {
   alpha,
@@ -101,6 +102,7 @@ function formatShortDate(iso: string): string {
 
 export default function SkillDetailScreen() {
   const router = useRouter();
+  const { pick, pickNullable } = useLocalizedPick();
   const params = useLocalSearchParams<{ id: string }>();
   const skillId = params.id;
 
@@ -241,15 +243,18 @@ export default function SkillDetailScreen() {
               >
                 {state.currentTier.tier_name.toUpperCase()} TIER
               </Text>
-              <Text style={styles.skillName}>{state.skill.display_name}</Text>
+              <Text style={styles.skillName}>
+                {pick(state.skill.display_name, state.skill.display_name_pt)}
+              </Text>
               <View style={styles.prRow}>
                 <Text style={styles.prValue}>{state.currentPr}</Text>
-                <Text style={styles.prUnit}>{state.skill.unit}</Text>
+                <Text style={styles.prUnit}>{pick(state.skill.unit, state.skill.unit_pt)}</Text>
               </View>
             </View>
 
             {/* Lore card — description + pop stat (always visible now, no toggle) */}
-            {(state.skill.description || state.skill.population_stat) && (
+            {(pickNullable(state.skill.description, state.skill.description_pt) ||
+              pickNullable(state.skill.population_stat, state.skill.population_stat_pt)) && (
               <View
                 style={[
                   styles.loreCard,
@@ -279,8 +284,10 @@ export default function SkillDetailScreen() {
                 >
                   ⟢ LORE
                 </Text>
-                {state.skill.description && (
-                  <Text style={styles.loreDesc}>{state.skill.description}</Text>
+                {pickNullable(state.skill.description, state.skill.description_pt) && (
+                  <Text style={styles.loreDesc}>
+                    {pickNullable(state.skill.description, state.skill.description_pt)}
+                  </Text>
                 )}
                 {state.skill.population_stat && (
                   <View style={styles.lorePop}>
@@ -302,7 +309,7 @@ export default function SkillDetailScreen() {
                     <Text
                       style={[styles.lorePopText, { color: currentMeta.c1 }]}
                     >
-                      {state.skill.population_stat}
+                      {pickNullable(state.skill.population_stat, state.skill.population_stat_pt)}
                     </Text>
                   </View>
                 )}
