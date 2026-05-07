@@ -13,39 +13,32 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
+import { useT } from '@/lib/i18n';
 import { useOnboardingStore } from '@/lib/onboarding';
 import { tokens } from '@/theme';
 
-interface Slide {
-  eyebrow: string;
-  title: string;
-  body: string;
+interface SlideArt {
+  key: 'slide1' | 'slide2' | 'slide3';
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   iconBg: string;
 }
 
-const SLIDES: Slide[] = [
+const SLIDE_ART: SlideArt[] = [
   {
-    eyebrow: 'WELCOME, HERO',
-    title: 'Turn your life into an RPG.',
-    body: 'Real tasks. Real XP. Real rewards. The grind, but make it yours.',
+    key: 'slide1',
     icon: 'shield',
     iconColor: tokens.brand.violet2,
     iconBg: 'rgba(123, 92, 255, 0.18)',
   },
   {
-    eyebrow: 'THE LOOP',
-    title: 'Train. Earn. Redeem.',
-    body: 'Complete habits to gain XP and coins. Spend coins on rewards you set yourself.',
+    key: 'slide2',
     icon: 'flash',
     iconColor: tokens.semantic.xp,
     iconBg: 'rgba(61, 214, 140, 0.18)',
   },
   {
-    eyebrow: 'READY?',
-    title: 'Your journey starts at Level 1.',
-    body: 'Pick a few starter quests. We will handle the leveling.',
+    key: 'slide3',
     icon: 'rocket',
     iconColor: tokens.semantic.coin,
     iconBg: 'rgba(255, 200, 61, 0.18)',
@@ -54,9 +47,10 @@ const SLIDES: Slide[] = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { t } = useT();
   const [index, setIndex] = useState(0);
-  const slide = SLIDES[index]!;
-  const isLast = index === SLIDES.length - 1;
+  const slide = SLIDE_ART[index]!;
+  const isLast = index === SLIDE_ART.length - 1;
   const markSeen = useOnboardingStore((s) => s.markSeen);
 
   const ctaScale = useSharedValue(1);
@@ -85,7 +79,7 @@ export default function OnboardingScreen() {
         </Text>
         {!isLast && (
           <Pressable onPress={finish} hitSlop={8}>
-            <Text style={styles.skip}>Skip</Text>
+            <Text style={styles.skip}>{t('onboarding.skip')}</Text>
           </Pressable>
         )}
       </View>
@@ -128,15 +122,15 @@ export default function OnboardingScreen() {
           style={styles.textWrap}
         >
           <Text style={[styles.eyebrow, { color: slide.iconColor }]}>
-            {slide.eyebrow}
+            {t(`onboarding.${slide.key}.eyebrow`)}
           </Text>
-          <Text style={styles.title}>{slide.title}</Text>
-          <Text style={styles.copy}>{slide.body}</Text>
+          <Text style={styles.title}>{t(`onboarding.${slide.key}.title`)}</Text>
+          <Text style={styles.copy}>{t(`onboarding.${slide.key}.body`)}</Text>
         </Animated.View>
       </View>
 
       <View style={styles.dots}>
-        {SLIDES.map((_, i) => (
+        {SLIDE_ART.map((_, i) => (
           <View
             key={i}
             style={[
@@ -167,7 +161,7 @@ export default function OnboardingScreen() {
               style={styles.cta}
             >
               <Text style={styles.ctaText}>
-                {isLast ? 'Start your journey' : 'Continue'}
+                {isLast ? t('onboarding.start') : t('onboarding.continue')}
               </Text>
               {isLast && <Ionicons name="arrow-forward" size={20} color={tokens.text.hi} />}
             </LinearGradient>

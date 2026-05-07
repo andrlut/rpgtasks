@@ -14,11 +14,13 @@ import {
 } from 'react-native';
 
 import { AUTH_REDIRECT_URL } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -26,7 +28,7 @@ export default function ForgotPasswordScreen() {
   const handleSubmit = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      Alert.alert('Email needed', 'Type the email you signed up with.');
+      Alert.alert(t('auth.forgot.emailNeeded'), t('auth.forgot.emailNeededBody'));
       return;
     }
 
@@ -36,11 +38,10 @@ export default function ForgotPasswordScreen() {
         redirectTo: AUTH_REDIRECT_URL,
       });
       if (error) {
-        // Surface rate-limit specifically — common with Supabase default SMTP.
         const msg = /rate limit/i.test(error.message)
-          ? 'Email service is rate-limited right now. Wait a few minutes and try again, or ask the admin.'
+          ? t('auth.forgot.rateLimited')
           : error.message;
-        Alert.alert('Could not send', msg);
+        Alert.alert(t('auth.forgot.couldNotSend'), msg);
         return;
       }
       setSent(true);
@@ -61,23 +62,20 @@ export default function ForgotPasswordScreen() {
           hitSlop={8}
         >
           <Ionicons name="chevron-back" size={20} color={tokens.text.hi} />
-          <Text style={styles.backText}>Back to login</Text>
+          <Text style={styles.backText}>{t('auth.forgot.back')}</Text>
         </Pressable>
 
         <View style={styles.brand}>
-          <Text style={styles.brandTitle}>Reset password</Text>
-          <Text style={styles.brandTagline}>
-            We&apos;ll send you a link to choose a new one.
-          </Text>
+          <Text style={styles.brandTitle}>{t('auth.forgot.title')}</Text>
+          <Text style={styles.brandTagline}>{t('auth.forgot.subtitle')}</Text>
         </View>
 
         {sent ? (
           <View style={styles.successBox}>
             <Ionicons name="mail" size={36} color={tokens.semantic.xp} />
-            <Text style={styles.successTitle}>Email sent</Text>
+            <Text style={styles.successTitle}>{t('auth.forgot.emailSent')}</Text>
             <Text style={styles.successSub}>
-              Check {email.trim()} for a link. Open it on this device — the app
-              will pick it up and let you set a new password.
+              {t('auth.forgot.emailSentBody', { email: email.trim() })}
             </Text>
             <Pressable
               style={({ pressed }) => [
@@ -86,12 +84,12 @@ export default function ForgotPasswordScreen() {
               ]}
               onPress={() => router.replace('/login')}
             >
-              <Text style={styles.primaryButtonText}>Done</Text>
+              <Text style={styles.primaryButtonText}>{t('auth.forgot.done')}</Text>
             </Pressable>
           </View>
         ) : (
           <View style={styles.form}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>{t('auth.fields.email')}</Text>
             <TextInput
               style={styles.input}
               value={email}
@@ -99,7 +97,7 @@ export default function ForgotPasswordScreen() {
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
-              placeholder="you@example.com"
+              placeholder={t('auth.fields.emailPlaceholder')}
               placeholderTextColor={tokens.text.faint}
               editable={!isSubmitting}
               autoFocus
@@ -116,7 +114,7 @@ export default function ForgotPasswordScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color={tokens.text.hi} />
               ) : (
-                <Text style={styles.primaryButtonText}>Send reset link</Text>
+                <Text style={styles.primaryButtonText}>{t('auth.forgot.submit')}</Text>
               )}
             </Pressable>
           </View>

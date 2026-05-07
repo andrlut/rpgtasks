@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { useRecoveryStore } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
@@ -24,6 +25,7 @@ import { tokens } from '@/theme';
  */
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { t } = useT();
   const setRecovering = useRecoveryStore((s) => s.setRecovering);
 
   const [password, setPassword] = useState('');
@@ -32,11 +34,11 @@ export default function ResetPasswordScreen() {
 
   const handleSubmit = async () => {
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Use at least 6 characters.');
+      Alert.alert(t('auth.reset.tooShort'), t('auth.reset.tooShortBody'));
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Mismatch', "Passwords don't match.");
+      Alert.alert(t('auth.reset.mismatch'), t('auth.reset.mismatchBody'));
       return;
     }
 
@@ -44,7 +46,7 @@ export default function ResetPasswordScreen() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        Alert.alert('Could not update', error.message);
+        Alert.alert(t('auth.reset.couldNotUpdate'), error.message);
         return;
       }
       // Clear the recovery flag so AuthGate stops routing here.
@@ -68,29 +70,26 @@ export default function ResetPasswordScreen() {
     >
       <View style={styles.inner}>
         <View style={styles.brand}>
-          <Text style={styles.brandTitle}>Pick a new password</Text>
-          <Text style={styles.brandTagline}>
-            You arrived here via a recovery email. Set a fresh password and
-            you&apos;re back in.
-          </Text>
+          <Text style={styles.brandTitle}>{t('auth.reset.title')}</Text>
+          <Text style={styles.brandTagline}>{t('auth.reset.subtitle')}</Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>New password</Text>
+          <Text style={styles.label}>{t('auth.reset.newLabel')}</Text>
           <TextInput
             style={styles.input}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="new-password"
-            placeholder="At least 6 characters"
+            placeholder={t('auth.reset.newPlaceholder')}
             placeholderTextColor={tokens.text.faint}
             editable={!isSubmitting}
             autoFocus
           />
 
           <Text style={[styles.label, { marginTop: tokens.space[4] }]}>
-            Confirm
+            {t('auth.reset.confirmLabel')}
           </Text>
           <TextInput
             style={styles.input}
@@ -98,7 +97,7 @@ export default function ResetPasswordScreen() {
             onChangeText={setConfirm}
             secureTextEntry
             autoComplete="new-password"
-            placeholder="Type it again"
+            placeholder={t('auth.reset.confirmPlaceholder')}
             placeholderTextColor={tokens.text.faint}
             editable={!isSubmitting}
           />
@@ -114,7 +113,7 @@ export default function ResetPasswordScreen() {
             {isSubmitting ? (
               <ActivityIndicator color={tokens.text.hi} />
             ) : (
-              <Text style={styles.primaryButtonText}>Update password</Text>
+              <Text style={styles.primaryButtonText}>{t('auth.reset.submit')}</Text>
             )}
           </Pressable>
 
@@ -123,7 +122,7 @@ export default function ResetPasswordScreen() {
             disabled={isSubmitting}
             style={styles.toggle}
           >
-            <Text style={styles.toggleText}>Cancel and sign out</Text>
+            <Text style={styles.toggleText}>{t('auth.reset.cancel')}</Text>
           </Pressable>
         </View>
       </View>

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AUTH_REDIRECT_URL } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
@@ -20,6 +21,7 @@ type Mode = 'login' | 'signup';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { t } = useT();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,11 +29,11 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
-      Alert.alert('Missing info', 'Email and password are required.');
+      Alert.alert(t('auth.errors.missingInfo'), t('auth.errors.missingInfoBody'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      Alert.alert(t('auth.errors.weakPassword'), t('auth.errors.weakPasswordBody'));
       return;
     }
 
@@ -47,12 +49,12 @@ export default function LoginScreen() {
             });
 
       if (error) {
-        Alert.alert(mode === 'login' ? 'Login failed' : 'Signup failed', error.message);
-      } else if (mode === 'signup') {
         Alert.alert(
-          'Almost there',
-          'Check your email to confirm your account, then come back and log in.',
+          mode === 'login' ? t('auth.login.failed') : t('auth.signup.failed'),
+          error.message,
         );
+      } else if (mode === 'signup') {
+        Alert.alert(t('auth.signup.almostThere'), t('auth.signup.checkEmail'));
         setMode('login');
       }
     } finally {
@@ -67,12 +69,12 @@ export default function LoginScreen() {
     >
       <View style={styles.inner}>
         <View style={styles.brand}>
-          <Text style={styles.brandTitle}>RPG Tasks</Text>
-          <Text style={styles.brandTagline}>Turn your life into an RPG</Text>
+          <Text style={styles.brandTitle}>{t('auth.brand.title')}</Text>
+          <Text style={styles.brandTagline}>{t('auth.brand.tagline')}</Text>
         </View>
 
         <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
+          <Text style={styles.label}>{t('auth.fields.email')}</Text>
           <TextInput
             style={styles.input}
             value={email}
@@ -80,19 +82,21 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
-            placeholder="you@example.com"
+            placeholder={t('auth.fields.emailPlaceholder')}
             placeholderTextColor={tokens.text.faint}
             editable={!isSubmitting}
           />
 
-          <Text style={[styles.label, { marginTop: tokens.space[4] }]}>Password</Text>
+          <Text style={[styles.label, { marginTop: tokens.space[4] }]}>
+            {t('auth.fields.password')}
+          </Text>
           <TextInput
             style={styles.input}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            placeholder="At least 6 characters"
+            placeholder={t('auth.fields.passwordPlaceholder')}
             placeholderTextColor={tokens.text.faint}
             editable={!isSubmitting}
           />
@@ -109,7 +113,7 @@ export default function LoginScreen() {
               <ActivityIndicator color={tokens.text.hi} />
             ) : (
               <Text style={styles.primaryButtonText}>
-                {mode === 'login' ? 'Log in' : 'Sign up'}
+                {mode === 'login' ? t('auth.login.submit') : t('auth.signup.submit')}
               </Text>
             )}
           </Pressable>
@@ -121,7 +125,7 @@ export default function LoginScreen() {
               style={styles.forgotLink}
               hitSlop={8}
             >
-              <Text style={styles.forgotText}>Forgot password?</Text>
+              <Text style={styles.forgotText}>{t('auth.login.forgot')}</Text>
             </Pressable>
           )}
 
@@ -131,8 +135,10 @@ export default function LoginScreen() {
             style={styles.toggle}
           >
             <Text style={styles.toggleText}>
-              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-              <Text style={styles.toggleAction}>{mode === 'login' ? 'Sign up' : 'Log in'}</Text>
+              {mode === 'login' ? t('auth.login.noAccount') : t('auth.signup.hasAccount')}
+              <Text style={styles.toggleAction}>
+                {mode === 'login' ? t('auth.login.signUpLink') : t('auth.signup.signInLink')}
+              </Text>
             </Text>
           </Pressable>
         </View>

@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -19,12 +20,12 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   profile: 'settings',
 };
 
-const TAB_LABELS: Record<string, string> = {
-  index: 'Tasks',
-  history: 'History',
-  character: 'Hero',
-  rewards: 'Rewards',
-  profile: 'Settings',
+const TAB_LABEL_KEYS: Record<string, string> = {
+  index: 'tabs.tasks',
+  history: 'tabs.history',
+  character: 'tabs.hero',
+  rewards: 'tabs.rewards',
+  profile: 'tabs.settings',
 };
 
 const BAR_HORIZONTAL_MARGIN = 12;
@@ -35,6 +36,7 @@ const INDICATOR_HEIGHT = 3;
 export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { t } = useT();
   const tabCount = state.routes.length;
   const barWidth = screenWidth - BAR_HORIZONTAL_MARGIN * 2;
   const tabWidth = (barWidth - 12) / tabCount; // 6px padding each side inside bar
@@ -66,7 +68,8 @@ export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
         {state.routes.map((route, idx) => {
           const isFocused = state.index === idx;
           const iconName = TAB_ICONS[route.name] ?? 'ellipse';
-          const label = TAB_LABELS[route.name] ?? route.name;
+          const labelKey = TAB_LABEL_KEYS[route.name];
+          const label = labelKey ? t(labelKey) : route.name;
 
           const onPress = () => {
             const event = navigation.emit({

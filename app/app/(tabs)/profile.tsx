@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCharacter } from '@/lib/api/character';
 import { useSession } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { useOnboardingStore } from '@/lib/onboarding';
 import {
   useLoadedSettings,
@@ -37,6 +38,7 @@ export default function SettingsScreen() {
   const resetOnboarding = useOnboardingStore((s) => s.reset);
   const settings = useLoadedSettings();
   const setSetting = useSettingsStore((s) => s.set);
+  const { t } = useT();
 
   const profile = character.data?.profile;
   const email = session.user?.email ?? '—';
@@ -45,9 +47,13 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     const ok = await confirmAction(
-      'Sign out?',
-      'You can log back in with the same email.',
-      { okText: 'Sign out', cancelText: 'Cancel', destructive: true },
+      t('profile.actions.confirmSignOut'),
+      t('profile.actions.confirmSignOutBody'),
+      {
+        okText: t('profile.actions.signOut'),
+        cancelText: t('common.cancel'),
+        destructive: true,
+      },
     );
     if (!ok) return;
     await supabase.auth.signOut();
@@ -55,14 +61,18 @@ export default function SettingsScreen() {
 
   const handleDeleteAccount = async () => {
     const ok = await confirmAction(
-      'Delete account?',
-      'This will permanently delete your character, tasks, rewards, and history. This cannot be undone.',
-      { okText: 'Delete', cancelText: 'Cancel', destructive: true },
+      t('profile.actions.confirmDelete'),
+      t('profile.actions.confirmDeleteBody'),
+      {
+        okText: t('common.delete'),
+        cancelText: t('common.cancel'),
+        destructive: true,
+      },
     );
     if (!ok) return;
     showInfo(
-      'Not yet available',
-      'Account deletion is wired to the server but the admin endpoint is not active yet. For now, sign out and contact us if you need the account removed.',
+      t('profile.actions.deleteNotYet'),
+      t('profile.actions.deleteNotYetBody'),
     );
   };
 
@@ -74,10 +84,7 @@ export default function SettingsScreen() {
   const handleCheckForUpdate = async () => {
     if (isCheckingUpdate) return;
     if (__DEV__) {
-      showInfo(
-        'Dev mode',
-        'OTA updates are only available in the installed APK, not in Expo Go / dev mode.',
-      );
+      showInfo(t('profile.update.devMode'), t('profile.update.devModeBody'));
       return;
     }
     setIsCheckingUpdate(true);
@@ -86,17 +93,20 @@ export default function SettingsScreen() {
       if (result.isAvailable) {
         await Updates.fetchUpdateAsync();
         const ok = await confirmAction(
-          'Update ready',
-          'Restart the app now to apply it?',
-          { okText: 'Restart', cancelText: 'Later' },
+          t('profile.update.ready'),
+          t('profile.update.readyBody'),
+          {
+            okText: t('profile.update.restart'),
+            cancelText: t('profile.update.later'),
+          },
         );
         if (ok) await Updates.reloadAsync();
       } else {
-        showInfo('Up to date', 'You are on the latest version.');
+        showInfo(t('profile.update.upToDate'), t('profile.update.upToDateBody'));
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not check', msg);
+      const msg = e instanceof Error ? e.message : t('profile.update.unknownError');
+      showInfo(t('profile.update.couldNotCheck'), msg);
     } finally {
       setIsCheckingUpdate(false);
     }
@@ -105,16 +115,16 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>Settings</Text>
+        <Text style={styles.screenTitle}>{t('profile.title')}</Text>
 
         {/* ───── ACCOUNT ───── */}
-        <SectionHeader icon="person-outline" label="Account" />
+        <SectionHeader icon="person-outline" label={t('profile.sections.account')} />
         <Card>
-          <InfoRow label="Email" value={email} />
+          <InfoRow label={t('profile.fields.email')} value={email} />
           <Divider />
           <ButtonRow
             icon="at-outline"
-            label="Username"
+            label={t('profile.fields.username')}
             value={profile?.display_name ?? '—'}
             onPress={() => setUsernameOpen(true)}
             chevron
@@ -122,130 +132,128 @@ export default function SettingsScreen() {
           <Divider />
           <ButtonRow
             icon="log-out-outline"
-            label="Sign out"
+            label={t('profile.actions.signOut')}
             onPress={handleSignOut}
             danger
           />
           <Divider />
           <ButtonRow
             icon="trash-outline"
-            label="Delete account"
+            label={t('profile.actions.deleteAccount')}
             onPress={handleDeleteAccount}
             danger
           />
         </Card>
 
         {/* ───── PREFERENCES ───── */}
-        <SectionHeader icon="options-outline" label="Preferences" />
+        <SectionHeader icon="options-outline" label={t('profile.sections.preferences')} />
         <Card>
           <SegmentedRow<ThemeMode>
-            label="Theme"
+            label={t('profile.fields.theme')}
             value={settings.theme}
             options={[
-              { value: 'light', label: 'Light' },
-              { value: 'dark', label: 'Dark' },
-              { value: 'system', label: 'System' },
+              { value: 'light', label: t('profile.theme.light') },
+              { value: 'dark', label: t('profile.theme.dark') },
+              { value: 'system', label: t('profile.theme.system') },
             ]}
             onChange={(v) => setSetting('theme', v)}
-            note={
-              settings.theme !== 'dark'
-                ? 'Light/system themes are coming soon — UI follows dark for now.'
-                : undefined
-            }
+            note={settings.theme !== 'dark' ? t('profile.theme.note') : undefined}
           />
           <Divider />
           <SegmentedRow<LanguageCode>
-            label="Language"
+            label={t('profile.fields.language')}
             value={settings.language}
             options={[
-              { value: 'en', label: 'English' },
-              { value: 'pt', label: 'Português' },
+              { value: 'en', label: t('profile.language.english') },
+              { value: 'pt', label: t('profile.language.portuguese') },
             ]}
             onChange={(v) => setSetting('language', v)}
-            note={
-              settings.language === 'pt'
-                ? 'Portuguese strings are being translated — most UI is still English.'
-                : undefined
-            }
           />
           <Divider />
           <SegmentedRow<WeekStart>
-            label="Week starts on"
+            label={t('profile.fields.weekStart')}
             value={settings.weekStart}
             options={[
-              { value: 'sunday', label: 'Sunday' },
-              { value: 'monday', label: 'Monday' },
+              { value: 'sunday', label: t('profile.weekStart.sunday') },
+              { value: 'monday', label: t('profile.weekStart.monday') },
             ]}
             onChange={(v) => setSetting('weekStart', v)}
           />
         </Card>
 
         {/* ───── NOTIFICATIONS ───── */}
-        <SectionHeader icon="notifications-outline" label="Notifications" />
+        <SectionHeader icon="notifications-outline" label={t('profile.sections.notifications')} />
         <Card>
           <ToggleRow
-            label="Enable notifications"
-            description="Master switch for all reminders below."
+            label={t('profile.notifications.master')}
+            description={t('profile.notifications.masterDescription')}
             value={settings.notificationsEnabled}
             onChange={(v) => setSetting('notificationsEnabled', v)}
           />
           <Divider />
           <ToggleRow
-            label="Daily reminder"
-            description="A nudge if you have unfinished daily quests."
+            label={t('profile.notifications.daily')}
+            description={t('profile.notifications.dailyDescription')}
             value={settings.dailyReminder}
             onChange={(v) => setSetting('dailyReminder', v)}
             disabled={!settings.notificationsEnabled}
           />
           <Divider />
           <ToggleRow
-            label="Quest reminder"
-            description="Heads-up before a quest deadline."
+            label={t('profile.notifications.quest')}
+            description={t('profile.notifications.questDescription')}
             value={settings.questReminder}
             onChange={(v) => setSetting('questReminder', v)}
             disabled={!settings.notificationsEnabled}
           />
           <Divider />
           <ToggleRow
-            label="Streak reminder"
-            description="Late-evening ping if today's streak is at risk."
+            label={t('profile.notifications.streak')}
+            description={t('profile.notifications.streakDescription')}
             value={settings.streakReminder}
             onChange={(v) => setSetting('streakReminder', v)}
             disabled={!settings.notificationsEnabled}
           />
-          <NoteText>
-            Notifications need a small native setup pass — the toggles save your choice now and
-            will start firing once that ships.
-          </NoteText>
+          <NoteText>{t('profile.notifications.footnote')}</NoteText>
         </Card>
 
         {/* ───── TASKS & PROGRESS ───── */}
-        <SectionHeader icon="trophy-outline" label="Tasks & Progress" />
+        <SectionHeader icon="trophy-outline" label={t('profile.sections.tasksProgress')} />
         <Card>
           <ToggleRow
-            label="Confirm hard quests"
-            description="Ask before completing a 4★ or 5★ task. Stops accidental taps."
+            label={t('profile.fields.confirmHighDifficulty')}
+            description={t('profile.fields.confirmHighDifficultyDescription')}
             value={settings.confirmHighDifficultyComplete}
             onChange={(v) => setSetting('confirmHighDifficultyComplete', v)}
           />
           <Divider />
-          <InfoRow label="Default rewards" value="Coming soon" muted />
+          <InfoRow
+            label={t('profile.fields.defaultRewards')}
+            value={t('profile.fields.comingSoon')}
+            muted
+          />
           <Divider />
-          <InfoRow label="Day reset time" value="Midnight (local)" muted />
+          <InfoRow
+            label={t('profile.fields.dayResetTime')}
+            value={t('profile.fields.midnight')}
+            muted
+          />
         </Card>
 
         {/* ───── ABOUT ───── */}
-        <SectionHeader icon="information-circle-outline" label="About" />
+        <SectionHeader icon="information-circle-outline" label={t('profile.sections.about')} />
         <Card>
           <ButtonRow
             icon="play-circle-outline"
-            label="Replay onboarding"
+            label={t('profile.actions.replayOnboarding')}
             onPress={handleReplayOnboarding}
           />
           <Divider />
           <ButtonRow
             icon={isCheckingUpdate ? 'sync' : 'cloud-download-outline'}
-            label={isCheckingUpdate ? 'Checking...' : 'Check for updates'}
+            label={
+              isCheckingUpdate ? t('profile.actions.checking') : t('profile.actions.checkForUpdates')
+            }
             onPress={handleCheckForUpdate}
             disabled={isCheckingUpdate}
             spinning={isCheckingUpdate}
@@ -253,8 +261,10 @@ export default function SettingsScreen() {
         </Card>
 
         <Text style={styles.footer}>
-          RPG Tasks · v{Constants.expoConfig?.version ?? '0'}
-          {Updates.updateId ? `\nupdate ${Updates.updateId.slice(0, 8)}` : ''}
+          {t('profile.footer', { version: Constants.expoConfig?.version ?? '0' })}
+          {Updates.updateId
+            ? `\n${t('profile.footerUpdate', { id: Updates.updateId.slice(0, 8) })}`
+            : ''}
         </Text>
       </ScrollView>
 
