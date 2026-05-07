@@ -134,6 +134,10 @@ export default function RootLayout() {
               name="big-five"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="schwartz"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>

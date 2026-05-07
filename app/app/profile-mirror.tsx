@@ -29,6 +29,12 @@ import {
   type BigFiveLocale,
   type BigFiveTrait,
 } from '@/lib/psych/big-five-content';
+import {
+  getValueContent,
+  valueFromFacetId,
+  type SchwartzLocale,
+  type SchwartzValue,
+} from '@/lib/psych/schwartz-content';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
@@ -163,13 +169,8 @@ export default function ProfileMirrorScreen() {
             {/* ─── Big Five ────────────────────────────────────────────── */}
             <BigFiveCard onOpen={() => router.replace('/big-five')} />
 
-            {/* ─── Schwartz (placeholder) ──────────────────────────────── */}
-            <PendingCard
-              icon="compass"
-              title="Valores (Schwartz)"
-              subtitle="O que importa · prioridade · anos"
-              note="Em construção — PVQ-RR, 19 valores em 4 grupos de ordem superior."
-            />
+            {/* ─── Schwartz ────────────────────────────────────────────── */}
+            <SchwartzCard onOpen={() => router.replace('/schwartz')} />
 
             {/* ─── Apego (placeholder) ─────────────────────────────────── */}
             <PendingCard
@@ -355,6 +356,110 @@ function BigFiveTraitRow({
   );
 }
 
+function SchwartzCard({ onOpen }: { onOpen: () => void }) {
+  const { locale } = useT();
+  const swLocale: SchwartzLocale = locale === 'en' ? 'en' : 'pt';
+  const isPt = swLocale === 'pt';
+
+  const lastSession = useLastPsychSession('schwartz_pvq');
+  const scoresQ = useSessionScores(lastSession.data?.id);
+
+  const top3 = useMemo(() => {
+    const rows: { value: SchwartzValue; score: number }[] = [];
+    for (const s of scoresQ.data ?? []) {
+      const v = valueFromFacetId(s.facet_id);
+      if (v) rows.push({ value: v, score: Number(s.score_decimal) });
+    }
+    rows.sort((a, b) => b.score - a.score);
+    return rows.slice(0, 3);
+  }, [scoresQ.data]);
+
+  const hasScores = top3.length > 0;
+  const sinceDays = daysSince(lastSession.data?.taken_at);
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.card,
+        styles.cardActive,
+        pressed && { opacity: 0.92 },
+      ]}
+      hitSlop={4}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <Ionicons name="compass" size={18} color={tokens.brand.violet2} />
+          <Text style={styles.cardTitle}>
+            {isPt ? 'Valores' : 'Values'}
+          </Text>
+        </View>
+        <Text style={styles.cardSub}>
+          {isPt
+            ? 'O que importa · prioridade · anos'
+            : 'What matters · priority · years'}
+        </Text>
+      </View>
+
+      {hasScores ? (
+        <>
+          <Text style={styles.cardLede}>
+            {isPt ? 'Top 3 valores:' : 'Top 3 values:'}
+          </Text>
+          <View style={styles.bfTraitGrid}>
+            {top3.map((row, i) => {
+              const content = getValueContent(row.value, swLocale);
+              return (
+                <View key={row.value} style={swCardStyles.row}>
+                  <Text style={swCardStyles.rank}>{i + 1}</Text>
+                  <Text style={swCardStyles.label}>{content.label}</Text>
+                </View>
+              );
+            })}
+          </View>
+          <View style={styles.refazerBtn}>
+            <Ionicons name="refresh" size={14} color={tokens.brand.violet2} />
+            <Text style={styles.refazerText}>
+              {sinceDays === null
+                ? isPt ? 'Ver detalhes' : 'See details'
+                : sinceDays === 0
+                  ? isPt ? 'Refeito hoje · ver detalhes' : 'Done today · see details'
+                  : isPt ? `Ver detalhes · ${sinceDays}d atrás` : `See details · ${sinceDays}d ago`}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>
+            {isPt ? 'Fazer Valores (8-16 min)' : 'Take Values (8-16 min)'}
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+const swCardStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+  },
+  rank: {
+    width: 18,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    color: tokens.brand.violet2,
+  },
+  label: {
+    flex: 1,
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    color: tokens.text.hi,
+  },
+});
+
 function PendingCard({
   icon,
   title,
@@ -463,6 +568,13 @@ const styles = StyleSheet.create({
   },
   bfTraitGrid: {
     gap: tokens.space[2],
+  },
+  cardLede: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    color: tokens.text.dim,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   refazerBtn: {
     flexDirection: 'row',
