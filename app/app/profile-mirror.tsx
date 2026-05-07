@@ -17,6 +17,7 @@ import { useLastWellbeingSession } from '@/lib/api/psych';
 import { daysSince } from '@/lib/api/questionnaire';
 import type { DimensionId, SubId } from '@/lib/db/types';
 import { useMetaLookup } from '@/lib/i18n/meta';
+import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
   DIMENSION_META,
@@ -213,13 +214,13 @@ function DimRow({
               color={tokens.text.dim}
             />
             <Text style={dimRowStyles.subScore}>
-              {(scores.get(subId) ?? 0).toFixed(1)}
+              {formatScore(scores.get(subId) ?? 0)}
             </Text>
           </View>
         ))}
       </View>
       <Text style={[dimRowStyles.dimScore, { color: meta.color }]}>
-        {dimScore.toFixed(1)}
+        {formatScore(dimScore)}
       </Text>
     </View>
   );

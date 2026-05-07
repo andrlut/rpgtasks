@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { DimensionId, SubId } from '@/lib/db/types';
+import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { DIMENSION_ORDER, SUBS_BY_DIM } from '@/theme/dimensions';
@@ -293,7 +294,7 @@ export function HexChart({
               }}
             >
               <Text style={styles.discText} allowFontScaling={false}>
-                {m.score}
+                {formatScore(m.score)}
               </Text>
             </View>
           );
@@ -337,7 +338,9 @@ export function HexChart({
                     <View
                       style={[styles.cardBadge, { backgroundColor: meta.color }]}
                     >
-                      <Text style={styles.cardBadgeText}>{m.score}</Text>
+                      <Text style={styles.cardBadgeText}>
+                        {formatScore(m.score)}
+                      </Text>
                     </View>
                   </View>
                   {subIds.map((subId, i) => {
