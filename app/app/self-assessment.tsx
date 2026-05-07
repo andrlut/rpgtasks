@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,52 +13,130 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useQueryClient } from '@tanstack/react-query';
+
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { Sparkline } from '@/components/Sparkline';
 import {
+  SubAnchorCard,
+  SubAnchorCardLabels,
+} from '@/components/SubAnchorCard';
+import {
+  characterKeys,
   pickSubScores,
   pickSubScoresDecimal,
   useCharacter,
-  useSetSubScore,
 } from '@/lib/api/character';
-import { useAssessmentHistoryAll } from '@/lib/api/questionnaire';
+import {
+  questionnaireKeys,
+  useAssessmentHistoryAll,
+} from '@/lib/api/questionnaire';
 import type { SubId } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
+import { supabase } from '@/lib/supabase';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
-import {
-  DIMENSION_ORDER,
-  SUBS_BY_DIM,
-} from '@/theme/dimensions';
+import { DIMENSION_ORDER, SUBS_BY_DIM } from '@/theme/dimensions';
 
-const SCORE_VALUES = [0, 1, 2, 3, 4, 5];
+const TREND_DAYS = 90;
+const SLIDER_STEP = 0.5;
+
+type DraftMap = Map<SubId, number>;
 
 export default function SelfAssessmentScreen() {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
   const metaLookup = useMetaLookup();
   const character = useCharacter();
-  const setSubScore = useSetSubScore();
+  const history = useAssessmentHistoryAll('self');
+  const qc = useQueryClient();
 
-  const selfScores = useMemo(
-    () => pickSubScores(character.data?.subScores ?? [], 'self'),
+  const savedSelfScores = useMemo(
+    () => pickSubScoresDecimal(character.data?.subScores ?? [], 'self'),
     [character.data?.subScores],
   );
-  // Decimal precision for the questionnaire reference shown next to each
-  // sub — keeps the cross-source comparison honest (self stays integer
-  // gut-rating; quiz shows the v2 decimal).
-  const questionnaireScores = useMemo(
+  const savedQuizScores = useMemo(
     () => pickSubScoresDecimal(character.data?.subScores ?? [], 'questionnaire'),
     [character.data?.subScores],
   );
-  const hasQuestionnaire = questionnaireScores.size > 0;
-  const history = useAssessmentHistoryAll('self');
+  const hasQuestionnaire = useMemo(
+    () => pickSubScores(character.data?.subScores ?? [], 'questionnaire').size > 0,
+    [character.data?.subScores],
+  );
 
-  const handleSetScore = (subId: SubId, score: number) => {
-    if (selfScores.get(subId) === score) return;
-    Haptics.selectionAsync().catch(() => {});
-    setSubScore.mutate({ source: 'self', subId, score });
+  const [drafts, setDrafts] = useState<DraftMap>(new Map());
+  const [saving, setSaving] = useState(false);
+
+  const dirtySubs = useMemo<SubId[]>(() => {
+    const out: SubId[] = [];
+    for (const [subId, value] of drafts.entries()) {
+      const saved = savedSelfScores.get(subId) ?? 0;
+      if (Math.abs(value - saved) > 0.01) out.push(subId);
+    }
+    return out;
+  }, [drafts, savedSelfScores]);
+
+  const hasPending = dirtySubs.length > 0;
+
+  const handleSlide = (subId: SubId, value: number) => {
+    const snapped = Math.round(value / SLIDER_STEP) * SLIDER_STEP;
+    setDrafts((prev) => {
+      const next = new Map(prev);
+      next.set(subId, snapped);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    if (!hasPending || saving) return;
+    setSaving(true);
+    const entries = dirtySubs.map((sub_id) => ({
+      sub_id,
+      score_decimal: drafts.get(sub_id),
+    }));
+    const { error } = await supabase.rpc('set_sub_scores_bulk', {
+      p_source: 'self',
+      p_entries: entries,
+    });
+    setSaving(false);
+    if (error) {
+      Alert.alert(
+        locale === 'en' ? 'Could not save' : 'Não foi possível salvar',
+        error.message,
+      );
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    setDrafts(new Map());
+    qc.invalidateQueries({ queryKey: characterKeys.me() });
+    qc.invalidateQueries({ queryKey: questionnaireKeys.all });
+  };
+
+  const handleClose = () => {
+    if (hasPending) {
+      Alert.alert(
+        locale === 'en' ? 'Discard changes?' : 'Descartar mudanças?',
+        locale === 'en'
+          ? 'You have unsaved changes. Discard them?'
+          : 'Você tem mudanças não salvas. Descartar?',
+        [
+          {
+            text: locale === 'en' ? 'Keep editing' : 'Continuar',
+            style: 'cancel',
+          },
+          {
+            text: locale === 'en' ? 'Discard' : 'Descartar',
+            style: 'destructive',
+            onPress: () => router.back(),
+          },
+        ],
+      );
+      return;
+    }
+    router.back();
   };
 
   return (
@@ -64,7 +144,7 @@ export default function SelfAssessmentScreen() {
       <ScreenBackground>
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={handleClose}
             style={({ pressed }) => [
               styles.closeBtn,
               pressed && { opacity: 0.6 },
@@ -82,52 +162,35 @@ export default function SelfAssessmentScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.intro}>
-            Where you stand in each area today. Tap a number to update — it
-            saves automatically. Come back any time and re-rate yourself.
+            {locale === 'en'
+              ? 'Where you stand in each area today. Drag the slider to update — read the description first if you want a steadier reference.'
+              : 'Onde você tá em cada área hoje. Arraste o slider pra atualizar — leia a descrição antes se quiser uma âncora mais firme.'}
           </Text>
 
           <View style={styles.metaRow}>
             <View style={styles.scaleHint}>
-              <Text style={styles.scaleHintText}>0 missing · 5 mastery</Text>
-            </View>
-            <View style={styles.sourceChip}>
-              <Ionicons name="person" size={11} color={tokens.brand.violet2} />
-              <Text style={styles.sourceChipText}>Self</Text>
+              <Text style={styles.scaleHintText}>
+                {locale === 'en' ? '0 missing · 5 mastery' : '0 vazio · 5 pleno'}
+              </Text>
             </View>
             {hasQuestionnaire && (
-              <View
-                style={[
-                  styles.sourceChip,
-                  { backgroundColor: 'rgba(77,208,255,0.12)' },
-                ]}
-              >
-                <Ionicons name="clipboard" size={11} color={tokens.dimension.bonds} />
-                <Text
-                  style={[styles.sourceChipText, { color: tokens.dimension.bonds }]}
-                >
-                  Questionnaire saved
+              <View style={styles.qChip}>
+                <Ionicons
+                  name="clipboard"
+                  size={11}
+                  color={tokens.dimension.bonds}
+                />
+                <Text style={styles.qChipText}>
+                  {locale === 'en'
+                    ? 'Quiz reference shown'
+                    : 'Referência da Avaliação ativa'}
                 </Text>
               </View>
             )}
           </View>
 
-          {!hasQuestionnaire && (
-            <View style={styles.qHintCard}>
-              <Ionicons name="clipboard-outline" size={14} color={tokens.text.mid} />
-              <Text style={styles.qHintText}>
-                Questionnaire coming soon — it&apos;ll set a parallel score so you
-                can compare your self-rating against an objective baseline.
-              </Text>
-            </View>
-          )}
-
           {DIMENSION_ORDER.map((dim) => {
             const meta = metaLookup.dim(dim);
-            const subIds = SUBS_BY_DIM[dim];
-            const sa = selfScores.get(subIds[0]) ?? 0;
-            const sb = selfScores.get(subIds[1]) ?? 0;
-            const sum = sa + sb;
-
             return (
               <View key={dim} style={styles.dimSection}>
                 <View
@@ -151,114 +214,235 @@ export default function SelfAssessmentScreen() {
                       color={meta.color}
                     />
                   </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={[styles.dimLabel, { color: meta.color }]}>
-                      {meta.label.toUpperCase()}
-                    </Text>
-                    <Text style={styles.dimTagline}>{meta.tagline}</Text>
-                  </View>
-                  <View style={[styles.dimSumPill, { backgroundColor: meta.color }]}>
-                    <Text style={styles.dimSumText}>{sum}</Text>
-                    <Text style={styles.dimSumScale}>/10</Text>
-                  </View>
+                  <Text style={[styles.dimLabel, { color: meta.color }]}>
+                    {meta.label.toUpperCase()}
+                  </Text>
                 </View>
 
-                <Text style={styles.dimDescription}>{meta.description}</Text>
-
-                {subIds.map((subId) => {
-                  const subMeta = metaLookup.sub(subId);
-                  const score = selfScores.get(subId) ?? 0;
-                  const qScore = questionnaireScores.get(subId);
-                  const subHistory = history.data?.get(subId) ?? [];
-                  // Last ~20 entries — enough to spot trend, narrow enough
-                  // to plot at a tiny size without losing fidelity.
-                  const trendValues = subHistory
-                    .slice(-20)
-                    .map((h) => h.score);
-                  return (
-                    <View key={subId} style={styles.subBlock}>
-                      <View style={styles.subHeader}>
-                        <Ionicons
-                          name={subMeta.iconName as never}
-                          size={14}
-                          color={meta.color}
-                        />
-                        <Text style={styles.subLabel}>{subMeta.label}</Text>
-                        {trendValues.length >= 2 && (
-                          <Sparkline
-                            values={trendValues}
-                            max={5}
-                            width={56}
-                            height={16}
-                            color={meta.color}
-                          />
-                        )}
-                        <Text
-                          style={[styles.subScoreLabel, { color: meta.color }]}
-                        >
-                          {metaLookup.score(score)}
-                        </Text>
-                      </View>
-                      <Text style={styles.subDescription}>
-                        {subMeta.description}
-                      </Text>
-                      {qScore !== undefined && (
-                        <View style={styles.qScoreRow}>
-                          <Ionicons
-                            name="clipboard"
-                            size={10}
-                            color={tokens.dimension.bonds}
-                          />
-                          <Text style={styles.qScoreText}>
-                            Questionnaire: {formatScore(qScore)}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={styles.scaleRow}>
-                        {SCORE_VALUES.map((v) => {
-                          const active = v === score;
-                          return (
-                            <Pressable
-                              key={v}
-                              onPress={() => handleSetScore(subId, v)}
-                              style={({ pressed }) => [
-                                styles.scaleBtn,
-                                active && {
-                                  backgroundColor: meta.color,
-                                  borderColor: meta.color,
-                                },
-                                pressed && { opacity: 0.75 },
-                              ]}
-                              hitSlop={6}
-                            >
-                              <Text
-                                style={[
-                                  styles.scaleBtnText,
-                                  active && { color: tokens.text.hi },
-                                ]}
-                              >
-                                {v}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  );
-                })}
+                {SUBS_BY_DIM[dim].map((subId) => (
+                  <SubSliderCard
+                    key={subId}
+                    subId={subId}
+                    saved={savedSelfScores.get(subId) ?? 0}
+                    quizScore={savedQuizScores.get(subId)}
+                    pending={drafts.get(subId)}
+                    history={history.data?.get(subId) ?? []}
+                    onSlide={(v) => handleSlide(subId, v)}
+                  />
+                ))}
               </View>
             );
           })}
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Saved automatically. Pull up the Hero tab any time to see the hex
-              update.
-            </Text>
-          </View>
+          <View style={{ height: hasPending ? 80 : tokens.space[6] }} />
         </ScrollView>
+
+        {/* Sticky save footer */}
+        <View
+          style={[
+            styles.saveFooter,
+            !hasPending && styles.saveFooterIdle,
+          ]}
+          pointerEvents={hasPending ? 'auto' : 'none'}
+        >
+          <Pressable
+            onPress={handleSave}
+            disabled={!hasPending || saving}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              hasPending && styles.saveBtnActive,
+              pressed && hasPending && { opacity: 0.85 },
+            ]}
+            hitSlop={4}
+          >
+            <Ionicons
+              name={saving ? 'hourglass' : 'checkmark'}
+              size={16}
+              color={hasPending ? tokens.text.hi : tokens.text.dim}
+            />
+            <Text
+              style={[
+                styles.saveBtnText,
+                hasPending && { color: tokens.text.hi },
+              ]}
+            >
+              {saving
+                ? locale === 'en'
+                  ? 'Saving…'
+                  : 'Salvando…'
+                : hasPending
+                  ? locale === 'en'
+                    ? `Save ${dirtySubs.length} change${dirtySubs.length === 1 ? '' : 's'}`
+                    : `Salvar ${dirtySubs.length} mudança${dirtySubs.length === 1 ? '' : 's'}`
+                  : locale === 'en'
+                    ? 'No changes'
+                    : 'Sem mudanças'}
+            </Text>
+          </Pressable>
+        </View>
       </ScreenBackground>
     </SafeAreaView>
+  );
+}
+
+interface SubSliderCardProps {
+  subId: SubId;
+  saved: number;
+  quizScore: number | undefined;
+  pending: number | undefined;
+  history: { score: number; recorded_at: string }[];
+  onSlide: (value: number) => void;
+}
+
+function SubSliderCard({
+  subId,
+  saved,
+  quizScore,
+  pending,
+  history,
+  onSlide,
+}: SubSliderCardProps) {
+  const { locale } = useT();
+  const router = useRouter();
+  const metaLookup = useMetaLookup();
+  const subMeta = metaLookup.sub(subId);
+  const dimMeta = metaLookup.dim(subMeta.dimensionId);
+  const [expanded, setExpanded] = useState(false);
+  const anchorLabels = locale === 'en' ? SubAnchorCardLabels.en : undefined;
+
+  const current = pending ?? saved;
+  const isDirty =
+    pending !== undefined && Math.abs(pending - saved) > 0.01;
+
+  // 90-day trendline window. Filter by recorded_at then take score.
+  const cutoff = Date.now() - TREND_DAYS * 86_400_000;
+  const trendValues = history
+    .filter((h) => new Date(h.recorded_at).getTime() >= cutoff)
+    .map((h) => h.score);
+
+  return (
+    <View style={[cardStyles.card, { borderColor: `${dimMeta.color}33` }]}>
+      <View style={cardStyles.headerRow}>
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: '/sub/[id]', params: { id: subId } })
+          }
+          style={({ pressed }) => [
+            cardStyles.headerLeft,
+            pressed && { opacity: 0.7 },
+          ]}
+          hitSlop={4}
+        >
+          <Ionicons
+            name={subMeta.iconName as never}
+            size={16}
+            color={dimMeta.color}
+          />
+          <Text style={cardStyles.subTitle}>{subMeta.label}</Text>
+          <Ionicons
+            name="information-circle-outline"
+            size={14}
+            color={`${dimMeta.color}99`}
+          />
+        </Pressable>
+        <View style={cardStyles.scoreBlock}>
+          <Text style={[cardStyles.scoreNum, { color: dimMeta.color }]}>
+            {formatScore(current)}
+          </Text>
+          <Text style={cardStyles.scoreScale}>/5</Text>
+        </View>
+      </View>
+
+      <Text style={cardStyles.summary}>{subMeta.summary}</Text>
+
+      {/* Slider */}
+      <Slider
+        value={current}
+        minimumValue={0}
+        maximumValue={5}
+        step={SLIDER_STEP}
+        minimumTrackTintColor={dimMeta.color}
+        maximumTrackTintColor={`${dimMeta.color}33`}
+        thumbTintColor={dimMeta.color}
+        onValueChange={onSlide}
+        style={cardStyles.slider}
+      />
+
+      {/* Pending vs saved hint */}
+      <View style={cardStyles.metaRow}>
+        {isDirty ? (
+          <Text style={[cardStyles.dirtyHint, { color: dimMeta.color }]}>
+            {locale === 'en'
+              ? `pending · was ${formatScore(saved)}`
+              : `pendente · era ${formatScore(saved)}`}
+          </Text>
+        ) : (
+          <View />
+        )}
+        <View style={cardStyles.metaRight}>
+          {quizScore != null && (
+            <Text style={cardStyles.quizRef}>
+              {locale === 'en' ? 'quiz' : 'quiz'} · {formatScore(quizScore)}
+            </Text>
+          )}
+          {trendValues.length >= 2 && (
+            <Sparkline
+              values={trendValues}
+              max={5}
+              width={56}
+              height={16}
+              color={dimMeta.color}
+            />
+          )}
+        </View>
+      </View>
+
+      {/* Expand "Ver detalhes" → definition + 3 anchors */}
+      <Pressable
+        onPress={() => setExpanded((v) => !v)}
+        style={({ pressed }) => [
+          cardStyles.expandRow,
+          pressed && { opacity: 0.7 },
+        ]}
+        hitSlop={4}
+      >
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={13}
+          color={`${dimMeta.color}99`}
+        />
+        <Text style={[cardStyles.expandText, { color: `${dimMeta.color}99` }]}>
+          {expanded
+            ? locale === 'en'
+              ? 'Hide details'
+              : 'Esconder detalhes'
+            : locale === 'en'
+              ? 'See details'
+              : 'Ver detalhes'}
+        </Text>
+      </Pressable>
+
+      {expanded && (
+        <View style={cardStyles.detailsBlock}>
+          <Text style={cardStyles.definition}>{subMeta.definition}</Text>
+          <SubAnchorCard
+            variant="low"
+            text={subMeta.low}
+            label={anchorLabels?.low}
+          />
+          <SubAnchorCard
+            variant="mid"
+            text={subMeta.mid}
+            label={anchorLabels?.mid}
+          />
+          <SubAnchorCard
+            variant="high"
+            text={subMeta.high}
+            label={anchorLabels?.high}
+          />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -287,15 +471,20 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.space[8],
+    paddingBottom: tokens.space[7],
     gap: tokens.space[5],
   },
   intro: {
     ...tokens.type.body,
     color: tokens.text.mid,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+    flexWrap: 'wrap',
+  },
   scaleHint: {
-    alignSelf: 'flex-start',
     paddingHorizontal: tokens.space[3],
     paddingVertical: 6,
     borderRadius: tokens.radius.pill,
@@ -311,12 +500,28 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontSize: 10,
   },
+  qChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: tokens.space[2],
+    paddingVertical: 5,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(77,208,255,0.12)',
+  },
+  qChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.dimension.bonds,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   dimSection: {
     backgroundColor: tokens.bg.surface,
     borderRadius: tokens.radius.lg,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    padding: tokens.space[4],
+    padding: tokens.space[3],
     gap: tokens.space[3],
   },
   dimHeader: {
@@ -324,158 +529,155 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.space[3],
     paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[3],
+    paddingVertical: tokens.space[2],
     borderRadius: tokens.radius.md,
     borderWidth: 1,
   },
   dimIconWrap: {
-    width: 36,
-    height: 36,
+    width: 28,
+    height: 28,
     borderRadius: tokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dimLabel: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 13,
+    fontSize: 12,
     letterSpacing: 1,
   },
-  dimTagline: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    fontStyle: 'italic',
-    marginTop: 2,
+
+  saveFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: tokens.space[3],
+    borderTopWidth: 1,
+    borderTopColor: tokens.border.base,
+    backgroundColor: tokens.bg.deep,
   },
-  dimSumPill: {
+  saveFooterIdle: {
+    opacity: 0.5,
+  },
+  saveBtn: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    minWidth: 50,
-    height: 32,
-    paddingHorizontal: tokens.space[3],
-    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
-  },
-  dimSumText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 16,
-    color: tokens.text.hi,
-  },
-  dimSumScale: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[2],
-    flexWrap: 'wrap',
-  },
-  sourceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: tokens.space[2],
-    paddingVertical: 5,
-    borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(123,92,255,0.14)',
-  },
-  sourceChipText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    color: tokens.brand.violet2,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  qHintCard: {
-    flexDirection: 'row',
-    gap: tokens.space[2],
-    paddingHorizontal: tokens.space[3],
+    gap: 8,
     paddingVertical: tokens.space[3],
     borderRadius: tokens.radius.md,
     backgroundColor: tokens.bg.surface,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    borderStyle: 'dashed',
   },
-  qHintText: {
-    flex: 1,
-    ...tokens.type.caption,
-    color: tokens.text.mid,
+  saveBtnActive: {
+    backgroundColor: tokens.brand.violet,
+    borderColor: tokens.brand.violet,
   },
-  qScoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  qScoreText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.dimension.bonds,
+  saveBtnText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 14,
+    color: tokens.text.dim,
     letterSpacing: 0.3,
   },
-  dimDescription: {
-    ...tokens.type.body,
-    color: tokens.text.base,
-    paddingHorizontal: tokens.space[1],
-  },
-  subBlock: {
-    paddingTop: tokens.space[3],
-    borderTopWidth: 1,
-    borderTopColor: tokens.border.divider,
+});
+
+const cardStyles = StyleSheet.create({
+  card: {
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    padding: tokens.space[3],
     gap: tokens.space[2],
   },
-  subHeader: {
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    minWidth: 0,
   },
-  subLabel: {
-    flex: 1,
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 14,
-    color: tokens.text.hi,
-  },
-  subScoreLabel: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  subDescription: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-  },
-  scaleRow: {
-    flexDirection: 'row',
-    gap: tokens.space[2],
-    marginTop: tokens.space[2],
-  },
-  scaleBtn: {
-    flex: 1,
-    aspectRatio: 1,
-    maxHeight: 44,
-    borderRadius: tokens.radius.md,
-    borderWidth: 1,
-    borderColor: tokens.border.strong,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scaleBtnText: {
+  subTitle: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 16,
-    color: tokens.text.mid,
+    color: tokens.text.hi,
+    letterSpacing: -0.2,
+    flexShrink: 1,
   },
-  footer: {
-    paddingTop: tokens.space[3],
-    alignItems: 'center',
+  scoreBlock: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
   },
-  footerText: {
-    ...tokens.type.caption,
+  scoreNum: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 22,
+    letterSpacing: -0.5,
+  },
+  scoreScale: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
     color: tokens.text.dim,
-    textAlign: 'center',
-    paddingHorizontal: tokens.space[5],
+  },
+  summary: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12,
+    lineHeight: 17,
+    color: tokens.text.mid,
+    fontStyle: 'italic',
+  },
+  slider: {
+    width: '100%',
+    height: 32,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dirtyHint: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  quizRef: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.dimension.bonds,
+    letterSpacing: 0.3,
+  },
+  expandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  expandText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  detailsBlock: {
+    gap: tokens.space[2],
+    paddingTop: 4,
+  },
+  definition: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 13,
+    lineHeight: 19,
+    color: tokens.text.base,
+    marginBottom: 4,
   },
 });

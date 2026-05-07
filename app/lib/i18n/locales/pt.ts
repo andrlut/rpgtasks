@@ -404,54 +404,120 @@ const pt: Translations = {
     },
   },
 
+  // Each sub carries 5 strings:
+  //   summary    — 1-line headline, always visible
+  //   definition — full paragraph, what does this domain cover
+  //   low        — day-to-day at 0-1 (concrete signs, no judgment)
+  //   mid        — day-to-day at 2-3 (honestly mediocre, ambiguous)
+  //   high       — day-to-day at 4-5 (concrete signs of flourishing)
   subs: {
     sleep: {
       label: 'Sono',
-      description: 'O quanto você está descansado. Horas, consistência, recuperação.',
+      summary: 'Quantidade, consistência e qualidade do descanso.',
+      definition:
+        'Como você dorme — quantidade, consistência e qualidade do descanso. É o pré-requisito biológico de tudo o resto: foco, humor, capacidade física, controle de impulso. Cobre tanto comportamento (horários, ambiente) quanto resultado (acordar restaurado).',
+      low: 'Você dorme menos de 6h na maioria das noites, ou em horários muito irregulares. Acordar é luta. Cafeína sustenta o dia. Tarde é queda; à noite, segundo fôlego falso. Apneia, ronco ou ansiedade noturna fazem parte da paisagem.',
+      mid: 'Você dorme 6-7h por noite, com algumas noites melhores. Funciona, mas não floresce. Algumas manhãs descansado, outras não — geralmente puxando do que você fez na véspera. Você nota quando a noite foi ruim, mas nem sempre o que causou.',
+      high: 'Você dorme 7-9h consistentemente, com horários estáveis (variação <30 min). Acorda antes do despertador, restaurado. Sono é negociado como prioridade — telas longe, horários firmes. Sustenta foco e humor o dia inteiro sem precisar de muleta.',
     },
     nutrition: {
       label: 'Nutrição',
-      description: 'Qualidade do que você come e bebe. Comida de verdade, hidratação, moderação.',
+      summary: 'Como você come e a relação com comida.',
+      definition:
+        'O que você coloca no corpo, em que frequência, e a paz que você tem em torno disso. Cobre densidade nutricional (proteína, vegetais, hidratação), regularidade das refeições e a relação psicológica — sem culpa, sem obsessão, sem compulsão.',
+      low: 'Refeições são caóticas: pula, repõe com fast food, decide no impulso. A maioria do que come é ultra-processado, açucarado ou líquido. A relação com comida tem culpa, ansiedade ou compulsão. Energia oscila com o estômago — pico-queda-pico.',
+      mid: 'Você come razoavelmente bem na maioria dos dias, mas tem furos — fim de semana, viagem, dia estressado. Sabe o que seria melhor, nem sempre faz. Nem sempre se sente leve depois das refeições. Hidratação é instável.',
+      high: 'Refeições reais, regulares, com proteína de qualidade e vegetais. Hidratação consistente. Ultra-processado é raro, não vergonhoso. A relação com comida é leve — sem dieta agressiva, sem culpa, sem compulsão. Come com prazer, fica satisfeito, segue o dia.',
     },
     strength: {
       label: 'Força',
-      description: 'Cardio, treino, caminhar — quanto você movimenta o corpo.',
+      summary: 'Capacidade física pra carregar a vida.',
+      definition:
+        'Quão forte e capaz seu corpo é no dia a dia — pra esforço, esporte, autonomia. Cobre frequência de treino, qualidade do esforço (sair da zona de conforto), capacidade funcional (subir escada, carregar peso) e progresso visível ao longo do tempo.',
+      low: 'Atividade física é rara ou ausente. Subir alguns lances de escada cansa. Carregar sacolas pesadas dói no dia seguinte. Esportes, brincadeiras com criança ou tarefas físicas exigem desproporcionalmente de você. Não há rotina nem progresso.',
+      mid: 'Você treina 1-2x por semana, ou faz cardio leve regularmente. Suporta o dia a dia razoavelmente bem, mas não se sente forte. Algumas semanas saem inteiras sem treino. Não tem progresso medível em peso, reps ou volume.',
+      high: 'Treino de força ou esporte intenso 3+ vezes por semana, com forma boa e progressão. Corpo se sente capaz: você confia em movimentos, não evita esforço, recupera rápido. Mais forte hoje do que era 6 meses atrás — em peso, reps ou volume — e tem evidência concreta disso.',
     },
     dexterity: {
       label: 'Destreza',
-      description: 'Coordenação, mobilidade, habilidade esportiva — como seu corpo se move.',
+      summary: 'Mobilidade, coordenação e equilíbrio.',
+      definition:
+        'Como o corpo se move — amplitude, controle, equilíbrio. Vai de mobilidade básica (alongar, postura) a habilidades motoras (esporte de raquete, dança, escalada). É o que te mantém ágil e fluído com o passar dos anos, ou rígido e travado.',
+      low: 'Movimentos amplos doem ou são impossíveis. Postura é ruim, costas ou pescoço cobram. Você tropeça em coisas e não recupera bem. Evita esportes ou movimentos novos por medo de se machucar. Não pratica nada que exija coordenação.',
+      mid: 'Você se move sem dor na maioria dos dias, mas tem áreas teimosas — quadril, ombro, cervical. Faz alongamento esporádico. Equilíbrio é ok, não treinado. Não sente progresso de amplitude ou controle ao longo dos meses.',
+      high: 'Mobilidade trabalhada regularmente — yoga, alongamento, mobility work. Movimento é fluido e sem dor. Equilíbrio e coordenação são reais — você reage bem a tropeço, joga esporte, dança. Sente que tá mais móvel hoje do que era 6 meses atrás.',
     },
     learn: {
       label: 'Aprender',
-      description: 'Leitura, estudo, foco profundo — o que você absorve e aprimora.',
+      summary: 'Estudo intencional e profundidade do que você aprende.',
+      definition:
+        'Quanto e quão fundo você estuda, lê, investiga. Não é só consumo — é estudo intencional, aplicado, conectado. Cobre frequência, qualidade do engajamento (ativo vs passivo) e se o que você aprende encontra uso na sua vida ou trabalho.',
+      low: 'Você raramente lê ou estudo intencionalmente. Começa coisas e não termina. O que consome é principalmente passivo — vídeos curtos, scroll, notícias. Distração toma o tempo que seria de aprofundar. Não sabe mais nada novo de relevante hoje vs 6 meses atrás.',
+      mid: 'Você lê ou estuda em alguns dias da semana, mas inconsistente. Termina algumas coisas, abandona outras na metade. O aprendizado é mais consumo que aplicação — entra na cabeça, raramente sai pra um uso. Sabe um pouco mais hoje, mas tem dificuldade de citar exemplos concretos.',
+      high: 'Estudo intencional na maioria dos dias da semana — leitura, curso, ou aprofundamento técnico. Aplica, ensina ou conecta o que aprende. Termina o que começa. Pode apontar coisas concretas que sabe hoje e não sabia 6 meses atrás. Curiosidade tem foco e disciplina.',
     },
     contemplate: {
       label: 'Contemplar',
-      description: 'Meditação, journaling, oração — práticas que silenciam e aterram.',
+      summary: 'Pausa, reflexão e capacidade de se ancorar.',
+      definition:
+        'O lado interno: meditação, journaling, pausa consciente, capacidade de ficar com o que aparece. Cobre prática regular, profundidade da prática e o resultado funcional — clareza emocional, capacidade de se ancorar no estresse, autoconhecimento.',
+      low: 'Você raramente para. Cabeça acelerada o dia inteiro. Estresse te derruba; ansiedade ou ruminação tomam por períodos longos sem você conseguir sair. Não sabe nomear bem o que sente. Sempre tem uma "coisa mais importante" do que parar e olhar pra dentro.',
+      mid: 'Você medita ou para algumas vezes por semana. Funciona quando faz. Em momentos de calma você se conhece bem; em momentos de estresse, perde o eixo com facilidade. Sabe que precisa praticar mais, não consegue manter consistência.',
+      high: 'Prática contemplativa quase diária — meditação, journaling, pausa intencional. Em estresse, consegue se ancorar — observa em vez de reagir. Tem clareza sobre o que sente e o que importa, mesmo na vida acelerada. Profundidade da prática cresceu nos últimos 6 meses.',
     },
     money: {
       label: 'Dinheiro',
-      description: 'Poupar, orçar, investir — sua relação com dinheiro.',
+      summary: 'Saúde financeira e tranquilidade com dinheiro.',
+      definition:
+        'Como o dinheiro entra, sai e fica. Cobre comportamento (poupar, gastar com intenção), conhecimento (saber pra onde vai), resultado (colchão financeiro, ativos crescendo) e atrito (dívida cara, postergação por aversão ao tema).',
+      low: 'Você não sabe pra onde vai seu dinheiro. Não sobra ao fim do mês, ou sobra por sorte. Tem dívida cara (cartão, cheque especial) que não sai. Postergações financeiras pesam: imposto, abrir conta investidor, renegociar. Dinheiro é fonte constante de ansiedade.',
+      mid: 'Você fecha o mês no positivo na maioria das vezes, mas sem clareza fina. Tem alguma reserva, não suficiente. Sabe que deveria investir mais, não age sempre. Compras por impulso acontecem mas não dominam. Dinheiro pesa às vezes, não constantemente.',
+      high: 'Você sabe pra onde vai cada faixa do dinheiro. Poupa 10%+ todo mês, sem sufoco. Ativos líquidos cresceram nos últimos 12 meses. Sem dívida cara. Decisões de gasto são intencionais. Dinheiro deixou de ser ansiedade — vira ferramenta.',
     },
     career: {
       label: 'Carreira',
-      description: 'Construir habilidades, entregar, avançar no seu ofício de trabalho.',
+      summary: 'Trabalho profundo, entrega e trajetória.',
+      definition:
+        'Como você trabalha e pra onde vai. Cobre frequência de deep work, qualidade do engajamento, sustentabilidade energética (sobra pra vida fora do trabalho), entrega concreta e sensação de trajetória — meu trabalho tá indo pra algum lugar?',
+      low: 'Dia é tomado por reuniões inúteis, mensagens, interrupções. Quase não consegue blocos de deep work. Trabalha no automático ou só preenche expediente. Chega em casa zerado. Confronto necessário com chefe/cliente fica engavetado. Sente que tá rodando no lugar.',
+      mid: 'Você consegue alguns blocos de foco por semana, e entrega coisas concretas — mas não em todos os dias. Energia sobra em alguns dias, em outros não. A trajetória faz algum sentido, mas tem momentos de "pra onde tô indo?". Confronto difícil é adiado às vezes.',
+      high: 'Deep work na maioria dos dias da semana, em algo que importa. Toma decisões difíceis com clareza. Energia sobra pra vida fora do trabalho. Sua trajetória faz sentido — você consegue articular pra onde vai e por quê. Entrega concreta e regular.',
     },
     circle: {
       label: 'Amigos e Família',
-      description: 'Família e amigos — as relações que aparecem ao longo dos anos.',
+      summary: 'Proximidade real com família e amigos.',
+      definition:
+        'Quão conectado você tá com as pessoas importantes — não no plano abstrato, mas no concreto. Cobre frequência de conversas significativas, iniciativa de buscar (não só esperar), presença real (sem celular, sem ensaiar resposta) e a sensação de que alguém te conhece de verdade.',
+      low: 'Você se sente sozinho mesmo cercado de gente. Conversas são logística. Não toma iniciativa — espera convite. Quando tá com alguém querido, tá meio fora — celular, distração, mente em outro lugar. Conflitos não resolvidos pesam por dias.',
+      mid: 'Você tem 1-2 pessoas próximas que conhece bem. Conversas significativas acontecem, mas raramente. Toma iniciativa às vezes. Presença é parcial — tá ali, não 100%. Algumas semanas vão sem contato real com alguém querido.',
+      high: 'Conversas significativas semanais com família ou amigos. Você toma iniciativa de marcar e buscar. Presença real quando tá com alguém — sem celular, ouvindo de verdade. Você compartilha o que vive, não filtra. Tem gente que ligaria se você sumisse — e vice-versa.',
     },
     romance: {
       label: 'Romance',
-      description: 'Sua parceria romântica — profundidade, presença, afeto.',
+      summary: 'Conexão romântica — parceria, intimidade, presença.',
+      definition:
+        'O lado romântico da vida — em parceria ou sozinho com intenção. Cobre frequência de momentos reais (parceria, encontros, intimidade), qualidade da presença, expressão honesta de desejo e necessidade, e satisfação geral com como esse domínio está hoje.',
+      low: 'Vida romântica seca — sem parceria ativa, sem encontros, sem iniciativa de buscar. Em relação, conexão real é rara: distância, briga não resolvida, silêncio pra evitar conflito. Não expressa o que quer. Sente que algo importante tá ausente, não age.',
+      mid: 'Você tem alguma vida romântica funcionando, mas tem áreas estagnadas. Em parceria: confortável, não vibrante. Solo: às vezes busca, às vezes desiste. Presença é parcial. Conflitos atrasam por dias. Satisfeito-mas-sem-energia descreve bem.',
+      high: 'Vida romântica em um lugar bom — em parceria ou solteiro com intenção. Conexão real, regular, expressiva. Você expressa o que quer, ouve, presente. Carinho, desejo e segurança coexistem. Conflito é resolvido em horas, não dias.',
     },
     play: {
       label: 'Lazer',
-      description: 'Hobbies e tempo criativo por prazer, sem objetivo atrelado.',
+      summary: 'Lazer real — recarrega, não consome.',
+      definition:
+        'Brincar, jogar, hobby — sem objetivo de produção. Cobre frequência de momentos de lazer real, presença durante (não checando rede social), permissão pra ser ruim em algo, e o efeito: termina mais leve ou mais cansado? Diferencia lazer ativo de consumo passivo.',
+      low: 'Não sabe quando foi a última vez que brincou de verdade. Lazer virou rolar feed, séries de fundo, TV pra desligar. Termina mais cansado, não mais leve. Sente culpa por descansar quando "tem coisa pra fazer". Não experimenta nada novo.',
+      mid: 'Você tem 1-2 hobbies, mas pratica esporadicamente. Lazer mistura ativo com passivo — algumas horas presentes, algumas escapando. Termina às vezes recarregado, às vezes só cansado. Culpa de descansar aparece de vez em quando.',
+      high: 'Você tem hobby ativo na maioria das semanas. Presente quando faz — sem celular, sem fundo de trabalho. Permite-se ser ruim em algo só pelo gosto. Termina mais leve, recarregado. Alegria, leveza e curiosidade aparecem regularmente na rotina.',
     },
     build: {
       label: 'Construir',
-      description: 'Projetos pessoais e trabalho criativo feitos pra entregar ou compartilhar.',
+      summary: 'Projeto pessoal — terminar e mostrar.',
+      definition:
+        'Sua vida de criador. Cobre tempo dedicado a projetos pessoais (criativo, técnico, manual), profundidade do trabalho (flow vs distração), capacidade de iterar com feedback e — o teste honesto — terminar e compartilhar, ou só acumular abandonados.',
+      low: 'Você tem 5 projetos começados, nenhum terminado. Distração ou indecisão tira do que tava fazendo. Perfeccionismo trava na metade. Quando trabalha, não entra em flow — checa rede a cada 5 minutos. Não compartilha o que faz, ou faz raríssimas vezes.',
+      mid: 'Você dedica algumas horas por semana a projetos pessoais. Termina alguns, abandona outros. Compartilha de vez em quando — quando o resultado fica bom o suficiente. Itera às vezes, defende-se outras. Tem coisas no portfólio, não tantas quanto gostaria.',
+      high: 'Você dedica tempo regular a projetos. Flow é frequente, distração é controlada. Termina o que começa e compartilha. Itera sem ego — escuta feedback e melhora. Tem coisas concretas que existem por sua causa — pode apontar e mostrar.',
     },
   },
 

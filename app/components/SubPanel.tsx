@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Sparkline } from '@/components/Sparkline';
+import { SubAnchorCard, SubAnchorCardLabels } from '@/components/SubAnchorCard';
 import type {
   AssessmentLogEntry,
   SubId,
@@ -47,16 +49,19 @@ export function SubPanel({
   templates,
   side = 'left',
 }: Props) {
-  const { t } = useT();
+  const { t, locale } = useT();
+  const router = useRouter();
   const metaLookup = useMetaLookup();
   const startFromTemplate = useStartTaskFromTemplate();
   const [adopted, setAdopted] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState(false);
 
   const subMeta = metaLookup.sub(subId);
   const dimMeta = metaLookup.dim(subMeta.dimensionId);
   const trendValues = history.slice(-20).map((h) => h.score);
   const insight = t(SCORE_INSIGHT_KEY(selfScore));
   const tierLabel = metaLookup.score(Math.max(0, Math.min(5, selfScore)));
+  const anchorLabels = locale === 'en' ? SubAnchorCardLabels.en : undefined;
 
   const handleAdopt = (templateId: string) => {
     if (adopted.has(templateId) || startFromTemplate.isPending) return;
@@ -88,8 +93,17 @@ export function SubPanel({
         />
       </View>
 
-      {/* header */}
-      <View style={styles.header}>
+      {/* header — taps through to /sub/[id] for the full glossary view */}
+      <Pressable
+        onPress={() =>
+          router.push({ pathname: '/sub/[id]', params: { id: subId } })
+        }
+        style={({ pressed }) => [
+          styles.header,
+          pressed && { opacity: 0.7 },
+        ]}
+        hitSlop={4}
+      >
         <View
           style={[
             styles.iconHalo,
@@ -108,7 +122,12 @@ export function SubPanel({
           </Text>
           <Text style={styles.subTitle}>{subMeta.label}</Text>
         </View>
-      </View>
+        <Ionicons
+          name="chevron-forward"
+          size={16}
+          color={`${dimMeta.color}99`}
+        />
+      </Pressable>
 
       {/* score block */}
       <View style={styles.scoreRow}>
@@ -137,26 +156,65 @@ export function SubPanel({
         )}
       </View>
 
-      {/* 5-segment tier bar */}
-      <View style={styles.segments}>
-        {[1, 2, 3, 4, 5].map((i) => {
-          const filled = i <= selfScore;
-          return (
-            <View
-              key={i}
-              style={[
-                styles.segment,
-                filled
-                  ? { backgroundColor: dimMeta.color }
-                  : { backgroundColor: `${dimMeta.color}1A` },
-              ]}
-            />
-          );
-        })}
+      {/* continuous score bar (replaces the old 5-segment pip rendering) */}
+      <View
+        style={[styles.barTrack, { backgroundColor: `${dimMeta.color}1A` }]}
+      >
+        <View
+          style={[
+            styles.barFill,
+            {
+              width: `${Math.max(0, Math.min(100, (selfScore / 5) * 100))}%`,
+              backgroundColor: dimMeta.color,
+            },
+          ]}
+        />
       </View>
 
-      <Text style={styles.description}>{subMeta.description}</Text>
+      {/* summary always visible; details behind a tap */}
+      <Text style={styles.summary}>{subMeta.summary}</Text>
       <Text style={styles.insight}>{insight}</Text>
+
+      <Pressable
+        onPress={() => setExpanded((v) => !v)}
+        style={({ pressed }) => [
+          styles.expandRow,
+          pressed && { opacity: 0.7 },
+        ]}
+        hitSlop={4}
+      >
+        <Ionicons
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={dimMeta.color}
+        />
+        <Text style={[styles.expandText, { color: dimMeta.color }]}>
+          {expanded
+            ? locale === 'en' ? 'Hide details' : 'Esconder detalhes'
+            : locale === 'en' ? 'See details' : 'Ver detalhes'}
+        </Text>
+      </Pressable>
+
+      {expanded && (
+        <View style={styles.detailsBlock}>
+          <Text style={styles.definition}>{subMeta.definition}</Text>
+          <SubAnchorCard
+            variant="low"
+            text={subMeta.low}
+            label={anchorLabels?.low}
+          />
+          <SubAnchorCard
+            variant="mid"
+            text={subMeta.mid}
+            label={anchorLabels?.mid}
+          />
+          <SubAnchorCard
+            variant="high"
+            text={subMeta.high}
+            label={anchorLabels?.high}
+          />
+        </View>
+      )}
 
       {/* tasks */}
       {templates.length > 0 && (
@@ -350,21 +408,44 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     letterSpacing: 1,
   },
-  segments: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  segment: {
-    flex: 1,
+  barTrack: {
     height: 8,
     borderRadius: 4,
+    overflow: 'hidden',
   },
-  description: {
+  barFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  summary: {
     fontFamily: 'Manrope_500Medium',
     fontSize: 14,
     lineHeight: 21,
     color: tokens.text.base,
     marginTop: tokens.space[1],
+  },
+  expandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+  },
+  expandText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.4,
+  },
+  detailsBlock: {
+    gap: tokens.space[2],
+    paddingTop: 4,
+  },
+  definition: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 13,
+    lineHeight: 19,
+    color: tokens.text.base,
+    marginBottom: tokens.space[1],
   },
   insight: {
     fontFamily: 'Manrope_600SemiBold',

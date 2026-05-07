@@ -115,6 +115,10 @@ export default function RootLayout() {
               options={{ presentation: 'modal', headerShown: false }}
             />
             <Stack.Screen
+              name="sub/[id]"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
               name="quests"
               options={{ presentation: 'modal', headerShown: false }}
             />
