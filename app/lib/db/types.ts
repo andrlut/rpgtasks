@@ -114,6 +114,101 @@ export interface QuestionnaireAnswerRow {
   raw_value: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Psych instruments (Phase 0 foundation; see docs/psych-instruments-v1.md)
+// Generic catalog + per-user data shared by avaliacao_v1, avaliacao_v2 (Phase
+// 1), big_five_120 (Phase 2), schwartz_pvq (Phase 5), ecr_r (Phase 6).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PsychCategory = 'wellbeing' | 'self_knowledge';
+
+export interface PsychInstrument {
+  id: string;
+  name: string;
+  description: string | null;
+  category: PsychCategory;
+  version: string;
+  item_count: number;
+  scale_min: number;
+  scale_max: number;
+  scoring_doc_url: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface PsychFacet {
+  id: string;
+  instrument_id: string;
+  parent_facet_id: string | null;
+  slug: string;
+  name: string;
+  description: string | null;
+  position: number;
+}
+
+export interface PsychItemOption {
+  label: string;
+  value: number;
+}
+
+export interface PsychItem {
+  id: string;
+  instrument_id: string;
+  facet_id: string | null;
+  position: number;
+  text_pt: string;
+  text_en: string | null;
+  reverse_scored: boolean;
+  options_jsonb: PsychItemOption[];
+}
+
+export interface PsychSession {
+  id: string;
+  character_id: string;
+  instrument_id: string;
+  taken_at: string;
+  duration_seconds: number | null;
+  is_complete: boolean;
+}
+
+export interface PsychAnswer {
+  id: string;
+  session_id: string;
+  item_id: string;
+  raw_value: number;
+}
+
+export interface PsychScore {
+  session_id: string;
+  facet_id: string;
+  /** [0..5] for wellbeing, raw sums for big-five (see scoring §5.x). */
+  score_decimal: number;
+  /** 0..100, null if no normative table for the instrument. */
+  percentile: number | null;
+}
+
+/** Item snapshot returned by start_psych_session — shape ready to render. */
+export interface PsychSessionItem {
+  item_id: string;
+  position: number;
+  text_pt: string;
+  text_en: string | null;
+  options: PsychItemOption[];
+  facet_id: string | null;
+  reverse_scored: boolean;
+}
+
+export interface PsychStartSessionResult {
+  session_id: string;
+  instrument_id: string;
+  items: PsychSessionItem[];
+}
+
+export interface PsychSubmitSessionResult {
+  session_id: string;
+  scores: PsychScore[];
+}
+
 export interface Profile {
   id: string;
   display_name: string;
