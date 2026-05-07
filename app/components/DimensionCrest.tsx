@@ -208,22 +208,17 @@ export function DimensionCrest({ dimensionId, size = 220, scores }: Props) {
   );
 }
 
-/** 5 small pips arranged in a horizontal row — score 0-5. Filled vs hollow. */
+/** Continuous score bar — score 0-5 rendered as a proportional fill. */
 function ScorePips({ score, color }: { score: number; color: string }) {
-  const filled = Math.max(0, Math.min(5, Math.round(score)));
+  const pct = Math.max(0, Math.min(100, (score / 5) * 100));
   return (
-    <View style={styles.pips}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.pip,
-            i <= filled
-              ? { backgroundColor: color }
-              : { borderColor: `${color}55`, borderWidth: 1 },
-          ]}
-        />
-      ))}
+    <View style={[styles.scoreBarTrack, { borderColor: `${color}55` }]}>
+      <View
+        style={[
+          styles.scoreBarFill,
+          { width: `${pct}%`, backgroundColor: color },
+        ]}
+      />
     </View>
   );
 }
@@ -279,14 +274,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginTop: 2,
   },
-  pips: {
-    flexDirection: 'row',
-    gap: 4,
+  scoreBarTrack: {
+    width: 56,
+    height: 6,
+    borderRadius: 3,
+    borderWidth: 1,
+    overflow: 'hidden',
     marginTop: 2,
   },
-  pip: {
-    width: 6,
-    height: 6,
+  scoreBarFill: {
+    height: '100%',
     borderRadius: 3,
   },
   dividerWrap: {

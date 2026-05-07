@@ -414,54 +414,115 @@ const en = {
     },
   },
 
+  // 5 strings per sub (summary / definition / low / mid / high), see pt.ts.
   subs: {
     sleep: {
       label: 'Sleep',
-      description: 'How well-rested you feel. Hours, consistency, recovery.',
+      summary: 'Amount, consistency, and quality of rest.',
+      definition:
+        "How you sleep — amount, consistency, and quality of rest. The biological prerequisite for everything else: focus, mood, physical capacity, impulse control. Covers both behavior (timing, environment) and outcome (waking restored).",
+      low: 'You sleep under 6h most nights, or on very irregular timing. Waking is a struggle. Caffeine carries the day. Afternoons crash; nights bring a false second wind. Apnea, snoring, or nighttime anxiety are part of the landscape.',
+      mid: "You sleep 6-7h per night, with some better nights. It works, but doesn't flourish. Some mornings rested, some not — usually tracking what you did the night before. You notice when sleep was bad, not always what caused it.",
+      high: 'You sleep 7-9h consistently, with stable timing (under 30 min variation). Wake before the alarm, restored. Sleep is negotiated as a priority — screens away, firm timing. Sustains focus and mood through the whole day without props.',
     },
     nutrition: {
       label: 'Nutrition',
-      description: 'Quality of what you eat and drink. Real food, hydration, restraint.',
+      summary: 'How you eat and your relationship with food.',
+      definition:
+        'What you put in your body, how often, and the peace you carry around it. Covers nutritional density (protein, vegetables, hydration), meal regularity, and the psychological relationship — without guilt, obsession, or compulsion.',
+      low: 'Meals are chaotic: skipped, replaced with fast food, decided on impulse. Most of what you eat is ultra-processed, sugary, or liquid. Your relationship with food carries guilt, anxiety, or compulsion. Energy swings with your stomach — peak-crash-peak.',
+      mid: "You eat reasonably well most days, but with gaps — weekends, travel, stressful days. You know what would be better, don't always do it. Don't always feel light after meals. Hydration is unstable.",
+      high: 'Real, regular meals with quality protein and vegetables. Consistent hydration. Ultra-processed is rare, not shameful. Your relationship with food is light — no aggressive dieting, no guilt, no compulsion. You eat with pleasure, get full, move on.',
     },
     strength: {
       label: 'Strength',
-      description: 'Cardio, lifting, walking — the raw amount you move your body.',
+      summary: 'Physical capacity to carry life.',
+      definition:
+        'How strong and capable your body is day-to-day — for effort, sport, autonomy. Covers training frequency, quality of effort (leaving the comfort zone), functional capacity (climbing stairs, carrying weight), and visible progress over time.',
+      low: "Physical activity is rare or absent. A few flights of stairs tire you. Carrying heavy bags hurts the next day. Sports, kid-play, or physical tasks demand disproportionately from you. There's no routine, no progress.",
+      mid: "You train 1-2x per week, or do light cardio regularly. You handle daily life reasonably well, but don't feel strong. Some weeks pass entirely without training. No measurable progress in weight, reps, or volume.",
+      high: "Strength training or intense sport 3+ times a week, with good form and progression. Body feels capable: you trust your movements, don't avoid effort, recover quickly. Stronger today than 6 months ago — in weight, reps, or volume — with concrete evidence.",
     },
     dexterity: {
       label: 'Dexterity',
-      description: 'Coordination, mobility, sport skill — how well your body moves.',
+      summary: 'Mobility, coordination, and balance.',
+      definition:
+        "How your body moves — range, control, balance. From basic mobility (stretching, posture) to motor skills (racquet sport, dance, climbing). It's what keeps you agile and fluid as years pass, or stiff and locked up.",
+      low: "Wide movements hurt or aren't possible. Posture is poor, your back or neck pays for it. You stumble and don't recover well. You avoid sports or new movements out of injury fear. You practice nothing that requires coordination.",
+      mid: "You move without pain most days, but with stubborn areas — hip, shoulder, neck. You stretch sporadically. Balance is okay, not trained. You don't feel range or control progress over the months.",
+      high: 'Mobility worked regularly — yoga, stretching, mobility work. Movement is fluid and pain-free. Balance and coordination are real — you react well to stumbles, play sport, dance. You feel more mobile today than 6 months ago.',
     },
     learn: {
       label: 'Learn',
-      description: 'Reading, study, deep work — what you absorb and get better at.',
+      summary: 'Intentional study and depth of what you learn.',
+      definition:
+        'How much and how deeply you study, read, investigate. Not just consumption — intentional study, applied, connected. Covers frequency, engagement quality (active vs passive), and whether what you learn finds use in your life or work.',
+      low: "You rarely read or study intentionally. You start things and don't finish. What you consume is mostly passive — short videos, scrolling, news. Distraction takes time that should be for going deep. You don't know anything relevant today that you didn't know 6 months ago.",
+      mid: 'You read or study some days a week, but inconsistently. You finish some things, abandon others halfway. Learning is more consumption than application — it enters the head, rarely leaves for use. You know a little more today, but struggle to cite concrete examples.',
+      high: "Intentional study most days a week — reading, course, or technical depth. You apply, teach, or connect what you learn. You finish what you start. You can point to concrete things you know today that you didn't 6 months ago. Curiosity has focus and discipline.",
     },
     contemplate: {
       label: 'Contemplate',
-      description: 'Meditation, journaling, prayer — practices that quiet and ground you.',
+      summary: 'Pause, reflection, and the capacity to anchor.',
+      definition:
+        'The internal side: meditation, journaling, conscious pause, the ability to stay with what arises. Covers regular practice, depth of practice, and the functional outcome — emotional clarity, capacity to anchor in stress, self-knowledge.',
+      low: "You rarely stop. Head racing all day. Stress knocks you down; anxiety or rumination take over for long stretches without you finding a way out. You can't name well what you feel. There's always something 'more important' than stopping and looking inward.",
+      mid: "You meditate or pause a few times a week. It works when you do it. In calm moments you know yourself well; in stressful moments you lose your center easily. You know you should practice more, can't keep consistency.",
+      high: 'Near-daily contemplative practice — meditation, journaling, intentional pause. In stress, you anchor — you observe instead of react. You have clarity about what you feel and what matters, even in accelerated life. Practice depth grew over the last 6 months.',
     },
     money: {
       label: 'Money',
-      description: 'Saving, budgeting, investing — your relationship with money.',
+      summary: 'Financial health and peace with money.',
+      definition:
+        'How money comes in, goes out, and stays. Covers behavior (saving, spending intentionally), knowledge (knowing where it goes), outcome (financial cushion, growing assets), and friction (expensive debt, postponement out of aversion).',
+      low: "You don't know where your money goes. Nothing left at month-end, or only by luck. You carry expensive debt (credit card, overdraft) that doesn't go away. Financial postponements weigh: taxes, opening an investment account, renegotiating. Money is a constant source of anxiety.",
+      mid: "You close the month positive most of the time, but without fine clarity. You have some savings, not enough. You know you should invest more, don't always act. Impulse buys happen but don't dominate. Money weighs sometimes, not constantly.",
+      high: 'You know where every slice of your money goes. You save 10%+ every month, without strain. Liquid assets grew over the last 12 months. No expensive debt. Spending decisions are intentional. Money stopped being anxiety — became a tool.',
     },
     career: {
       label: 'Career',
-      description: 'Building skills, shipping, advancing your craft of work.',
+      summary: 'Deep work, output, and trajectory.',
+      definition:
+        "How you work and where you're going. Covers deep-work frequency, engagement quality, energy sustainability (enough left for life outside work), concrete output, and the sense of trajectory — is my work going somewhere?",
+      low: "Day is taken by useless meetings, messages, interruptions. You almost can't get blocks of deep work. You work on autopilot or just fill the day. You arrive home empty. Necessary confrontation with boss/client gets shelved. You feel you're spinning in place.",
+      mid: "You get some focus blocks per week, and ship concrete things — but not on every day. Energy is left over on some days, not others. The trajectory makes some sense, but with moments of 'where am I going?'. Hard confrontation gets postponed sometimes.",
+      high: "Deep work most days a week, on something that matters. You make hard decisions with clarity. Energy is left over for life outside work. Your trajectory makes sense — you can articulate where you're going and why. Concrete, regular shipping.",
     },
     circle: {
       label: 'Friends & Family',
-      description: 'Family and friends — the relationships that show up over years.',
+      summary: 'Real closeness with family and friends.',
+      definition:
+        'How connected you are to the important people — not abstractly, but concretely. Covers frequency of meaningful conversations, initiative to seek (not just wait), real presence (no phone, no rehearsing answers), and the feeling that someone truly knows you.',
+      low: "You feel alone even surrounded by people. Conversations are logistics. You don't take initiative — you wait for invitations. When you're with someone you love, you're half-out — phone, distraction, mind elsewhere. Unresolved conflicts weigh for days.",
+      mid: "You have 1-2 close people you know well. Meaningful conversations happen, but rarely. You take initiative sometimes. Presence is partial — you're there, not 100%. Some weeks pass without real contact with someone you love.",
+      high: "Weekly meaningful conversations with family or friends. You take initiative to schedule and seek. Real presence when you're with someone — no phone, actually listening. You share what you live, don't filter. There are people who'd call if you disappeared — and vice versa.",
     },
     romance: {
       label: 'Romance',
-      description: 'Your romantic partnership — depth, presence, affection.',
+      summary: 'Romantic connection — partnership, intimacy, presence.',
+      definition:
+        'The romantic side of life — in partnership or solo with intent. Covers frequency of real moments (partnership, dates, intimacy), quality of presence, honest expression of desire and need, and overall satisfaction with where this domain stands today.',
+      low: "Romantic life is dry — no active partnership, no dates, no initiative to seek. In a relationship, real connection is rare: distance, unresolved fights, silence to avoid conflict. You don't express what you want. You feel something important is missing, you don't act.",
+      mid: 'You have some romantic life working, but with stagnant areas. In partnership: comfortable, not vibrant. Solo: sometimes seek, sometimes give up. Presence is partial. Conflicts drag for days. Satisfied-but-low-energy describes it well.',
+      high: 'Romantic life is in a good place — in partnership or single with intent. Real, regular, expressive connection. You express what you want, listen, present. Care, desire, and safety coexist. Conflict resolves in hours, not days.',
     },
     play: {
       label: 'Play',
-      description: 'Hobbies and creative time done for joy, no goal attached.',
+      summary: "Real leisure — recharges, doesn't drain.",
+      definition:
+        'Play, games, hobby — without production goals. Covers frequency of real leisure moments, presence during them (not checking social media), permission to be bad at something, and the effect: do you finish lighter or more tired? Distinguishes active leisure from passive consumption.',
+      low: "You don't know when you last truly played. Leisure became scrolling feeds, background series, TV to switch off. You finish more tired, not lighter. You feel guilty resting when 'there's stuff to do'. You don't try anything new.",
+      mid: 'You have 1-2 hobbies, but practice sporadically. Leisure mixes active with passive — some hours present, some escaping. You finish sometimes recharged, sometimes just tired. Guilt over resting shows up now and then.',
+      high: 'You have an active hobby most weeks. Present when you do it — no phone, no work in the background. You let yourself be bad at something just for the love of it. You finish lighter, recharged. Joy, lightness, and curiosity show up regularly in your routine.',
     },
     build: {
       label: 'Build',
-      description: 'Side-projects and creative work made to ship or share.',
+      summary: 'Personal projects — finishing and showing.',
+      definition:
+        'Your maker life. Covers time dedicated to personal projects (creative, technical, manual), depth of work (flow vs distraction), capacity to iterate with feedback, and — the honest test — finishing and sharing, or just stacking abandoned ones.',
+      low: "You have 5 started projects, none finished. Distraction or indecision pulls you off what you were doing. Perfectionism halts you halfway. When you work, you don't enter flow — you check feeds every 5 minutes. You don't share what you do, or do it very rarely.",
+      mid: "You dedicate some hours a week to personal projects. You finish some, abandon others. You share occasionally — when the result is good enough. You iterate sometimes, defend yourself other times. You have things in the portfolio, not as many as you'd like.",
+      high: 'You dedicate regular time to projects. Flow is frequent, distraction is controlled. You finish what you start and share. You iterate without ego — listening to feedback and improving. You have concrete things that exist because of you — you can point to them and show.',
     },
   },
 

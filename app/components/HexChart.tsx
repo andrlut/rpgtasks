@@ -353,21 +353,24 @@ export function HexChart({
                           size={12}
                           color={meta.color}
                         />
-                        <View style={styles.segments}>
-                          {[1, 2, 3, 4, 5].map((p) => (
-                            <View
-                              key={p}
-                              style={[
-                                styles.segment,
-                                {
-                                  backgroundColor:
-                                    p <= score
-                                      ? meta.color
-                                      : `${meta.color}1A`,
-                                },
-                              ]}
-                            />
-                          ))}
+                        <View
+                          style={[
+                            styles.bar,
+                            { backgroundColor: `${meta.color}1A` },
+                          ]}
+                        >
+                          <View
+                            style={[
+                              styles.barFill,
+                              {
+                                width: `${Math.max(
+                                  0,
+                                  Math.min(100, (score / 5) * 100),
+                                )}%`,
+                                backgroundColor: meta.color,
+                              },
+                            ]}
+                          />
                         </View>
                       </View>
                     );
@@ -478,14 +481,14 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 6,
   },
-  segments: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 3,
-  },
-  segment: {
+  bar: {
     flex: 1,
     height: 5,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
     borderRadius: 2,
   },
 });

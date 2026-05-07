@@ -19,7 +19,16 @@ export interface TranslatedSubMeta {
   iconName: string;
   dimensionId: DimensionId;
   label: string;
-  description: string;
+  /** 1-line headline, always visible. */
+  summary: string;
+  /** Full paragraph: what does this domain cover. */
+  definition: string;
+  /** Day-to-day at 0-1 (concrete signs, no judgment). */
+  low: string;
+  /** Day-to-day at 2-3 (honestly mediocre, ambiguous). */
+  mid: string;
+  /** Day-to-day at 4-5 (concrete signs of flourishing). */
+  high: string;
 }
 
 /**
@@ -63,7 +72,11 @@ function subFromTranslate(
     iconName: base.iconName,
     dimensionId: base.dimensionId,
     label: t(`subs.${id}.label`),
-    description: t(`subs.${id}.description`),
+    summary: t(`subs.${id}.summary`),
+    definition: t(`subs.${id}.definition`),
+    low: t(`subs.${id}.low`),
+    mid: t(`subs.${id}.mid`),
+    high: t(`subs.${id}.high`),
   };
 }
 
