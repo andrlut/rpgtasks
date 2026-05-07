@@ -343,7 +343,7 @@ function AnsweringBody({
       <Text style={styles.prompt}>{current.text_pt}</Text>
 
       <View style={styles.options}>
-        {current.options.map((opt) => {
+        {(current.options ?? []).map((opt) => {
           const selected = currentAnswer === opt.value;
           return (
             <Pressable

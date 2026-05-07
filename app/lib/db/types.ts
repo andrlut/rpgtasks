@@ -138,6 +138,21 @@ export interface PsychInstrument {
   scoring_doc_url: string | null;
   is_active: boolean;
   created_at: string;
+  scale_labels: PsychScaleLabels | null;
+  scoring_method: PsychScoringMethod;
+}
+
+export type PsychScoringMethod =
+  | 'wellbeing_decimal'
+  | 'big_five_sum'
+  | 'schwartz_centered'
+  | 'ecr_mean';
+
+/** Uniform Likert labels surfaced once at the instrument level. The client
+ *  picks the locale ("pt" by default; "en" when the user is on en-US). */
+export interface PsychScaleLabels {
+  pt: PsychItemOption[];
+  en?: PsychItemOption[];
 }
 
 export interface PsychFacet {
@@ -163,7 +178,8 @@ export interface PsychItem {
   text_pt: string;
   text_en: string | null;
   reverse_scored: boolean;
-  options_jsonb: PsychItemOption[];
+  /** NULL → fall back to the instrument's `scale_labels` Likert. */
+  options_jsonb: PsychItemOption[] | null;
 }
 
 export interface PsychSession {
@@ -197,7 +213,8 @@ export interface PsychSessionItem {
   position: number;
   text_pt: string;
   text_en: string | null;
-  options: PsychItemOption[];
+  /** NULL when the instrument uses uniform Likert (read scale_labels). */
+  options: PsychItemOption[] | null;
   facet_id: string | null;
   reverse_scored: boolean;
 }
@@ -206,6 +223,7 @@ export interface PsychStartSessionResult {
   session_id: string;
   instrument_id: string;
   items: PsychSessionItem[];
+  scale_labels: PsychScaleLabels | null;
 }
 
 export interface PsychSubmitSessionResult {
