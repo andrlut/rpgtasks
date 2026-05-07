@@ -88,6 +88,11 @@ update public.skill set unit_pt = 'projetos'     where unit = 'projects';
 update public.skill set unit_pt = 'meses'        where unit = 'months';
 update public.skill set unit_pt = 'semanas'      where unit = 'weeks';
 
+-- Fallback for any skill whose unit isn't in the explicit list above
+-- (e.g. 'sec' on plank_hold). Copy the EN string verbatim — translatable
+-- in a follow-up if needed.
+update public.skill set unit_pt = unit where unit_pt is null;
+
 -- ─── 5. Placeholder backfill for content-heavy rows ──────────────────────
 -- Copy the EN text into the _pt slot so queries always return a non-null
 -- string. The actual translations land in a follow-up content PR.
