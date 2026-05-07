@@ -183,7 +183,7 @@ The publishable key is safe in client (RLS protects). The service_role key has b
 - **Service_role key flagging**: Supabase blocks calls from "browser-like" User-Agents. Use `User-Agent: supabase-cli/2.95.4` if you ever need to fall back to direct admin REST.
 - **Auth redirect URL** is the deep link `rpgtasks://auth/callback` (computed via `expo-linking`'s `createURL`). The app handles incoming auth URLs in `lib/auth/deep-link.ts` and exchanges them for a session. **Manual dashboard config required** in Supabase → Auth → URL Configuration: set **Site URL** = `rpgtasks://auth/callback` and add it under **Redirect URLs**. Without this step, email-confirmation links still go to `localhost:3000`. Magic links / OTP / PKCE / fragment-based flows are all handled.
 - **Custom schemes need a dev/production build** — Expo Go strips them, so test the email-confirm flow in `eas build --profile development` (or `preview`/`production`), not in Expo Go.
-- **expo-updates not yet installed** — OTA hot-fixes via `eas update` require this. Build warned about it; not critical until first deploy.
+- **expo-updates is installed and working** — OTA hot-fixes via `eas update --channel preview` push JS/TS changes to the existing APK without a rebuild. The Settings tab has a "check for updates" button users can tap to pull manually. Native code changes (new packages, native modules, version bumps) still require a fresh `eas build`. **Prefer `eas update` over `eas build`** whenever the change is JS/TS-only — saves ~15 min per change.
 
 ---
 
