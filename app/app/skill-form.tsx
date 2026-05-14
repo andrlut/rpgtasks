@@ -20,11 +20,11 @@ import {
   useCreateCustomSkill,
   type CustomSkillTierInput,
 } from '@/lib/api/skills';
-import type { TierName } from '@/lib/db/types';
+import type { SubId, TierName } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 import { useMetaLookup } from '@/lib/i18n/meta';
-import { DIMENSION_ORDER } from '@/theme/dimensions';
+import { DIMENSION_ORDER, SUBS_BY_DIM, SUB_META } from '@/theme/dimensions';
 
 const ICON_CHOICES = [
   'flash',
@@ -72,7 +72,9 @@ export default function SkillFormScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [unit, setUnit] = useState('reps');
-  const [dimensionId, setDimensionId] = useState<string>(DIMENSION_ORDER[0]);
+  // Sub-first: the user picks an area (sub); parent dimension is derived
+  // on submit from SUB_META.
+  const [subId, setSubId] = useState<SubId>(SUBS_BY_DIM[DIMENSION_ORDER[0]][0]);
   const [icon, setIcon] = useState<string>('flash');
   const [tiers, setTiers] = useState<TierFormState[]>(DEFAULT_TIERS);
 
@@ -138,7 +140,8 @@ export default function SkillFormScreen() {
       await createSkill.mutateAsync({
         display_name: trimmedName,
         unit: unit.trim(),
-        dimension_id: dimensionId,
+        dimension_id: SUB_META[subId].dimensionId,
+        sub_id: subId,
         icon,
         description: description.trim() === '' ? null : description.trim(),
         tiers: parsed,
@@ -162,7 +165,7 @@ export default function SkillFormScreen() {
           >
             <Ionicons name="close" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Text style={styles.title}>New Skill</Text>
+          <Text style={styles.title}>{t('skill.form.newTitle')}</Text>
           <Pressable
             onPress={handleSubmit}
             disabled={createSkill.isPending}
@@ -173,7 +176,7 @@ export default function SkillFormScreen() {
             hitSlop={8}
           >
             <Text style={styles.saveText}>
-              {createSkill.isPending ? '...' : 'Save'}
+              {createSkill.isPending ? t('skill.form.saving') : t('skill.form.save')}
             </Text>
           </Pressable>
         </View>
@@ -187,22 +190,22 @@ export default function SkillFormScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {/* Name */}
-            <Text style={styles.label}>Name</Text>
+            <Text style={styles.label}>{t('skill.form.nameLabel')}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="e.g. Burpees, Sprint 100m, 5K run"
+              placeholder={t('skill.form.namePlaceholder')}
               placeholderTextColor={tokens.text.faint}
               style={styles.input}
               maxLength={60}
             />
 
             {/* Unit */}
-            <Text style={styles.label}>Unit</Text>
+            <Text style={styles.label}>{t('skill.form.unitLabel')}</Text>
             <TextInput
               value={unit}
               onChangeText={setUnit}
-              placeholder="reps · min · km · pages · sec"
+              placeholder={t('skill.form.unitPlaceholder')}
               placeholderTextColor={tokens.text.faint}
               style={styles.input}
               maxLength={20}
@@ -210,55 +213,65 @@ export default function SkillFormScreen() {
             />
 
             {/* Description */}
-            <Text style={styles.label}>Description (optional)</Text>
+            <Text style={styles.label}>{t('skill.form.descLabel')}</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="What is this skill? Why does it matter?"
+              placeholder={t('skill.form.descPlaceholder')}
               placeholderTextColor={tokens.text.faint}
               style={[styles.input, styles.textArea]}
               multiline
               maxLength={300}
             />
 
-            {/* Dimension */}
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.chipRow}>
-              {DIMENSION_ORDER.map((id) => {
-                const meta = metaLookup.dim(id);
-                const active = id === dimensionId;
-                return (
-                  <Pressable
-                    key={id}
-                    onPress={() => setDimensionId(id)}
-                    style={[
-                      styles.chip,
-                      active && {
-                        backgroundColor: meta.bg,
-                        borderColor: meta.color,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={meta.iconName as never}
-                      size={14}
-                      color={active ? meta.color : tokens.text.mid}
-                    />
-                    <Text
-                      style={[
-                        styles.chipText,
-                        { color: active ? meta.color : tokens.text.mid },
-                      ]}
-                    >
-                      {meta.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
+            {/* Sub (area) — grouped by parent dim for visual structure */}
+            <Text style={styles.label}>{t('skill.form.subLabel')}</Text>
+            {DIMENSION_ORDER.map((dimId) => {
+              const dimMeta = metaLookup.dim(dimId);
+              return (
+                <View key={dimId} style={styles.subGroup}>
+                  <Text style={[styles.subGroupLabel, { color: dimMeta.color }]}>
+                    {dimMeta.label.toUpperCase()}
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {SUBS_BY_DIM[dimId].map((sId) => {
+                      const sMeta = metaLookup.sub(sId);
+                      const active = sId === subId;
+                      return (
+                        <Pressable
+                          key={sId}
+                          onPress={() => setSubId(sId)}
+                          style={[
+                            styles.chip,
+                            active && {
+                              backgroundColor: dimMeta.bg,
+                              borderColor: dimMeta.color,
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name={sMeta.iconName as never}
+                            size={14}
+                            color={active ? dimMeta.color : tokens.text.mid}
+                          />
+                          <Text
+                            style={[
+                              styles.chipText,
+                              { color: active ? dimMeta.color : tokens.text.mid },
+                            ]}
+                          >
+                            {sMeta.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
 
             {/* Icon */}
-            <Text style={styles.label}>Icon</Text>
+            <Text style={styles.label}>{t('skill.form.iconLabel')}</Text>
             <View style={styles.iconGrid}>
               {ICON_CHOICES.map((ic) => {
                 const active = icon === ic;
@@ -285,11 +298,8 @@ export default function SkillFormScreen() {
             </View>
 
             {/* Tiers */}
-            <Text style={styles.label}>Tier ladder</Text>
-            <Text style={styles.helperText}>
-              Threshold values must ascend. Percentile is optional (0–100, what
-              % of adults reach this tier — leave blank if you don&apos;t know).
-            </Text>
+            <Text style={styles.label}>{t('skill.form.tierLabel')}</Text>
+            <Text style={styles.helperText}>{t('skill.form.tierHelper')}</Text>
             <View style={{ gap: tokens.space[3], marginTop: tokens.space[2] }}>
               {TIER_NAMES.map((name, i) => (
                 <View key={name} style={styles.tierCard}>
@@ -304,7 +314,7 @@ export default function SkillFormScreen() {
                   </View>
                   <View style={styles.tierFieldsRow}>
                     <View style={styles.tierFieldCol}>
-                      <Text style={styles.tierFieldLabel}>Threshold</Text>
+                      <Text style={styles.tierFieldLabel}>{t('skill.form.tierThreshold')}</Text>
                       <TextInput
                         value={tiers[i]!.threshold}
                         onChangeText={(v) =>
@@ -317,7 +327,7 @@ export default function SkillFormScreen() {
                       />
                     </View>
                     <View style={styles.tierFieldCol}>
-                      <Text style={styles.tierFieldLabel}>Top %</Text>
+                      <Text style={styles.tierFieldLabel}>{t('skill.form.tierTop')}</Text>
                       <TextInput
                         value={tiers[i]!.percentile}
                         onChangeText={(v) =>
@@ -335,7 +345,7 @@ export default function SkillFormScreen() {
                   <TextInput
                     value={tiers[i]!.description}
                     onChangeText={(v) => updateTier(i, { description: v })}
-                    placeholder={`What does ${name} look like?`}
+                    placeholder={t('skill.form.tierDescPlaceholder', { tier: name })}
                     placeholderTextColor={tokens.text.faint}
                     style={[styles.tierInput, styles.tierDescInput]}
                     maxLength={140}
@@ -422,6 +432,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: tokens.space[2],
+  },
+  subGroup: {
+    marginTop: tokens.space[2],
+    gap: 6,
+  },
+  subGroupLabel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 1.2,
   },
   chip: {
     flexDirection: 'row',
