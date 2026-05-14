@@ -178,6 +178,41 @@ const en = {
     },
   },
 
+  reward: {
+    common: {
+      ok: 'OK',
+      cancel: 'Cancel',
+    },
+    shop: {
+      noCoinsHint: 'Earn some coins to unlock rewards',
+      notEnoughTitle: 'Not enough coins',
+      notEnoughBody: 'You need {{deficit}} more coins.',
+      buyTitle: 'Buy "{{title}}"?',
+      buyBody: 'Spend {{cost}} coins. It goes to your Bank — use it whenever you’re ready.',
+      buyOk: 'Buy',
+      buyFail: 'Could not buy',
+      useTitle: 'Use "{{title}}"?',
+      useBody: 'Mark this reward as redeemed. It moves to your Used list.',
+      useOk: 'Use it',
+      useFail: 'Could not use',
+      removeTitle: 'Remove "{{title}}"?',
+      removeBody: 'It stops appearing in the Shop. Past purchases stay in your Bank/Used.',
+      removeOk: 'Remove',
+      removeFail: 'Could not remove',
+    },
+    form: {
+      missingTitleTitle: 'Title required',
+      missingTitleBody: 'Give your reward a title.',
+      missingCostTitle: 'Cost must be at least 1',
+      missingCostBody: 'Set how many coins it costs.',
+      saveFailTitle: 'Save failed',
+      archiveFailTitle: 'Archive failed',
+      archiveConfirmTitle: 'Archive reward?',
+      archiveConfirmBody: 'It will no longer appear on Rewards.',
+      archiveOk: 'Archive',
+    },
+  },
+
   skill: {
     actions: {
       more: 'More options',

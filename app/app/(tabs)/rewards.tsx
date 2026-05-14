@@ -36,6 +36,7 @@ import {
   useUsedRewards,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { timeAgo } from '@/lib/time';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
@@ -48,6 +49,7 @@ const ALMOST_THRESHOLD = 800;
 
 export default function RewardsScreen() {
   const router = useRouter();
+  const { t } = useT();
   const character = useCharacter();
   const rewards = useRewards();
   const templates = useRewardTemplates();
@@ -120,9 +122,9 @@ export default function RewardsScreen() {
       (rewards.data ?? []).map((r) => r.title.trim().toLowerCase()),
     );
     return (templates.data ?? []).filter(
-      (t) =>
-        enabledCategories.has(t.category) &&
-        !owned.has(t.title.trim().toLowerCase()),
+      (tmpl) =>
+        enabledCategories.has(tmpl.category) &&
+        !owned.has(tmpl.title.trim().toLowerCase()),
     );
   }, [templates.data, rewards.data, enabledCategories]);
 
@@ -135,7 +137,7 @@ export default function RewardsScreen() {
         : `${trackedReward.title} is yours to claim`;
     }
     const affordable = sections.available.length;
-    if (affordable === 0) return 'Earn some coins to unlock rewards';
+    if (affordable === 0) return t('reward.shop.noCoinsHint');
     return `You can buy ${affordable} ${affordable === 1 ? 'reward' : 'rewards'} now`;
   }, [trackedReward, coins, sections.available.length]);
 
@@ -156,9 +158,13 @@ export default function RewardsScreen() {
 
   const handleRewardActions = async (reward: Reward) => {
     const ok = await confirmAction(
-      `Remove "${reward.title}"?`,
-      'It stops appearing in the Shop. Past purchases stay in your Bank/Used.',
-      { okText: 'Remove', cancelText: 'Cancel', destructive: true },
+      t('reward.shop.removeTitle', { title: reward.title }),
+      t('reward.shop.removeBody'),
+      {
+        okText: t('reward.shop.removeOk'),
+        cancelText: t('reward.common.cancel'),
+        destructive: true,
+      },
     );
     if (!ok) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
@@ -166,19 +172,22 @@ export default function RewardsScreen() {
       await archiveReward.mutateAsync(reward.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not remove', msg);
+      showInfo(t('reward.shop.removeFail'), msg);
     }
   };
 
   const handleBuy = async (reward: Reward) => {
     if (coins < reward.cost) {
-      showInfo('Not enough coins', `You need ${reward.cost - coins} more coins.`);
+      showInfo(
+        t('reward.shop.notEnoughTitle'),
+        t('reward.shop.notEnoughBody', { deficit: reward.cost - coins }),
+      );
       return;
     }
     const ok = await confirmAction(
-      `Buy "${reward.title}"?`,
-      `Spend ${reward.cost} coins. It goes to your Bank — use it whenever you're ready.`,
-      { okText: 'Buy', cancelText: 'Cancel' },
+      t('reward.shop.buyTitle', { title: reward.title }),
+      t('reward.shop.buyBody', { cost: reward.cost }),
+      { okText: t('reward.shop.buyOk'), cancelText: t('reward.common.cancel') },
     );
     if (!ok) return;
     setRedeemingId(reward.id);
@@ -187,7 +196,7 @@ export default function RewardsScreen() {
       await redeem.mutateAsync({ rewardId: reward.id, cost: reward.cost });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not buy', msg);
+      showInfo(t('reward.shop.buyFail'), msg);
     } finally {
       setRedeemingId(null);
     }
@@ -195,9 +204,9 @@ export default function RewardsScreen() {
 
   const handleUse = async (entry: { id: string; reward_title: string }) => {
     const ok = await confirmAction(
-      `Use "${entry.reward_title}"?`,
-      'Mark this reward as redeemed. It moves to your Used list.',
-      { okText: 'Use it', cancelText: 'Cancel' },
+      t('reward.shop.useTitle', { title: entry.reward_title }),
+      t('reward.shop.useBody'),
+      { okText: t('reward.shop.useOk'), cancelText: t('reward.common.cancel') },
     );
     if (!ok) return;
     setUsingId(entry.id);
@@ -206,7 +215,7 @@ export default function RewardsScreen() {
       await useReward.mutateAsync(entry.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not use', msg);
+      showInfo(t('reward.shop.useFail'), msg);
     } finally {
       setUsingId(null);
     }
@@ -450,12 +459,12 @@ export default function RewardsScreen() {
                   <Text style={styles.sectionMeta}>tap to add</Text>
                 </View>
                 <View style={styles.list}>
-                  {visibleTemplates.map((t) => (
+                  {visibleTemplates.map((tmpl) => (
                     <TemplateCard
-                      key={t.id}
-                      template={t}
-                      onAdd={() => handleAddTemplate(t)}
-                      isAdding={addingTemplateId === t.id}
+                      key={tmpl.id}
+                      template={tmpl}
+                      onAdd={() => handleAddTemplate(tmpl)}
+                      isAdding={addingTemplateId === tmpl.id}
                     />
                   ))}
                 </View>

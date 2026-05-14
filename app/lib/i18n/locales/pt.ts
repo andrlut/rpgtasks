@@ -168,6 +168,41 @@ const pt: Translations = {
     },
   },
 
+  reward: {
+    common: {
+      ok: 'OK',
+      cancel: 'Cancelar',
+    },
+    shop: {
+      noCoinsHint: 'Ganhe moedas pra desbloquear recompensas',
+      notEnoughTitle: 'Moedas insuficientes',
+      notEnoughBody: 'Faltam {{deficit}} moedas pra essa.',
+      buyTitle: 'Comprar "{{title}}"?',
+      buyBody: 'Gastar {{cost}} moedas. Vai pro seu Banco — usa quando quiser.',
+      buyOk: 'Comprar',
+      buyFail: 'Não consegui comprar',
+      useTitle: 'Usar "{{title}}"?',
+      useBody: 'Marcar como resgatada. Vai pra sua lista de Usadas.',
+      useOk: 'Usar',
+      useFail: 'Não consegui usar',
+      removeTitle: 'Remover "{{title}}"?',
+      removeBody: 'Some da Loja. Compras antigas ficam no Banco/Usadas.',
+      removeOk: 'Remover',
+      removeFail: 'Não consegui remover',
+    },
+    form: {
+      missingTitleTitle: 'Falta o título',
+      missingTitleBody: 'Dê um título pra recompensa.',
+      missingCostTitle: 'Custo mínimo: 1',
+      missingCostBody: 'Defina quantas moedas custa.',
+      saveFailTitle: 'Erro ao salvar',
+      archiveFailTitle: 'Erro ao arquivar',
+      archiveConfirmTitle: 'Arquivar recompensa?',
+      archiveConfirmBody: 'Ela some da tela de Recompensas.',
+      archiveOk: 'Arquivar',
+    },
+  },
+
   skill: {
     actions: {
       more: 'Mais opções',

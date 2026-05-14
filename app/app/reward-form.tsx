@@ -23,6 +23,7 @@ import {
   type RewardFormInput,
 } from '@/lib/api/rewards';
 import type { RewardCategory } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { confirmAction } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
@@ -44,6 +45,7 @@ const ICON_CHOICES = [
 
 export default function RewardFormScreen() {
   const router = useRouter();
+  const { t } = useT();
   const params = useLocalSearchParams<{ id?: string; category?: string }>();
   const isEdit = !!params.id;
   const initialCategory: RewardCategory =
@@ -89,11 +91,11 @@ export default function RewardFormScreen() {
 
   const handleSave = async () => {
     if (!formInput.title) {
-      Alert.alert('Title required', 'Give your reward a title.');
+      Alert.alert(t('reward.form.missingTitleTitle'), t('reward.form.missingTitleBody'));
       return;
     }
     if (formInput.cost < 1) {
-      Alert.alert('Cost must be at least 1', 'Set how many coins it costs.');
+      Alert.alert(t('reward.form.missingCostTitle'), t('reward.form.missingCostBody'));
       return;
     }
     try {
@@ -105,16 +107,20 @@ export default function RewardFormScreen() {
       router.back();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Save failed', msg);
+      Alert.alert(t('reward.form.saveFailTitle'), msg);
     }
   };
 
   const handleArchive = async () => {
     if (!params.id) return;
     const ok = await confirmAction(
-      'Archive reward?',
-      'It will no longer appear on Rewards.',
-      { okText: 'Archive', cancelText: 'Cancel', destructive: true },
+      t('reward.form.archiveConfirmTitle'),
+      t('reward.form.archiveConfirmBody'),
+      {
+        okText: t('reward.form.archiveOk'),
+        cancelText: t('reward.common.cancel'),
+        destructive: true,
+      },
     );
     if (!ok) return;
     try {
@@ -122,7 +128,7 @@ export default function RewardFormScreen() {
       router.back();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Archive failed', msg);
+      Alert.alert(t('reward.form.archiveFailTitle'), msg);
     }
   };
 
