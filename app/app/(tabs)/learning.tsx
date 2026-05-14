@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: tokens.space[4],
-    paddingBottom: 96,
+    paddingBottom: tokens.layout.bottomNavClearance,
   },
   card: {
     alignItems: 'center',

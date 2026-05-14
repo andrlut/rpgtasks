@@ -234,7 +234,10 @@ export default function SelfAssessmentScreen() {
             );
           })}
 
-          <View style={{ height: hasPending ? 80 : tokens.space[6] }} />
+          {/* Always reserve room for the sticky save footer (~68px). Idle
+              state used to use tokens.space[6] (24px) which left the last
+              sub card partially under the translucent footer. */}
+          <View style={{ height: 96 }} />
         </ScrollView>
 
         {/* Sticky save footer */}
