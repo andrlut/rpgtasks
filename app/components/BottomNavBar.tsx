@@ -18,8 +18,6 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   character: 'person',
   learning: 'book',
   profile: 'settings',
-  // history kept for legacy navigation; hidden from the tab bar (href: null)
-  history: 'calendar',
 };
 
 const TAB_LABEL_KEYS: Record<string, string> = {
@@ -28,7 +26,6 @@ const TAB_LABEL_KEYS: Record<string, string> = {
   character: 'tabs.hero',
   learning: 'tabs.learning',
   profile: 'tabs.settings',
-  history: 'tabs.history',
 };
 
 const BAR_HORIZONTAL_MARGIN = 12;

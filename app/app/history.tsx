@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.layout.bottomNavClearance,
+    paddingBottom: tokens.space[8],
   },
   header: {
     flexDirection: 'row',

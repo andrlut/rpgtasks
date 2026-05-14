@@ -254,7 +254,7 @@ export default function HomeScreen() {
             coins={character.data?.character.coins ?? 0}
             streakDays={streak.data?.currentStreak ?? 0}
             dateLabel={formatCompactDate()}
-            onHistoryPress={() => router.push('/(tabs)/history')}
+            onHistoryPress={() => router.push('/history')}
           />
 
           {isLoading ? (
