@@ -154,6 +154,29 @@ export function useCreateCustomSkill() {
 }
 
 /**
+ * Deletes a user-owned skill. RLS guarantees only the owner's row is
+ * affected; skill_tier and skill_log cascade-delete via FK. Catalog skills
+ * (character_id IS NULL) cannot be deleted from the client and the policy
+ * will silently no-op if a caller tries.
+ */
+export function useDeleteCustomSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (skillId: string): Promise<void> => {
+      const { error } = await supabase
+        .from('skill')
+        .delete()
+        .eq('id', skillId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, skillId) => {
+      queryClient.invalidateQueries({ queryKey: skillKeys.states() });
+      queryClient.invalidateQueries({ queryKey: skillKeys.log(skillId) });
+    },
+  });
+}
+
+/**
  * Inserts a new skill_log row. Returns whether this crossed a tier threshold
  * (so caller can show a tier-up animation).
  */

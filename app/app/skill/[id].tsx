@@ -21,11 +21,13 @@ import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import {
   tierForValue,
+  useDeleteCustomSkill,
   useLogSkillPR,
   useSkillLogHistory,
   useSkillStates,
 } from '@/lib/api/skills';
 import type { SkillLog, SkillTier, TierName } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { tokens } from '@/theme';
 import {
@@ -102,6 +104,7 @@ function formatShortDate(iso: string): string {
 
 export default function SkillDetailScreen() {
   const router = useRouter();
+  const { t } = useT();
   const { pick, pickNullable } = useLocalizedPick();
   const params = useLocalSearchParams<{ id: string }>();
   const skillId = params.id;
@@ -109,6 +112,7 @@ export default function SkillDetailScreen() {
   const skillStates = useSkillStates();
   const log = useSkillLogHistory(skillId);
   const logPR = useLogSkillPR();
+  const deleteSkill = useDeleteCustomSkill();
 
   const [valueStr, setValueStr] = useState('');
 
@@ -199,25 +203,55 @@ export default function SkillDetailScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Pressable
-            onPress={() => {
-              // Future: edit/delete menu for custom skills, share, etc. The
-              // brief left this open; keep the affordance visible so users
-              // know more is coming.
-            }}
-            style={({ pressed }) => [
-              styles.iconButton,
-              pressed && { opacity: 0.6 },
-            ]}
-            hitSlop={8}
-            accessibilityLabel="More"
-          >
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={22}
-              color={tokens.text.hi}
-            />
-          </Pressable>
+          {state.skill.character_id !== null ? (
+            <Pressable
+              onPress={() => {
+                const displayName = pick(
+                  state.skill.display_name_pt,
+                  state.skill.display_name,
+                );
+                Alert.alert(
+                  t('skill.actions.deleteConfirmTitle', { name: displayName }),
+                  t('skill.actions.deleteConfirmBody'),
+                  [
+                    { text: t('skill.actions.cancel'), style: 'cancel' },
+                    {
+                      text: t('skill.actions.delete'),
+                      style: 'destructive',
+                      onPress: () => {
+                        deleteSkill.mutate(skillId, {
+                          onSuccess: () => {
+                            Haptics.notificationAsync(
+                              Haptics.NotificationFeedbackType.Success,
+                            ).catch(() => {});
+                            router.back();
+                          },
+                          onError: (err) => {
+                            const msg = err instanceof Error ? err.message : 'Unknown error';
+                            Alert.alert('Could not delete', msg);
+                          },
+                        });
+                      },
+                    },
+                  ],
+                );
+              }}
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && { opacity: 0.6 },
+              ]}
+              hitSlop={8}
+              accessibilityLabel={t('skill.actions.more')}
+            >
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={22}
+                color={tokens.text.hi}
+              />
+            </Pressable>
+          ) : (
+            <View style={styles.iconButton} />
+          )}
         </View>
 
         <KeyboardAvoidingView

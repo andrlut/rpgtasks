@@ -178,6 +178,28 @@ const en = {
     },
   },
 
+  skill: {
+    actions: {
+      more: 'More options',
+      delete: 'Delete skill',
+      deleteConfirmTitle: 'Delete {{name}}?',
+      deleteConfirmBody: 'This deletes the skill and its entire PR history. Cannot be undone.',
+      cancel: 'Cancel',
+    },
+    form: {
+      missingNameTitle: 'Missing name',
+      missingNameBody: 'Give the skill a name.',
+      missingUnitTitle: 'Missing unit',
+      missingUnitBody: 'Set a unit (reps, min, km, etc.).',
+      badThresholdTitle: 'Bad threshold',
+      badThresholdBody: 'Tier {{tier}}: enter a non-negative number.',
+      tiersAscendTitle: 'Tiers must ascend',
+      tiersAscendBody: '{{tier}} threshold ({{value}}) must be greater than {{prevTier}} ({{prevValue}}).',
+      badPercentileTitle: 'Bad percentile',
+      badPercentileBody: 'Tier {{tier}}: percentile must be 0–100 or empty.',
+    },
+  },
+
   home: {
     greeting: {
       morning: 'Good morning',

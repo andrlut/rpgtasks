@@ -168,6 +168,28 @@ const pt: Translations = {
     },
   },
 
+  skill: {
+    actions: {
+      more: 'Mais opções',
+      delete: 'Excluir skill',
+      deleteConfirmTitle: 'Excluir {{name}}?',
+      deleteConfirmBody: 'Isso apaga a skill e todo o histórico de PRs dela. Sem volta.',
+      cancel: 'Cancelar',
+    },
+    form: {
+      missingNameTitle: 'Falta o nome',
+      missingNameBody: 'Dê um nome pra skill.',
+      missingUnitTitle: 'Falta a unidade',
+      missingUnitBody: 'Defina uma unidade (reps, min, km, etc.).',
+      badThresholdTitle: 'Limite inválido',
+      badThresholdBody: 'Tier {{tier}}: digite um número não-negativo.',
+      tiersAscendTitle: 'Os tiers precisam subir',
+      tiersAscendBody: 'Tier {{tier}} ({{value}}) tem que ser maior que {{prevTier}} ({{prevValue}}).',
+      badPercentileTitle: 'Percentil inválido',
+      badPercentileBody: 'Tier {{tier}}: percentil tem que estar entre 0 e 100, ou vazio.',
+    },
+  },
+
   home: {
     greeting: {
       morning: 'Bom dia',

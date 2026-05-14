@@ -21,6 +21,7 @@ import {
   type CustomSkillTierInput,
 } from '@/lib/api/skills';
 import type { TierName } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { DIMENSION_ORDER } from '@/theme/dimensions';
@@ -64,6 +65,7 @@ const DEFAULT_TIERS: TierFormState[] = [
 
 export default function SkillFormScreen() {
   const router = useRouter();
+  const { t } = useT();
   const metaLookup = useMetaLookup();
   const createSkill = useCreateCustomSkill();
 
@@ -81,42 +83,53 @@ export default function SkillFormScreen() {
   const handleSubmit = async () => {
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
-      Alert.alert('Missing name', 'Give the skill a name.');
+      Alert.alert(t('skill.form.missingNameTitle'), t('skill.form.missingNameBody'));
       return;
     }
     if (unit.trim().length === 0) {
-      Alert.alert('Missing unit', 'Set a unit (reps, min, km, etc.).');
+      Alert.alert(t('skill.form.missingUnitTitle'), t('skill.form.missingUnitBody'));
       return;
     }
 
     // Parse + validate tiers
     const parsed: CustomSkillTierInput[] = [];
     for (let i = 0; i < 5; i++) {
-      const t = tiers[i]!;
-      const threshold = parseInt(t.threshold, 10);
+      const ti = tiers[i]!;
+      const threshold = parseInt(ti.threshold, 10);
       if (!Number.isFinite(threshold) || threshold < 0) {
-        Alert.alert('Bad threshold', `Tier ${TIER_NAMES[i]}: enter a non-negative number.`);
+        Alert.alert(
+          t('skill.form.badThresholdTitle'),
+          t('skill.form.badThresholdBody', { tier: TIER_NAMES[i] ?? '' }),
+        );
         return;
       }
       if (i > 0) {
         const prev = parsed[i - 1]!.threshold;
         if (threshold <= prev) {
           Alert.alert(
-            'Tiers must ascend',
-            `${TIER_NAMES[i]} threshold (${threshold}) must be greater than ${TIER_NAMES[i - 1]} (${prev}).`,
+            t('skill.form.tiersAscendTitle'),
+            t('skill.form.tiersAscendBody', {
+              tier: TIER_NAMES[i] ?? '',
+              value: threshold,
+              prevTier: TIER_NAMES[i - 1] ?? '',
+              prevValue: prev,
+            }),
           );
           return;
         }
       }
-      const percentileNum = t.percentile.trim() === '' ? null : parseFloat(t.percentile);
+      const percentileNum = ti.percentile.trim() === '' ? null : parseFloat(ti.percentile);
       if (percentileNum !== null && (!Number.isFinite(percentileNum) || percentileNum < 0 || percentileNum > 100)) {
-        Alert.alert('Bad percentile', `Tier ${TIER_NAMES[i]}: percentile must be 0–100 or empty.`);
+        Alert.alert(
+          t('skill.form.badPercentileTitle'),
+          t('skill.form.badPercentileBody', { tier: TIER_NAMES[i] ?? '' }),
+        );
         return;
       }
       parsed.push({
         tier_name: TIER_NAMES[i]!,
         threshold,
-        description: t.description.trim() === '' ? null : t.description.trim(),
+        description: ti.description.trim() === '' ? null : ti.description.trim(),
         percentile: percentileNum,
       });
     }
