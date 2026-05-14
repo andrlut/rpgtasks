@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 export type PillarKey = 'avaliacao' | 'dedicacao' | 'skills';
@@ -38,6 +39,7 @@ export function PillarTabs({
   dedicacao,
   skills,
 }: Props) {
+  const { t } = useT();
   return (
     <View style={styles.tabs}>
       <Tab
@@ -46,7 +48,7 @@ export function PillarTabs({
         accent={tokens.brand.violet2}
         halo="rgba(155, 130, 255, 0.18)"
         border="rgba(155, 130, 255, 0.35)"
-        eyebrow="Avaliação"
+        eyebrow={t('pillar.avaliacao.short')}
         kpi={avaliacao.kpi}
         unit={avaliacao.unit}
         onPress={onChange}
@@ -57,7 +59,7 @@ export function PillarTabs({
         accent={tokens.semantic.xp2}
         halo="rgba(111, 232, 170, 0.18)"
         border="rgba(61, 214, 140, 0.35)"
-        eyebrow="Dedicação"
+        eyebrow={t('pillar.dedicacao.short')}
         kpi={dedicacao.kpi}
         unit={dedicacao.unit}
         onPress={onChange}
@@ -68,7 +70,7 @@ export function PillarTabs({
         accent={tokens.semantic.coin}
         halo="rgba(255, 200, 61, 0.18)"
         border="rgba(255, 200, 61, 0.35)"
-        eyebrow="Skills"
+        eyebrow={t('pillar.skills.short')}
         kpi={skills.kpi}
         unit={skills.unit}
         onPress={onChange}

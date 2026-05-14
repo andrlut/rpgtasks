@@ -154,6 +154,30 @@ const en = {
     badge: 'Coming soon',
   },
 
+  /**
+   * Canonical glossary of the three pillars. Use `pillar.<key>.short` for
+   * tab labels and chips; `.long` when context calls for the full name;
+   * `.identity` when explicitly framing under "Perceived / Practiced /
+   * Desired Identity" from the V3 product doc.
+   */
+  pillar: {
+    avaliacao: {
+      short: 'Assessment',
+      long: 'Assessment · how I see myself',
+      identity: 'Perceived Identity',
+    },
+    dedicacao: {
+      short: 'Dedication',
+      long: 'Dedication · what I practice',
+      identity: 'Practiced Identity',
+    },
+    skills: {
+      short: 'Skills',
+      long: 'Skills · where I level up',
+      identity: 'Desired Identity',
+    },
+  },
+
   home: {
     greeting: {
       morning: 'Good morning',

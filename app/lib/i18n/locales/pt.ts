@@ -144,6 +144,30 @@ const pt: Translations = {
     badge: 'Em desenvolvimento',
   },
 
+  /**
+   * Canonical glossary of the three pillars. Use `pillar.<key>.short` for
+   * tab labels and chips; `.long` when context calls for the full name;
+   * `.identity` when explicitly framing under "Identidade X" (percebida /
+   * praticada / desejada) from the V3 product doc.
+   */
+  pillar: {
+    avaliacao: {
+      short: 'Avaliação',
+      long: 'Avaliação · como eu me vejo',
+      identity: 'Identidade Percebida',
+    },
+    dedicacao: {
+      short: 'Dedicação',
+      long: 'Dedicação · o que eu pratico',
+      identity: 'Identidade Praticada',
+    },
+    skills: {
+      short: 'Skills',
+      long: 'Skills · onde eu evoluo',
+      identity: 'Identidade Desejada',
+    },
+  },
+
   home: {
     greeting: {
       morning: 'Bom dia',
