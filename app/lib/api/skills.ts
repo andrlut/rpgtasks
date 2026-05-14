@@ -124,6 +124,9 @@ export interface CustomSkillInput {
   display_name: string;
   unit: string;
   dimension_id: string;
+  /** Optional sub the skill belongs to (e.g. "sleep", "strength"). The RPC
+   *  cross-checks that the sub parents the claimed dimension. */
+  sub_id?: string | null;
   icon?: string;
   description?: string | null;
   /** Must be exactly 5 entries: beginner / bronze / silver / gold / master. */
