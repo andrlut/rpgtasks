@@ -86,7 +86,7 @@ export function MaterialCover({
         style={StyleSheet.absoluteFill}
       />
       {/* Soft radial highlight in the top-left for depth. */}
-      <View style={styles.glow} pointerEvents="none" />
+      <View style={styles.glow} />
       <View style={styles.iconWrap}>
         <Ionicons name={iconName} size={size} color="rgba(255,255,255,0.92)" />
       </View>

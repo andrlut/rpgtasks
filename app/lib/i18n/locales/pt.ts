@@ -163,6 +163,8 @@ const pt: Translations = {
     detail: {
       source: 'Fonte',
       takeaways: 'O que levar daqui',
+      signs: 'Está bem quando',
+      tracking: 'Como o app acompanha',
       markRead: 'Marcar como lido',
       markedRead: 'Lido',
       alreadyRead: 'Você já leu esse material. XP já foi creditado.',

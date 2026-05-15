@@ -97,36 +97,39 @@ export default function LearningScreen() {
             />
           )}
 
-          {/* Dim filter chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-          >
-            <FilterChip
-              label={t('common.all')}
-              active={!dimFilter}
-              onPress={() => {
-                Haptics.selectionAsync().catch(() => {});
-                setDimFilter(null);
-              }}
-            />
-            {DIMENSION_ORDER.map((id) => {
-              const dim = meta.dim(id);
-              const active = dimFilter === id;
-              return (
-                <FilterChip
-                  key={id}
-                  label={dim.label}
-                  iconName={dim.iconName as keyof typeof Ionicons.glyphMap}
-                  active={active}
-                  activeColor={dim.color}
-                  activeBg={dim.bg}
-                  onPress={() => toggleDim(id)}
-                />
-              );
-            })}
-          </ScrollView>
+          {/* Dim filter chips — wrapped in a fixed-height View so the
+              nested horizontal ScrollView can't collapse vertically. */}
+          <View style={styles.chipScrollWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipRow}
+            >
+              <FilterChip
+                label={t('common.all')}
+                active={!dimFilter}
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => {});
+                  setDimFilter(null);
+                }}
+              />
+              {DIMENSION_ORDER.map((id) => {
+                const dim = meta.dim(id);
+                const active = dimFilter === id;
+                return (
+                  <FilterChip
+                    key={id}
+                    label={dim.label}
+                    iconName={dim.iconName as keyof typeof Ionicons.glyphMap}
+                    active={active}
+                    activeColor={dim.color}
+                    activeBg={dim.bg}
+                    onPress={() => toggleDim(id)}
+                  />
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {/* Read-state filter */}
           <View style={styles.readFilterWrap}>
@@ -288,18 +291,18 @@ const chipStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 999,
-    backgroundColor: tokens.bg.glass,
+    backgroundColor: tokens.bg.glassStrong,
     borderWidth: 1,
     borderColor: tokens.border.strong,
     flexShrink: 0,
   },
   text: {
-    fontFamily: 'Manrope_600SemiBold',
+    fontFamily: 'Manrope_700Bold',
     fontSize: 12,
-    color: tokens.text.mid,
+    color: tokens.text.base,
   },
 });
 
@@ -414,14 +417,20 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     marginTop: 2,
   },
+  chipScrollWrap: {
+    height: 50, // explicit so the nested horizontal ScrollView can't collapse
+    marginTop: tokens.space[2],
+  },
   chipRow: {
     paddingHorizontal: tokens.space[4],
-    paddingRight: tokens.space[5], // extra room so last chip doesn't clip
-    paddingVertical: tokens.space[3],
+    paddingRight: tokens.space[5] + tokens.space[2], // last chip never clips
+    paddingVertical: tokens.space[2],
+    alignItems: 'center',
     gap: 8,
   },
   readFilterWrap: {
     paddingHorizontal: tokens.space[4],
+    paddingTop: tokens.space[1],
     paddingBottom: tokens.space[3],
   },
   loading: {

@@ -173,6 +173,8 @@ const en = {
     detail: {
       source: 'Source',
       takeaways: 'Walk away with this',
+      signs: 'On track when',
+      tracking: 'How the app tracks it',
       markRead: 'Mark as read',
       markedRead: 'Read',
       alreadyRead: 'You already read this one. XP was claimed.',
