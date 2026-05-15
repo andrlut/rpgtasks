@@ -16,12 +16,6 @@ export default function TabLayout() {
       <Tabs.Screen name="character" options={{ title: 'Hero' }} />
       <Tabs.Screen name="learning" options={{ title: 'Learn' }} />
       <Tabs.Screen name="profile" options={{ title: 'Settings' }} />
-      {/*
-        History stays routable as /(tabs)/history but is hidden from the
-        tab bar. Entry point is the calendar icon in CompactHeader on the
-        Tasks tab. See V3 roadmap: "embed history inside Tasks".
-      */}
-      <Tabs.Screen name="history" options={{ href: null, title: 'History' }} />
     </Tabs>
   );
 }

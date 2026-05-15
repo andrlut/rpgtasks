@@ -249,7 +249,7 @@ export default function HomeScreen() {
             xpNeededForLevel={lp.xpNeededForLevel}
             coins={character.data?.character.coins ?? 0}
             dateLabel={formatCompactDate()}
-            onHistoryPress={() => router.push('/(tabs)/history')}
+            onHistoryPress={() => router.push('/history')}
           />
 
           {isLoading ? (
