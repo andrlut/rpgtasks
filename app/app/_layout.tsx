@@ -104,6 +104,7 @@ export default function RootLayout() {
               options={{ presentation: 'modal', headerShown: false }}
             />
             <Stack.Screen name="skill/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="material/[slug]" options={{ headerShown: false }} />
             <Stack.Screen name="skills" options={{ headerShown: false }} />
             <Stack.Screen name="tasks" options={{ headerShown: false }} />
             <Stack.Screen name="history" options={{ headerShown: false }} />

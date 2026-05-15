@@ -517,3 +517,62 @@ export interface QuestRequirementWithProgress {
   currentCount: number;
   isMet: boolean;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Learning — system catalog of bilingual materials + per-user read log.
+// No personal counterpart; XP is awarded by mark_material_read() RPC.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type LearningMaterialType = 'summary' | 'news' | 'explainer';
+
+/** Action emitted from a material body via the `:::cta` directive. */
+export type LearningCtaAction =
+  | { kind: 'start_task'; template_slug: string }
+  | { kind: 'open_skill'; skill_id: string };
+
+export interface LearningMaterial {
+  id: string;
+  slug: string;
+  type: LearningMaterialType;
+  dimension_id: DimensionId;
+  topic: string;
+  reading_minutes: number;
+  title_pt: string;
+  title_en: string;
+  summary_pt: string;
+  summary_en: string;
+  body_pt: string;
+  body_en: string;
+  hero_image_url: string | null;
+  source_url: string | null;
+  source_label_pt: string | null;
+  source_label_en: string | null;
+  cta_action: LearningCtaAction | null;
+  released_at: string;
+  version: number;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape returned from feed queries — body fields stripped to keep payload light. */
+export type LearningMaterialCard = Omit<LearningMaterial, 'body_pt' | 'body_en'>;
+
+export interface LearningMaterialSub {
+  material_id: string;
+  sub_id: SubId;
+}
+
+export interface LearningView {
+  character_id: string;
+  material_id: string;
+  read_at: string;
+  xp_awarded: number;
+  coins_awarded: number;
+}
+
+export interface MarkMaterialReadResult {
+  already_read: boolean;
+  xp_awarded: number;
+  coins_awarded: number;
+}

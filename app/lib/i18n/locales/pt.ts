@@ -138,10 +138,26 @@ const pt: Translations = {
   },
 
   learning: {
-    title: 'Aprender',
-    subtitle: 'Conteúdos de bem-estar em breve',
-    body: 'Em breve: materiais semanais sobre sono, foco, hábitos e mais — curtos, visuais e ligados às áreas que você está cultivando.',
-    badge: 'Em desenvolvimento',
+    eyebrow: 'APRENDER',
+    title: 'Cantinho de leitura',
+    subtitle: 'Curtos, visuais e ligados ao que você está cultivando.',
+    empty: 'Nenhum material por aqui ainda.',
+    read: 'Lido',
+    readMin: { one: '{{count}} min de leitura', other: '{{count}} min de leitura' },
+    type: {
+      explainer: 'Explicação',
+      summary: 'Resumo',
+      news: 'Notícia',
+    },
+    detail: {
+      source: 'Fonte',
+      markRead: 'Marcar como lido',
+      markedRead: 'Lido',
+      alreadyRead: 'Você já leu esse material. XP já foi creditado.',
+      rewardPreview: '+{{xp}} de XP e +{{coins}} moedas por ler.',
+      markFail: 'Não foi possível marcar como lido',
+      notFound: 'Material não encontrado.',
+    },
   },
 
   /**

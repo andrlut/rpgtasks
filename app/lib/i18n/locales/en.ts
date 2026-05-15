@@ -148,10 +148,26 @@ const en = {
   },
 
   learning: {
-    title: 'Learn',
-    subtitle: 'Wellness content coming soon',
-    body: 'Coming soon: weekly content on sleep, focus, habits and more — short, visual, tied to the areas you’re cultivating.',
-    badge: 'Coming soon',
+    eyebrow: 'LEARN',
+    title: 'Reading nook',
+    subtitle: 'Short, visual, tied to what you’re cultivating.',
+    empty: 'No materials yet for this filter.',
+    read: 'Read',
+    readMin: { one: '{{count}} min read', other: '{{count}} min read' },
+    type: {
+      explainer: 'Explainer',
+      summary: 'Summary',
+      news: 'News',
+    },
+    detail: {
+      source: 'Source',
+      markRead: 'Mark as read',
+      markedRead: 'Read',
+      alreadyRead: 'You already read this one. XP was claimed.',
+      rewardPreview: '+{{xp}} XP and +{{coins}} coins for reading this.',
+      markFail: 'Could not mark as read',
+      notFound: 'Material not found.',
+    },
   },
 
   /**
