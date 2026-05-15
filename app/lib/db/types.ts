@@ -546,6 +546,14 @@ export interface LearningMaterial {
   /** 0..5 short bullets surfaced at the top of the detail screen. */
   takeaways_pt: string[];
   takeaways_en: string[];
+  /** Bullet list answering "you're on track when..." — shown as a visual
+   *  Signs block on the detail screen instead of repeating a heading. */
+  signs_pt: string[];
+  signs_en: string[];
+  /** One-paragraph "how the app tracks this sub" callout — shown in a
+   *  small App Track block on the detail screen. */
+  tracking_pt: string | null;
+  tracking_en: string | null;
   hero_image_url: string | null;
   source_url: string | null;
   source_label_pt: string | null;
@@ -558,10 +566,14 @@ export interface LearningMaterial {
   updated_at: string;
 }
 
-/** Shape returned from feed queries — body and takeaways stripped to keep payload light. */
+/** Shape returned from feed queries — body / takeaways / signs / tracking
+ *  stripped to keep payload light. None of those are shown in the card. */
 export type LearningMaterialCard = Omit<
   LearningMaterial,
-  'body_pt' | 'body_en' | 'takeaways_pt' | 'takeaways_en'
+  | 'body_pt' | 'body_en'
+  | 'takeaways_pt' | 'takeaways_en'
+  | 'signs_pt' | 'signs_en'
+  | 'tracking_pt' | 'tracking_en'
 >;
 
 export interface LearningMaterialSub {
