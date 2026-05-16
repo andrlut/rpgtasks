@@ -169,6 +169,7 @@ const en = {
       byDim: 'By dimension',
       byType: 'By type',
     },
+    filteringBy: 'Filtering: {{what}}',
     stats: {
       summary: '{{read}} of {{total}} read',
       byDim: 'By dimension',
