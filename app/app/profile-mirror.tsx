@@ -236,7 +236,7 @@ function DimRow({
   );
 }
 
-function BigFiveCard({ onOpen }: { onOpen: () => void }) {
+export function BigFiveCard({ onOpen }: { onOpen: () => void }) {
   const { locale } = useT();
   const bfLocale: BigFiveLocale = locale === 'en' ? 'en' : 'pt';
   const isPt = bfLocale === 'pt';
@@ -358,7 +358,7 @@ function BigFiveTraitRow({
   );
 }
 
-function SchwartzCard({ onOpen }: { onOpen: () => void }) {
+export function SchwartzCard({ onOpen }: { onOpen: () => void }) {
   const { locale } = useT();
   const swLocale: SchwartzLocale = locale === 'en' ? 'en' : 'pt';
   const isPt = swLocale === 'pt';
@@ -462,7 +462,7 @@ const swCardStyles = StyleSheet.create({
   },
 });
 
-function EcrRCard({ onOpen }: { onOpen: () => void }) {
+export function EcrRCard({ onOpen }: { onOpen: () => void }) {
   const { locale } = useT();
   const ecrLocale: EcrLocale = locale === 'en' ? 'en' : 'pt';
   const isPt = ecrLocale === 'pt';

@@ -247,23 +247,6 @@ const pt: Translations = {
 
   autoconhecimento: {
     lead: 'Inventários mais profundos que medem personalidade, valores e estilo de apego. Não afetam o hex de Avaliação.',
-    bigFive: {
-      title: 'Big Five',
-      subtitle: 'Traços de personalidade (OCEAN) · 120 itens',
-    },
-    schwartz: {
-      title: 'Valores Schwartz',
-      subtitle: 'Direção do que move você · 57 itens',
-    },
-    ecrr: {
-      title: 'Apego ECR-R',
-      subtitle: 'Como você se relaciona · 36 itens',
-    },
-    status: {
-      notDone: 'Não feito',
-      daysAgo: 'Feito há {{count}}d',
-      today: 'Feito hoje',
-    },
   },
 
   reward: {
