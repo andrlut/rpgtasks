@@ -20,8 +20,8 @@ import { SubSelector } from '@/components/SubSelector';
 import { AutoconhecimentoView } from '@/components/pillars/AutoconhecimentoView';
 import { AvaliacaoPanel } from '@/components/pillars/AvaliacaoPanel';
 import { DedicacaoPanel } from '@/components/pillars/DedicacaoPanel';
+import { GoalsPreview } from '@/components/pillars/GoalsPreview';
 import { MomentumView } from '@/components/pillars/MomentumView';
-import { PillarPlaceholder } from '@/components/pillars/PillarPlaceholder';
 import { SkillsPanel } from '@/components/pillars/SkillsPanel';
 import { useCharacter } from '@/lib/api/character';
 import { useMomentum } from '@/lib/api/momentum';
@@ -301,12 +301,7 @@ export default function CharacterScreen() {
               <MomentumView momentum={momentum.data?.attributes} />
             )}
             {activePillar === 'desejada' && currentSub === 'goals' && (
-              <PillarPlaceholder
-                iconName="flag-outline"
-                accent={tone.accent}
-                title={t('pillarPlaceholder.goals.title')}
-                body={t('pillarPlaceholder.goals.body')}
-              />
+              <GoalsPreview />
             )}
             {activePillar === 'desejada' && currentSub === 'skills' && (
               <SkillsPanel skills={skillStates.data ?? []} />

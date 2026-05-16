@@ -131,7 +131,7 @@ const pt: Translations = {
   tabs: {
     tasks: 'Tarefas',
     history: 'Histórico',
-    hero: 'Herói',
+    hero: 'Eu',
     rewards: 'Recompensas',
     learning: 'Aprender',
     settings: 'Ajustes',
@@ -225,15 +225,15 @@ const pt: Translations = {
     },
   },
 
-  pillarPlaceholder: {
-    autoconhecimento: {
-      title: 'Em breve',
-      body: 'Big Five, Schwartz e ECR-R com cards visuais.',
-    },
-    goals: {
-      title: 'Em breve',
-      body: 'Direcionamento: quem você quer se tornar e o quanto está se aproximando.',
-    },
+  goalsPreview: {
+    eyebrow: 'EM BREVE',
+    title: 'Onde você quer chegar',
+    body: 'Goals transformam direção identitária em metas claras. Vão se ligar a Skills e a Avaliação pra mostrar o quanto você está se aproximando de quem quer se tornar.',
+    examples: 'Exemplos do que vai vir:',
+    example1: 'Virar alguém que dorme bem',
+    example2: 'Cultivar presença nas relações',
+    example3: 'Construir disciplina de estudo',
+    locked: 'em breve',
   },
 
   avaliacao: {

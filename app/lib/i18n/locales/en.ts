@@ -141,7 +141,7 @@ const en = {
   tabs: {
     tasks: 'Tasks',
     history: 'History',
-    hero: 'Hero',
+    hero: 'Me',
     rewards: 'Rewards',
     learning: 'Learn',
     settings: 'Settings',
@@ -235,15 +235,15 @@ const en = {
     },
   },
 
-  pillarPlaceholder: {
-    autoconhecimento: {
-      title: 'Coming soon',
-      body: 'Big Five, Schwartz and ECR-R with visual cards.',
-    },
-    goals: {
-      title: 'Coming soon',
-      body: 'Direction: who you want to become and how close you’re getting.',
-    },
+  goalsPreview: {
+    eyebrow: 'COMING SOON',
+    title: 'Where you’re heading',
+    body: 'Goals turn identity direction into clear targets. They’ll tie into Skills and Assessment so you can see how close you are to who you want to become.',
+    examples: 'Examples of what’s coming:',
+    example1: 'Become someone who sleeps well',
+    example2: 'Cultivate presence in relationships',
+    example3: 'Build study discipline',
+    locked: 'soon',
   },
 
   avaliacao: {
