@@ -17,6 +17,7 @@ import { PillarSwitcher, type PillarKey } from '@/components/PillarSwitcher';
 import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SubSelector } from '@/components/SubSelector';
+import { AutoconhecimentoView } from '@/components/pillars/AutoconhecimentoView';
 import { AvaliacaoPanel } from '@/components/pillars/AvaliacaoPanel';
 import { DedicacaoPanel } from '@/components/pillars/DedicacaoPanel';
 import { MomentumView } from '@/components/pillars/MomentumView';
@@ -291,12 +292,7 @@ export default function CharacterScreen() {
               <AvaliacaoPanel subScores={character.data.subScores} />
             )}
             {activePillar === 'percebida' && currentSub === 'autoconhecimento' && (
-              <PillarPlaceholder
-                iconName="library-outline"
-                accent={tone.accent}
-                title={t('pillarPlaceholder.autoconhecimento.title')}
-                body={t('pillarPlaceholder.autoconhecimento.body')}
-              />
+              <AutoconhecimentoView />
             )}
             {activePillar === 'praticada' && currentSub === 'dedicacao' && (
               <DedicacaoPanel dimensions={dimensions} />
