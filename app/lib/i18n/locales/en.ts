@@ -246,6 +246,27 @@ const en = {
     },
   },
 
+  autoconhecimento: {
+    lead: 'Deeper inventories measuring personality, values and attachment style. Do not affect the Assessment hex.',
+    bigFive: {
+      title: 'Big Five',
+      subtitle: 'Personality traits (OCEAN) · 120 items',
+    },
+    schwartz: {
+      title: 'Schwartz Values',
+      subtitle: 'What moves you · 57 items',
+    },
+    ecrr: {
+      title: 'ECR-R Attachment',
+      subtitle: 'How you relate · 36 items',
+    },
+    status: {
+      notDone: 'Not done',
+      daysAgo: 'Done {{count}}d ago',
+      today: 'Done today',
+    },
+  },
+
   reward: {
     common: {
       ok: 'OK',
