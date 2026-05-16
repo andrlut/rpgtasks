@@ -14,6 +14,7 @@ import type { CharacterSubScore, SubId } from '@/lib/db/types';
 import { pickSubScores, pickSubScoresDecimal } from '@/lib/api/character';
 import { useLastWellbeingSession } from '@/lib/api/psych';
 import { daysSince } from '@/lib/api/questionnaire';
+import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
 import { SUB_META } from '@/theme/dimensions';
@@ -107,6 +108,7 @@ interface Props {
  */
 export function AvaliacaoPanel({ subScores }: Props) {
   const router = useRouter();
+  const { t } = useT();
   const metaLookup = useMetaLookup();
   const { width: screenWidth } = useWindowDimensions();
   const lastSession = useLastWellbeingSession();
@@ -143,10 +145,10 @@ export function AvaliacaoPanel({ subScores }: Props) {
   const sinceDays = daysSince(lastTaken);
   const questionnaireLabel =
     sinceDays === null
-      ? 'Fazer questionário (5-10 min)'
+      ? t('avaliacao.questionnaireFirst')
       : sinceDays === 0
-        ? 'Refazer questionário · feito hoje'
-        : `Refazer questionário · ${sinceDays}d atrás`;
+        ? t('avaliacao.questionnaireToday')
+        : t('avaliacao.questionnaireDaysAgo', { count: sinceDays });
 
   const weakest = useMemo<{ subId: SubId; score: number } | null>(() => {
     if (selfScores.size === 0) return null;
@@ -192,7 +194,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
               <Text style={styles.nudgeStrong}>
                 {metaLookup.sub(weakest.subId).label}
               </Text>{' '}
-              está em {weakest.score}/5 — toque pra ver tasks recomendadas
+              {t('avaliacao.nudgeSuffix', { score: weakest.score })}
             </Text>
             <Ionicons
               name="chevron-forward"
@@ -208,7 +210,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
         style={({ pressed }) => [styles.cta, pressed && { opacity: 0.85 }]}
         hitSlop={4}
       >
-        <Text style={styles.ctaText}>Atualizar self-assessment</Text>
+        <Text style={styles.ctaText}>{t('avaliacao.selfAssessmentCta')}</Text>
         <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
       </Pressable>
 
@@ -234,7 +236,7 @@ export function AvaliacaoPanel({ subScores }: Props) {
           hitSlop={4}
         >
           <Ionicons name="person-circle" size={14} color={tokens.brand.violet2} />
-          <Text style={styles.ctaSecondaryText}>Ver perfil completo</Text>
+          <Text style={styles.ctaSecondaryText}>{t('avaliacao.mirrorCta')}</Text>
         </Pressable>
       )}
     </View>

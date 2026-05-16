@@ -236,6 +236,15 @@ const pt: Translations = {
     },
   },
 
+  avaliacao: {
+    selfAssessmentCta: 'Atualizar self-assessment',
+    questionnaireFirst: 'Fazer questionário (5-10 min)',
+    questionnaireToday: 'Refazer questionário · feito hoje',
+    questionnaireDaysAgo: 'Refazer questionário · {{count}}d atrás',
+    mirrorCta: 'Comparar self vs questionário',
+    nudgeSuffix: 'está em {{score}}/5 — toque pra ver tasks recomendadas',
+  },
+
   autoconhecimento: {
     lead: 'Inventários mais profundos que medem personalidade, valores e estilo de apego. Não afetam o hex de Avaliação.',
     bigFive: {

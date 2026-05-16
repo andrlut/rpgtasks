@@ -246,6 +246,15 @@ const en = {
     },
   },
 
+  avaliacao: {
+    selfAssessmentCta: 'Update self-assessment',
+    questionnaireFirst: 'Take the questionnaire (5-10 min)',
+    questionnaireToday: 'Retake questionnaire · done today',
+    questionnaireDaysAgo: 'Retake questionnaire · {{count}}d ago',
+    mirrorCta: 'Compare self vs questionnaire',
+    nudgeSuffix: 'is at {{score}}/5 — tap to see recommended tasks',
+  },
+
   autoconhecimento: {
     lead: 'Deeper inventories measuring personality, values and attachment style. Do not affect the Assessment hex.',
     bigFive: {
