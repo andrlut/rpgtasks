@@ -14,14 +14,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CarouselRow } from '@/components/learning/CarouselRow';
-import { LearningStatsPanel } from '@/components/LearningStatsPanel';
+import { LearningStatsPanel, type PillFilter } from '@/components/LearningStatsPanel';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { useLearningFeed, useReadMaterialIds, type LearningFeedCard } from '@/lib/api/learning';
-import type { DimensionId, LearningMaterialType } from '@/lib/db/types';
+import type { DimensionId, LearningMaterialType, SubId } from '@/lib/db/types';
 import { useT, type TranslateOptions } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
-import { DIMENSION_ORDER } from '@/theme/dimensions';
+import { DIMENSION_ORDER, SUB_META } from '@/theme/dimensions';
 
 type Translator = (key: string, options?: TranslateOptions) => string;
 type ReadFilter = 'all' | 'unread' | 'read';
@@ -37,19 +37,31 @@ export default function LearningScreen() {
   const meta = useMetaLookup();
 
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+  const [pillFilter, setPillFilter] = useState<PillFilter>(null);
   const [statsOpen, setStatsOpen] = useState(false);
 
   const all = useMemo(() => feed.data ?? [], [feed.data]);
   const readSet = useMemo(() => reads.data ?? new Set<string>(), [reads.data]);
 
-  // Apply the read-state filter once; every carousel sees the same filtered set.
+  // Apply both filters (read-state AND pill). Each carousel reads from
+  // the same filtered set, so empty groups drop out naturally.
   const filtered = useMemo(() => {
-    if (readFilter === 'all') return all;
     return all.filter((c) => {
-      const r = readSet.has(c.id);
-      return readFilter === 'read' ? r : !r;
+      // Read-state filter
+      if (readFilter !== 'all') {
+        const r = readSet.has(c.id);
+        if (readFilter === 'read' && !r) return false;
+        if (readFilter === 'unread' && r) return false;
+      }
+      // Pill filter — exclusive (only one active at a time)
+      if (pillFilter) {
+        if (pillFilter.kind === 'dim' && c.dimension_id !== pillFilter.value) return false;
+        if (pillFilter.kind === 'type' && c.type !== pillFilter.value) return false;
+        if (pillFilter.kind === 'sub' && !c.subs.includes(pillFilter.value as SubId)) return false;
+      }
+      return true;
     });
-  }, [all, readFilter, readSet]);
+  }, [all, readFilter, readSet, pillFilter]);
 
   // Group buckets for the carousel rows. We compute against `filtered`
   // so empty groups drop out naturally.
@@ -119,6 +131,22 @@ export default function LearningScreen() {
                 Haptics.selectionAsync().catch(() => {});
                 setStatsOpen((v) => !v);
               }}
+              filter={pillFilter}
+              onFilterChange={(next) => {
+                setPillFilter(next);
+                // Auto-open the panel when picking a filter from elsewhere
+                // (no-op when already open). Don't close on clear — the
+                // user might want to pick another.
+                if (next && !statsOpen) setStatsOpen(true);
+              }}
+            />
+          )}
+
+          {/* Active filter chip — shown when pillFilter is set */}
+          {pillFilter && (
+            <ActiveFilterChip
+              filter={pillFilter}
+              onClear={() => setPillFilter(null)}
             />
           )}
 
@@ -202,6 +230,103 @@ export default function LearningScreen() {
     </SafeAreaView>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Active-filter chip — surfaces a non-null PillFilter at the top of the feed
+// with the option to clear it. Uses the dim/sub color where applicable so
+// the chip reads as "filtered by Craft" visually, not just textually.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ActiveFilterChipProps {
+  filter: NonNullable<PillFilter>;
+  onClear: () => void;
+}
+
+function ActiveFilterChip({ filter, onClear }: ActiveFilterChipProps) {
+  const { t } = useT();
+  const meta = useMetaLookup();
+
+  let label = '';
+  let iconName: keyof typeof Ionicons.glyphMap = 'funnel';
+  let accent: string = tokens.brand.violet2;
+
+  if (filter.kind === 'dim') {
+    const dim = meta.dim(filter.value as DimensionId);
+    label = dim.label;
+    iconName = dim.iconName as keyof typeof Ionicons.glyphMap;
+    accent = dim.color;
+  } else if (filter.kind === 'sub') {
+    const subId = filter.value as SubId;
+    const sub = meta.sub(subId);
+    const dim = meta.dim(SUB_META[subId].dimensionId);
+    label = sub.label;
+    iconName = SUB_META[subId].iconName as keyof typeof Ionicons.glyphMap;
+    accent = dim.color;
+  } else {
+    label = t(`learning.type.${filter.value as LearningMaterialType}`);
+  }
+
+  return (
+    <View style={activeChipStyles.wrap}>
+      <View
+        style={[
+          activeChipStyles.chip,
+          { backgroundColor: accent + '22', borderColor: accent },
+        ]}
+      >
+        <Ionicons name={iconName} size={13} color={accent} />
+        <Text style={[activeChipStyles.label, { color: accent }]}>
+          {t('learning.filteringBy', { what: label })}
+        </Text>
+        <Pressable
+          hitSlop={6}
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            onClear();
+          }}
+          style={({ pressed }) => [
+            activeChipStyles.clearBtn,
+            { backgroundColor: accent + '33' },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Ionicons name="close" size={12} color={accent} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const activeChipStyles = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: tokens.space[4],
+    paddingTop: tokens.space[3],
+  },
+  chip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 11,
+    paddingRight: 4,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  label: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    letterSpacing: 0.2,
+  },
+  clearBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Read-state filter — segmented pill control.

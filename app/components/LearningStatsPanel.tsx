@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -12,10 +13,22 @@ import { DIMENSION_ORDER, SUB_META, SUBS_BY_DIM } from '@/theme/dimensions';
 type Translator = (key: string, options?: TranslateOptions) => string;
 
 /**
+ * Filter applied to the Learn feed via a tap inside the stats panel.
+ * Selecting an active filter again clears it.
+ */
+export type PillFilter =
+  | { kind: 'dim'; value: DimensionId }
+  | { kind: 'type'; value: LearningMaterialType }
+  | { kind: 'sub'; value: SubId }
+  | null;
+
+/**
  * Collapsible "library stats" pill at the top of the Learn feed.
  *
- * Collapsed: just "X read · Y to go". Tap to expand a small breakdown by
- * dim/sub/type. Stays out of the way until the user wants it.
+ * Every counter inside the expanded panel is **clickable**: tapping a dim
+ * cell filters the feed to that dim, tapping a type pill filters by type,
+ * tapping a sub chip filters by sub. The active filter is highlighted in
+ * the panel; tapping it again clears.
  */
 
 interface Props {
@@ -23,6 +36,8 @@ interface Props {
   readSet: Set<string>;
   open: boolean;
   onToggle: () => void;
+  filter: PillFilter;
+  onFilterChange: (next: PillFilter) => void;
 }
 
 const TYPES: LearningMaterialType[] = ['explainer', 'summary', 'news'];
@@ -31,7 +46,18 @@ function typeLabel(type: LearningMaterialType, t: Translator): string {
   return t(`learning.type.${type}`);
 }
 
-export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
+function isActive(filter: PillFilter, kind: 'dim' | 'type' | 'sub', value: string): boolean {
+  return !!filter && filter.kind === kind && filter.value === value;
+}
+
+export function LearningStatsPanel({
+  cards,
+  readSet,
+  open,
+  onToggle,
+  filter,
+  onFilterChange,
+}: Props) {
   const { t } = useT();
   const meta = useMetaLookup();
 
@@ -39,8 +65,6 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
     const total = cards.length;
     const read = cards.filter((c) => readSet.has(c.id)).length;
 
-    // Per-sub counts (read/total). A material can tag N subs, so its
-    // contribution is counted once per tag.
     const perSub = new Map<SubId, { read: number; total: number }>();
     for (const c of cards) {
       for (const sub of c.subs) {
@@ -51,7 +75,6 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
       }
     }
 
-    // Per-type counts.
     const perType = new Map<LearningMaterialType, { read: number; total: number }>();
     for (const c of cards) {
       const slot = perType.get(c.type) ?? { read: 0, total: 0 };
@@ -62,6 +85,16 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
 
     return { total, read, perSub, perType };
   }, [cards, readSet]);
+
+  // Toggle helper: tapping the active filter clears it.
+  const pick = (next: NonNullable<PillFilter>) => {
+    Haptics.selectionAsync().catch(() => {});
+    if (filter && filter.kind === next.kind && filter.value === next.value) {
+      onFilterChange(null);
+    } else {
+      onFilterChange(next);
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -96,19 +129,33 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
                 (acc, s) => acc + (stats.perSub.get(s)?.total ?? 0),
                 0,
               );
+              const active = isActive(filter, 'dim', dimId);
               return (
-                <View key={dimId} style={[styles.cell, { borderColor: dim.color + '55' }]}>
+                <Pressable
+                  key={dimId}
+                  onPress={() => pick({ kind: 'dim', value: dimId })}
+                  style={({ pressed }) => [
+                    styles.cell,
+                    {
+                      borderColor: active ? dim.color : dim.color + '55',
+                      backgroundColor: active ? dim.bg : tokens.bg.glassStrong,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
                   <Ionicons
                     name={dim.iconName as keyof typeof Ionicons.glyphMap}
                     size={14}
                     color={dim.color}
                   />
-                  <Text style={[styles.cellLabel, { color: tokens.text.base }]}>{dim.label}</Text>
+                  <Text style={[styles.cellLabel, { color: active ? dim.color : tokens.text.base }]}>
+                    {dim.label}
+                  </Text>
                   <Text style={styles.cellRatio}>
                     <Text style={{ color: dim.color }}>{read}</Text>
                     <Text style={styles.cellRatioSep}>/{total}</Text>
                   </Text>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -118,14 +165,29 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
           <View style={styles.typeRow}>
             {TYPES.map((type) => {
               const slot = stats.perType.get(type) ?? { read: 0, total: 0 };
+              const active = isActive(filter, 'type', type);
+              // Disable tap on a zero-total category — nothing to filter to.
+              const disabled = slot.total === 0;
               return (
-                <View key={type} style={styles.typePill}>
-                  <Text style={styles.typeLabel}>{typeLabel(type, t)}</Text>
+                <Pressable
+                  key={type}
+                  disabled={disabled}
+                  onPress={() => pick({ kind: 'type', value: type })}
+                  style={({ pressed }) => [
+                    styles.typePill,
+                    active && styles.typePillActive,
+                    disabled && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={[styles.typeLabel, active && styles.typeLabelActive]}>
+                    {typeLabel(type, t)}
+                  </Text>
                   <Text style={styles.typeRatio}>
                     <Text style={{ color: tokens.brand.violet2 }}>{slot.read}</Text>
                     <Text style={styles.cellRatioSep}>/{slot.total}</Text>
                   </Text>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -138,19 +200,33 @@ export function LearningStatsPanel({ cards, readSet, open, onToggle }: Props) {
                 {Array.from(stats.perSub.entries()).map(([subId, slot]) => {
                   const sub = meta.sub(subId);
                   const dim = meta.dim(SUB_META[subId].dimensionId);
+                  const active = isActive(filter, 'sub', subId);
                   return (
-                    <View key={subId} style={[styles.subPill, { borderColor: dim.color + '44' }]}>
+                    <Pressable
+                      key={subId}
+                      onPress={() => pick({ kind: 'sub', value: subId })}
+                      style={({ pressed }) => [
+                        styles.subPill,
+                        {
+                          borderColor: active ? dim.color : dim.color + '44',
+                          backgroundColor: active ? dim.bg : tokens.bg.glassStrong,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                    >
                       <Ionicons
                         name={SUB_META[subId].iconName as keyof typeof Ionicons.glyphMap}
                         size={11}
                         color={dim.color}
                       />
-                      <Text style={styles.subLabel}>{sub.label}</Text>
+                      <Text style={[styles.subLabel, active && { color: dim.color }]}>
+                        {sub.label}
+                      </Text>
                       <Text style={styles.subRatio}>
                         <Text style={{ color: dim.color }}>{slot.read}</Text>
                         <Text style={styles.cellRatioSep}>/{slot.total}</Text>
                       </Text>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -216,7 +292,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: tokens.radius.sm,
-    backgroundColor: tokens.bg.glassStrong,
     borderWidth: 1,
   },
   cellLabel: {
@@ -248,10 +323,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.border.base,
   },
+  typePillActive: {
+    backgroundColor: 'rgba(123, 92, 255, 0.18)',
+    borderColor: tokens.brand.violet2,
+  },
   typeLabel: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 11,
     color: tokens.text.mid,
+  },
+  typeLabelActive: {
+    color: tokens.brand.violet2,
   },
   typeRatio: {
     fontFamily: 'Manrope_800ExtraBold',
@@ -269,7 +351,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: tokens.bg.glassStrong,
     borderWidth: 1,
   },
   subLabel: {
@@ -281,4 +362,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
   },
+  pressed: { opacity: 0.7 },
+  disabled: { opacity: 0.35 },
 });

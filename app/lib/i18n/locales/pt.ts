@@ -159,6 +159,7 @@ const pt: Translations = {
       byDim: 'Por dimensão',
       byType: 'Por tipo',
     },
+    filteringBy: 'Filtrando: {{what}}',
     stats: {
       summary: '{{read}} de {{total}} lidos',
       byDim: 'Por dimensão',
