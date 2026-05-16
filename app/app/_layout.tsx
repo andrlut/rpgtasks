@@ -1,3 +1,6 @@
+import { AbrilFatface_400Regular } from '@expo-google-fonts/abril-fatface';
+import { BebasNeue_400Regular } from '@expo-google-fonts/bebas-neue';
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import {
   Manrope_500Medium,
   Manrope_600SemiBold,
@@ -5,6 +8,7 @@ import {
   Manrope_800ExtraBold,
   useFonts,
 } from '@expo-google-fonts/manrope';
+import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -78,6 +82,13 @@ export default function RootLayout() {
     Manrope_600SemiBold,
     Manrope_700Bold,
     Manrope_800ExtraBold,
+    // Display fonts for Learning material book-cover titles. Each material
+    // gets one of these picked deterministically from its slug — gives the
+    // feed a "shelf of varied book covers" feel instead of one app font.
+    PlayfairDisplay_700Bold,
+    BebasNeue_400Regular,
+    AbrilFatface_400Regular,
+    DMSerifDisplay_400Regular,
   });
 
   if (!fontsLoaded) {

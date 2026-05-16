@@ -164,6 +164,11 @@ const en = {
       unread: 'Unread',
       read: 'Read',
     },
+    section: {
+      new: 'New this month',
+      byDim: 'By dimension',
+      byType: 'By type',
+    },
     stats: {
       summary: '{{read}} of {{total}} read',
       byDim: 'By dimension',
