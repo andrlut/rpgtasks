@@ -154,6 +154,11 @@ const pt: Translations = {
       unread: 'Não lidos',
       read: 'Lidos',
     },
+    section: {
+      new: 'Novidades do mês',
+      byDim: 'Por dimensão',
+      byType: 'Por tipo',
+    },
     stats: {
       summary: '{{read}} de {{total}} lidos',
       byDim: 'Por dimensão',

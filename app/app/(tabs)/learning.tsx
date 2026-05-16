@@ -13,55 +13,81 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CarouselRow } from '@/components/learning/CarouselRow';
 import { LearningStatsPanel } from '@/components/LearningStatsPanel';
-import { MaterialCover } from '@/components/MaterialCover';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { useLearningFeed, useReadMaterialIds, type LearningFeedCard } from '@/lib/api/learning';
 import type { DimensionId, LearningMaterialType } from '@/lib/db/types';
 import { useT, type TranslateOptions } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
-import { DIMENSION_ORDER, SUB_META } from '@/theme/dimensions';
+import { DIMENSION_ORDER } from '@/theme/dimensions';
 
 type Translator = (key: string, options?: TranslateOptions) => string;
 type ReadFilter = 'all' | 'unread' | 'read';
 
-function typeLabel(type: LearningMaterialType, t: Translator): string {
-  return t(`learning.type.${type}`);
-}
+const TYPE_ORDER: LearningMaterialType[] = ['explainer', 'summary', 'news'];
+const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function LearningScreen() {
   const router = useRouter();
-  const { t, locale } = useT();
+  const { t } = useT();
   const feed = useLearningFeed();
   const reads = useReadMaterialIds();
   const meta = useMetaLookup();
 
-  const [dimFilter, setDimFilter] = useState<DimensionId | null>(null);
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
   const [statsOpen, setStatsOpen] = useState(false);
 
   const all = useMemo(() => feed.data ?? [], [feed.data]);
   const readSet = useMemo(() => reads.data ?? new Set<string>(), [reads.data]);
 
+  // Apply the read-state filter once; every carousel sees the same filtered set.
   const filtered = useMemo(() => {
+    if (readFilter === 'all') return all;
     return all.filter((c) => {
-      if (dimFilter && c.dimension_id !== dimFilter) return false;
-      const read = readSet.has(c.id);
-      if (readFilter === 'read' && !read) return false;
-      if (readFilter === 'unread' && read) return false;
-      return true;
+      const r = readSet.has(c.id);
+      return readFilter === 'read' ? r : !r;
     });
-  }, [all, dimFilter, readFilter, readSet]);
+  }, [all, readFilter, readSet]);
+
+  // Group buckets for the carousel rows. We compute against `filtered`
+  // so empty groups drop out naturally.
+  const buckets = useMemo(() => {
+    const now = Date.now();
+    const novidades = filtered.filter(
+      (c) => now - new Date(c.released_at).getTime() < NEW_WINDOW_MS,
+    );
+
+    const byDim = new Map<DimensionId, LearningFeedCard[]>();
+    for (const c of filtered) {
+      const arr = byDim.get(c.dimension_id) ?? [];
+      arr.push(c);
+      byDim.set(c.dimension_id, arr);
+    }
+
+    const byType = new Map<LearningMaterialType, LearningFeedCard[]>();
+    for (const c of filtered) {
+      const arr = byType.get(c.type) ?? [];
+      arr.push(c);
+      byType.set(c.type, arr);
+    }
+
+    return { novidades, byDim, byType };
+  }, [filtered]);
+
+  // Show "by type" rows only when there is real variety across types,
+  // i.e. at least 2 types have content. Until summaries / news ship,
+  // this section sleeps.
+  const showByType = useMemo(() => {
+    let withContent = 0;
+    for (const v of buckets.byType.values()) if (v.length > 0) withContent++;
+    return withContent >= 2;
+  }, [buckets.byType]);
 
   const onCardPress = (card: LearningFeedCard) => {
     Haptics.selectionAsync().catch(() => {});
     router.push(`/material/${card.slug}`);
-  };
-
-  const toggleDim = (id: DimensionId) => {
-    Haptics.selectionAsync().catch(() => {});
-    setDimFilter((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -84,7 +110,6 @@ export default function LearningScreen() {
             <Text style={styles.subtitle}>{t('learning.subtitle')}</Text>
           </View>
 
-          {/* Stats pill (collapsed by default) */}
           {!feed.isLoading && all.length > 0 && (
             <LearningStatsPanel
               cards={all}
@@ -97,52 +122,19 @@ export default function LearningScreen() {
             />
           )}
 
-          {/* Dim filter chips — wrapped in a fixed-height View so the
-              nested horizontal ScrollView can't collapse vertically. */}
-          <View style={styles.chipScrollWrap}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipRow}
-            >
-              <FilterChip
-                label={t('common.all')}
-                active={!dimFilter}
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => {});
-                  setDimFilter(null);
-                }}
-              />
-              {DIMENSION_ORDER.map((id) => {
-                const dim = meta.dim(id);
-                const active = dimFilter === id;
-                return (
-                  <FilterChip
-                    key={id}
-                    label={dim.label}
-                    iconName={dim.iconName as keyof typeof Ionicons.glyphMap}
-                    active={active}
-                    activeColor={dim.color}
-                    activeBg={dim.bg}
-                    onPress={() => toggleDim(id)}
-                  />
-                );
-              })}
-            </ScrollView>
-          </View>
-
           {/* Read-state filter */}
           <View style={styles.readFilterWrap}>
             <ReadFilterRow value={readFilter} onChange={setReadFilter} t={t} />
           </View>
 
-          {/* Loading / empty / list */}
+          {/* Loading */}
           {feed.isLoading && (
             <View style={styles.loading}>
               <ActivityIndicator color={tokens.brand.violet2} />
             </View>
           )}
 
+          {/* Empty (after filtering) */}
           {!feed.isLoading && filtered.length === 0 && (
             <View style={styles.empty}>
               <Ionicons name="book-outline" size={36} color={tokens.text.dim} />
@@ -150,79 +142,58 @@ export default function LearningScreen() {
             </View>
           )}
 
-          <View style={styles.feedList}>
-            {filtered.map((card) => {
-              const title = locale === 'pt' ? card.title_pt : card.title_en;
-              const summary = locale === 'pt' ? card.summary_pt : card.summary_en;
-              const dim = meta.dim(card.dimension_id);
-              const read = readSet.has(card.id);
+          {/* Novidades */}
+          {buckets.novidades.length > 0 && (
+            <CarouselRow
+              title={t('learning.section.new')}
+              iconName="sparkles"
+              accentColor={tokens.brand.violet2}
+              cards={buckets.novidades}
+              readSet={readSet}
+              onCardPress={onCardPress}
+              count={buckets.novidades.length}
+            />
+          )}
 
+          {/* Por tipo — only when content variety exists */}
+          {showByType && (
+            <View style={styles.sectionGroup}>
+              <Text style={styles.sectionGroupTitle}>{t('learning.section.byType')}</Text>
+              {TYPE_ORDER.map((type) => {
+                const list = buckets.byType.get(type);
+                if (!list || list.length === 0) return null;
+                return (
+                  <CarouselRow
+                    key={type}
+                    title={t(`learning.type.${type}`)}
+                    cards={list}
+                    readSet={readSet}
+                    onCardPress={onCardPress}
+                    count={list.length}
+                  />
+                );
+              })}
+            </View>
+          )}
+
+          {/* Por dimensão — 6 rows */}
+          <View style={styles.sectionGroup}>
+            <Text style={styles.sectionGroupTitle}>{t('learning.section.byDim')}</Text>
+            {DIMENSION_ORDER.map((dimId) => {
+              const list = buckets.byDim.get(dimId);
+              if (!list || list.length === 0) return null;
+              const dim = meta.dim(dimId);
               return (
-                <Pressable
-                  key={card.id}
-                  onPress={() => onCardPress(card)}
-                  style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                >
-                  <View style={styles.coverWrap}>
-                    <MaterialCover
-                      dimensionId={card.dimension_id}
-                      subId={card.subs[0] ?? null}
-                      imageUrl={card.hero_image_url}
-                      variant="card"
-                    />
-                    {/* Type badge over banner top-left */}
-                    <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-                      <Text style={styles.typeBadgeText}>{typeLabel(card.type, t)}</Text>
-                    </View>
-                    {/* Read flag over banner top-right */}
-                    {read && (
-                      <View style={styles.readBadge}>
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={14}
-                          color={tokens.semantic.xp}
-                        />
-                        <Text style={styles.readBadgeText}>{t('learning.read')}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.cardBody}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {title}
-                    </Text>
-                    <Text style={styles.cardSummary} numberOfLines={2}>
-                      {summary}
-                    </Text>
-
-                    <View style={styles.cardFoot}>
-                      <View style={styles.metaPill}>
-                        <Ionicons name="time-outline" size={11} color={tokens.text.mid} />
-                        <Text style={styles.metaPillText}>
-                          {t('learning.readMin', { count: card.reading_minutes })}
-                        </Text>
-                      </View>
-                      {card.subs.slice(0, 2).map((subId) => {
-                        const sub = meta.sub(subId);
-                        return (
-                          <View
-                            key={subId}
-                            style={[styles.metaPill, { borderColor: dim.color + '44' }]}
-                          >
-                            <Ionicons
-                              name={SUB_META[subId].iconName as keyof typeof Ionicons.glyphMap}
-                              size={11}
-                              color={dim.color}
-                            />
-                            <Text style={[styles.metaPillText, { color: dim.color }]}>
-                              {sub.label}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                </Pressable>
+                <CarouselRow
+                  key={dimId}
+                  title={dim.label}
+                  iconName={dim.iconName as keyof typeof Ionicons.glyphMap}
+                  accentColor={dim.color}
+                  cards={list}
+                  readSet={readSet}
+                  onCardPress={onCardPress}
+                  count={list.length}
+                />
               );
             })}
           </View>
@@ -231,80 +202,6 @@ export default function LearningScreen() {
     </SafeAreaView>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Filter chip — sized so the row never clips the last chip and the active
-// state doesn't grow the chip's box (only changes color).
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface FilterChipProps {
-  label: string;
-  iconName?: keyof typeof import('@expo/vector-icons').Ionicons.glyphMap;
-  active: boolean;
-  activeColor?: string;
-  activeBg?: string;
-  onPress: () => void;
-}
-
-function FilterChip({
-  label,
-  iconName,
-  active,
-  activeColor,
-  activeBg,
-  onPress,
-}: FilterChipProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        chipStyles.chip,
-        active && {
-          backgroundColor: activeBg ?? 'rgba(123, 92, 255, 0.18)',
-          borderColor: activeColor ?? tokens.brand.violet2,
-        },
-        pressed && { opacity: 0.7 },
-      ]}
-    >
-      {iconName && (
-        <Ionicons
-          name={iconName}
-          size={13}
-          color={active ? activeColor ?? tokens.brand.violet2 : tokens.text.mid}
-        />
-      )}
-      <Text
-        style={[
-          chipStyles.text,
-          active && { color: activeColor ?? tokens.brand.violet2 },
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: tokens.bg.glassStrong,
-    borderWidth: 1,
-    borderColor: tokens.border.strong,
-    flexShrink: 0,
-  },
-  text: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 12,
-    color: tokens.text.base,
-  },
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Read-state filter — segmented pill control.
@@ -417,21 +314,10 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     marginTop: 2,
   },
-  chipScrollWrap: {
-    height: 50, // explicit so the nested horizontal ScrollView can't collapse
-    marginTop: tokens.space[2],
-  },
-  chipRow: {
-    paddingHorizontal: tokens.space[4],
-    paddingRight: tokens.space[5] + tokens.space[2], // last chip never clips
-    paddingVertical: tokens.space[2],
-    alignItems: 'center',
-    gap: 8,
-  },
   readFilterWrap: {
     paddingHorizontal: tokens.space[4],
-    paddingTop: tokens.space[1],
-    paddingBottom: tokens.space[3],
+    paddingTop: tokens.space[3],
+    paddingBottom: tokens.space[4],
   },
   loading: {
     paddingVertical: tokens.space[7],
@@ -447,91 +333,17 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     textAlign: 'center',
   },
-  feedList: {
-    paddingHorizontal: tokens.space[4],
-    gap: 16,
+  sectionGroup: {
+    marginTop: tokens.space[2],
   },
-  card: {
-    borderRadius: tokens.radius.lg,
-    backgroundColor: tokens.bg.glass,
-    borderWidth: 1,
-    borderColor: tokens.border.strong,
-    overflow: 'hidden',
-  },
-  cardPressed: { opacity: 0.85 },
-  coverWrap: {
-    position: 'relative',
-  },
-  typeBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  typeBadgeText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 0.8,
-    color: '#FFFFFF',
-    textTransform: 'uppercase',
-  },
-  readBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  readBadgeText: {
+  sectionGroupTitle: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.semantic.xp,
-    letterSpacing: 0.4,
-  },
-  cardBody: {
-    padding: tokens.space[4],
-    gap: 6,
-  },
-  cardTitle: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 19,
-    lineHeight: 24,
-    color: tokens.text.hi,
-  },
-  cardSummary: {
-    fontFamily: 'Manrope_500Medium',
-    fontStyle: 'italic',
-    fontSize: 13,
-    lineHeight: 19,
-    color: tokens.text.mid,
-  },
-  cardFoot: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
-  },
-  metaPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: tokens.bg.glassStrong,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-  },
-  metaPillText: {
-    fontFamily: 'Manrope_600SemiBold',
     fontSize: 11,
-    color: tokens.text.mid,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: tokens.text.dim,
+    paddingHorizontal: tokens.space[4],
+    marginBottom: tokens.space[3],
+    marginTop: tokens.space[2],
   },
 });
