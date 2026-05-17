@@ -142,6 +142,35 @@ Isso evita ele te perguntar permissão pra todo comando comum. Mantém `deny` va
 
 O Claude tem memória persistente em `~/.claude/projects/<slug>/memory/`. Não precisa fazer nada — conforme você conversa, ele vai aprendendo seu estilo. Se quiser ver o que ele lembrou: `cat ~/.claude/projects/*/memory/MEMORY.md`.
 
+### Skills do projeto (auto-carregadas)
+
+Esse repo tem skills versionadas em `.claude/skills/`. O Claude Code carrega elas automaticamente quando você abre o projeto — zero instalação. Invoque via `/<nome>` no chat:
+
+| Skill | Quando usar |
+|---|---|
+| `/db-migration` | Criar migration nova (faz pull, cria arquivo no padrão counter-style, aplica na cloud, commita) |
+| `/db-migration-review` | Revisar PR com `.sql` (dry-run + audit) — André usa nas tuas PRs antes de aprovar |
+| `/pr-cycle` | Fechar PR — typecheck + lint + push + abrir PR + admin merge + cleanup |
+| `/precommit-check` | Só rodar typecheck + lint pra saber se está CI-green |
+| `/sync-all` | Início do dia — sincroniza tudo + mapa de worktrees + alignment com cloud |
+| `/ota-update` | Hotfix JS-only no APK preview (sem rebuild) |
+
+Detalhes completos em [docs/claude-skills-map.md](docs/claude-skills-map.md).
+
+### Plugins recomendados pra habilitar
+
+Use `/plugin` no Claude Code pra habilitar:
+- **`design`** — `/design:ux-copy` (microcopy bilíngue), `/design:design-critique` (review de screenshots), `/design:accessibility-review`
+- **`anthropic-skills`** — `skill-creator`, `consolidate-memory`
+
+Pula `marketing:*` — não usamos.
+
+Built-ins úteis (já vêm prontas):
+- `/review` antes de mergear PR
+- `/security-review` em PRs com RLS, auth, RPC
+- `/simplify` depois de feature, antes de PR
+- `/fewer-permission-prompts` no início — vai cortar muito prompt de permissão repetitivo
+
 ---
 
 ## 7. Workflow do repo

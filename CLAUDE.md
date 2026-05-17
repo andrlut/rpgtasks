@@ -249,6 +249,25 @@ Generic schema seeded with 4 scales: **Avaliação v1** (24-item wellbeing), **B
 
 ---
 
+## Claude Code skills available in this repo
+
+Auto-loaded from `.claude/skills/`. Invoke via `/<name>` in chat.
+
+| Skill | Use it when |
+|---|---|
+| **`/db-migration`** | Creating any new SQL migration — handles the full flow (pull → create counter-style file → push to cloud → commit) so history stays aligned between the two contributors |
+| **`/db-migration-review`** | Reviewing a PR with `.sql` changes — does the dry-run + schema audit the author (typically Artur) couldn't run himself |
+| **`/pr-cycle`** | Closing out a branch — precommit check + push + open PR + admin merge + cleanup in one shot (aggressive, mergeia sozinho) |
+| **`/precommit-check`** | Just running typecheck + lint to know if you're CI-green before pushing |
+| **`/sync-all`** | Start-of-day status — pull main + audit worktrees + verify cloud↔git migration alignment |
+| **`/ota-update`** | Publishing a JS-only hotfix to the live APK via `eas update --channel preview` (no rebuild) |
+
+Built-ins worth knowing: `/review`, `/security-review`, `/simplify`, `/fewer-permission-prompts` (especially useful for Artur's first weeks), `/init`, `/consolidate-memory`.
+
+Plugins enabled: `design` (use `/design:ux-copy` for microcopy, `/design:design-critique` for screen reviews), `anthropic-skills` (skill-creator, memory consolidation).
+
+---
+
 ## Pre-commit checks (always run before opening a PR)
 
 ```bash
