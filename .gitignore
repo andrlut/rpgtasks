@@ -45,8 +45,9 @@ Thumbs.db
 
 # Claude Code local state (worktrees, scheduled-tasks lock, local settings)
 .claude/*
-# Versioned: project skills shared between contributors (auto-loaded by Claude Code)
+# Versioned: project skills + agent definitions shared between contributors
 !.claude/skills/
+!.claude/agents/
 
 # Coverage / testing
 coverage/

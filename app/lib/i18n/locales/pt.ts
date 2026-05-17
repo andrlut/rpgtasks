@@ -177,6 +177,9 @@ const pt: Translations = {
       rewardPreview: '+{{xp}} de XP e +{{coins}} moedas por ler.',
       markFail: 'Não foi possível marcar como lido',
       notFound: 'Material não encontrado.',
+      feedbackPrompt: 'Esse material foi útil?',
+      feedbackUp: 'Foi bom',
+      feedbackDown: 'Não foi pra mim',
     },
   },
 
