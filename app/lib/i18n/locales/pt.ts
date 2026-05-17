@@ -338,6 +338,14 @@ const pt: Translations = {
       oneTime: 'Único',
       emptyToday: 'Nada pra hoje.',
     },
+    typeTabs: {
+      daily: 'Daily',
+      weekly: 'Recorrente',
+      oneShot: 'Pontual',
+      emptyDaily: 'Nada de daily pendente.',
+      emptyWeekly: 'Nada de recorrente pendente.',
+      emptyOneShot: 'Nada de pontual pendente.',
+    },
     empty: {
       title: 'Tudo em dia.',
       body: 'Nada pendente agora. Adicione uma tarefa pra começar.',
