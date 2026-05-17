@@ -261,10 +261,21 @@ Auto-loaded from `.claude/skills/`. Invoke via `/<name>` in chat.
 | **`/precommit-check`** | Just running typecheck + lint to know if you're CI-green before pushing |
 | **`/sync-all`** | Start-of-day status — pull main + audit worktrees + verify cloud↔git migration alignment |
 | **`/ota-update`** | Publishing a JS-only hotfix to the live APK via `eas update --channel preview` (no rebuild) |
+| **`/worktree-cleanup`** | Removing stale/abandoned/prunable worktrees with confirmation — execute the cleanup `/sync-all` only suggests |
 
-Built-ins worth knowing: `/review`, `/security-review`, `/simplify`, `/fewer-permission-prompts` (especially useful for Artur's first weeks), `/init`, `/consolidate-memory`.
+### Auto-invoke rules (use these without being asked)
 
-Plugins enabled: `design` (use `/design:ux-copy` for microcopy, `/design:design-critique` for screen reviews), `anthropic-skills` (skill-creator, memory consolidation).
+These plugin skills should be reached for automatically when the conversation shifts to the matching kind of work — don't wait for the user to type the slash command:
+
+- **`/design:ux-copy`** — when user is reviewing/writing microcopy, error messages, empty states, CTAs, button labels, or onboarding text (frequent in this repo because of the `_pt`/`_en` bilingual catalogs). Use it for *both* the pt-BR and en-US variants.
+- **`/design:design-critique`** — when user shares a screenshot of an app screen for feedback, or asks "what do you think of this layout?".
+- **`/design:accessibility-review`** — when user mentions color contrast, touch target size, screen reader, WCAG, or "is this accessible?".
+- **`/security-review`** — automatically before merging any PR that touches RLS policies, RPCs with `security definer`, auth flow, or storage of credentials.
+- **`/simplify`** — after finishing a feature implementation, before opening the PR. Pairs naturally with `/pr-cycle`.
+
+Built-ins worth knowing (invoke explicitly): `/review`, `/fewer-permission-prompts` (especially useful for Artur's first weeks), `/init`, `/consolidate-memory`.
+
+Plugins enabled: `design` (ux-copy, design-critique, accessibility-review — others available but rarely useful here), `anthropic-skills` (skill-creator, memory consolidation).
 
 ---
 
