@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { CompactHeader } from '@/components/CompactHeader';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -113,6 +114,7 @@ export default function HomeScreen() {
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
+  const bottomClearance = useBottomNavClearance();
 
   const fireCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
     if (completeTask.isPending) return;
@@ -321,7 +323,7 @@ export default function HomeScreen() {
       <ScreenBackground>
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -550,9 +552,7 @@ function TaskTypeTabs({ active, counts, onChange, t }: TaskTypeTabsProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
   scroll: { flex: 1 },
-  scrollContent: {
-    paddingBottom: tokens.layout.bottomNavClearance,
-  },
+  scrollContent: {},
   loadingBox: {
     paddingVertical: tokens.space[10],
     alignItems: 'center',

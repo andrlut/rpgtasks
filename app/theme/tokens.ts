@@ -95,11 +95,13 @@ export const tokens = {
   },
   layout: {
     /**
-     * Bottom padding tab screens must reserve so the floating glass nav bar
-     * (BottomNavBar) doesn't cover the last items when scrolled to the end.
-     * Bar is 64h + 12 bottom margin + ~min safe-area padding.
+     * Static fallback for contexts where hooks don't run (StyleSheet.create).
+     * Tab-screen ScrollViews should prefer `useBottomNavClearance()` from
+     * `@/components/BottomNavBar` — it respects the device gesture bar.
+     *
+     * Bar 64h + 12 bottom margin + 8 minimum safe-area = 84px.
      */
-    bottomNavClearance: 100,
+    bottomNavClearance: 84,
   },
   font: {
     family: 'Manrope_500Medium',

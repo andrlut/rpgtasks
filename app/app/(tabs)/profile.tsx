@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { useCharacter } from '@/lib/api/character';
 import { useSession } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
@@ -44,6 +45,7 @@ export default function SettingsScreen() {
   const email = session.user?.email ?? '—';
   const [usernameOpen, setUsernameOpen] = useState(false);
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const bottomClearance = useBottomNavClearance();
 
   const handleSignOut = async () => {
     const ok = await confirmAction(
@@ -114,7 +116,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]} showsVerticalScrollIndicator={false}>
         <Text style={styles.screenTitle}>{t('profile.title')}</Text>
 
         {/* ───── ACCOUNT ───── */}
@@ -448,7 +450,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.base },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.layout.bottomNavClearance,
   },
   screenTitle: {
     ...tokens.type.h1,

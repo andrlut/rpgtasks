@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { InfoSheet } from '@/components/InfoSheet';
 import { LevelRing } from '@/components/LevelRing';
 import { PillarSwitcher, type PillarKey } from '@/components/PillarSwitcher';
@@ -115,6 +116,7 @@ export default function CharacterScreen() {
     desejada: 'skills',
   });
   const [infoOpen, setInfoOpen] = useState<null | 'title'>(null);
+  const bottomClearance = useBottomNavClearance();
 
   const strongest = useMemo(
     () => pickStrongestDim(character.data?.dimensions ?? []),
@@ -179,7 +181,7 @@ export default function CharacterScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -325,7 +327,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.layout.bottomNavClearance,
     gap: tokens.space[4],
   },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },

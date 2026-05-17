@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import {
@@ -115,6 +116,7 @@ export default function SkillDetailScreen() {
   const deleteSkill = useDeleteCustomSkill();
 
   const [valueStr, setValueStr] = useState('');
+  const bottomClearance = useBottomNavClearance();
 
   const state = skillStates.data?.find((s) => s.skill.id === skillId);
 
@@ -259,7 +261,7 @@ export default function SkillDetailScreen() {
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
             keyboardShouldPersistTaps="handled"
           >
             {/* Hero — orbital medallion + tier eyebrow + skill name + PR row */}
@@ -648,7 +650,6 @@ const styles = StyleSheet.create({
 
   content: {
     paddingHorizontal: tokens.space[4],
-    paddingBottom: 110,
   },
 
   hero: {
