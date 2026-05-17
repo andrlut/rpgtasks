@@ -18,6 +18,8 @@ import { ScreenBackground } from '@/components/ScreenBackground';
 import {
   useLearningMaterial,
   useMarkMaterialRead,
+  useMyMaterialFeedback,
+  useRateMaterial,
   useReadMaterialIds,
 } from '@/lib/api/learning';
 import type { LearningMaterialType } from '@/lib/db/types';
@@ -42,6 +44,8 @@ export default function MaterialDetailScreen() {
   const material = useLearningMaterial(slug);
   const reads = useReadMaterialIds();
   const markRead = useMarkMaterialRead();
+  const myFeedback = useMyMaterialFeedback(slug);
+  const rateMaterial = useRateMaterial();
   const meta = useMetaLookup();
 
   const [busy, setBusy] = useState(false);
@@ -261,6 +265,64 @@ export default function MaterialDetailScreen() {
                 </Text>
               </>
             )}
+          </View>
+
+          {/* Feedback — 👍/👎 on the material. Stays available after read so
+              the user can change their mind. */}
+          <View style={styles.feedbackBox}>
+            <Text style={styles.feedbackPrompt}>{t('learning.detail.feedbackPrompt')}</Text>
+            <View style={styles.feedbackRow}>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => {});
+                  rateMaterial.mutate({ slug: m.slug, rating: 1 });
+                }}
+                style={({ pressed }) => [
+                  styles.feedbackBtn,
+                  myFeedback.data?.rating === 1 && styles.feedbackBtnActiveUp,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons
+                  name={myFeedback.data?.rating === 1 ? 'thumbs-up' : 'thumbs-up-outline'}
+                  size={18}
+                  color={myFeedback.data?.rating === 1 ? tokens.semantic.xp : tokens.text.mid}
+                />
+                <Text
+                  style={[
+                    styles.feedbackBtnText,
+                    myFeedback.data?.rating === 1 && { color: tokens.semantic.xp },
+                  ]}
+                >
+                  {t('learning.detail.feedbackUp')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.selectionAsync().catch(() => {});
+                  rateMaterial.mutate({ slug: m.slug, rating: -1 });
+                }}
+                style={({ pressed }) => [
+                  styles.feedbackBtn,
+                  myFeedback.data?.rating === -1 && styles.feedbackBtnActiveDown,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons
+                  name={myFeedback.data?.rating === -1 ? 'thumbs-down' : 'thumbs-down-outline'}
+                  size={18}
+                  color={myFeedback.data?.rating === -1 ? tokens.semantic.danger : tokens.text.mid}
+                />
+                <Text
+                  style={[
+                    styles.feedbackBtnText,
+                    myFeedback.data?.rating === -1 && { color: tokens.semantic.danger },
+                  ]}
+                >
+                  {t('learning.detail.feedbackDown')}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
 
@@ -573,6 +635,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: tokens.semantic.xp,
     flex: 1,
+  },
+  feedbackBox: {
+    marginTop: tokens.space[5],
+    marginHorizontal: tokens.space[4],
+    padding: tokens.space[4],
+    borderRadius: tokens.radius.lg,
+    backgroundColor: tokens.bg.glass,
+    borderWidth: 1,
+    borderColor: tokens.border.strong,
+    gap: 12,
+  },
+  feedbackPrompt: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: tokens.text.dim,
+    textAlign: 'center',
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  feedbackBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: tokens.bg.glassStrong,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+  },
+  feedbackBtnActiveUp: {
+    backgroundColor: 'rgba(61, 214, 140, 0.12)',
+    borderColor: tokens.semantic.xp,
+  },
+  feedbackBtnActiveDown: {
+    backgroundColor: 'rgba(255, 92, 122, 0.10)',
+    borderColor: tokens.semantic.danger,
+  },
+  feedbackBtnText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 13,
+    color: tokens.text.base,
   },
   errorTitle: {
     fontFamily: 'Manrope_700Bold',

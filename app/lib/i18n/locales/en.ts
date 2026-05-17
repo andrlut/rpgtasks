@@ -187,6 +187,9 @@ const en = {
       rewardPreview: '+{{xp}} XP and +{{coins}} coins for reading this.',
       markFail: 'Could not mark as read',
       notFound: 'Material not found.',
+      feedbackPrompt: 'Was this useful?',
+      feedbackUp: 'Helpful',
+      feedbackDown: 'Not for me',
     },
   },
 

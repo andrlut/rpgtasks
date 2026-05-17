@@ -16,6 +16,7 @@ export const learningKeys = {
   feed: () => [...learningKeys.all, 'feed'] as const,
   detail: (slug: string) => [...learningKeys.all, 'detail', slug] as const,
   views: () => [...learningKeys.all, 'views'] as const,
+  myFeedback: (slug: string) => [...learningKeys.all, 'myFeedback', slug] as const,
 };
 
 /**
@@ -110,6 +111,62 @@ export function useReadMaterialIds() {
 interface MarkReadInput {
   slug: string;
   materialId: string;
+}
+
+/** The current user's rating on a single material (null if none yet). */
+export function useMyMaterialFeedback(slug: string | null | undefined) {
+  return useQuery({
+    queryKey: slug ? learningKeys.myFeedback(slug) : ['learning', 'myFeedback', 'none'],
+    enabled: !!slug,
+    queryFn: async (): Promise<{ rating: -1 | 1; comment: string | null } | null> => {
+      if (!slug) return null;
+      const { data, error } = await supabase
+        .from('learning_material_feedback')
+        .select('rating, comment, material:material_id(slug)')
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      // Filter client-side by slug — feedback table is small per-user.
+      type Row = {
+        rating: -1 | 1;
+        comment: string | null;
+        material: { slug: string } | { slug: string }[] | null;
+      };
+      const rows = (data ?? []) as Row[];
+      for (const row of rows) {
+        const mat = Array.isArray(row.material) ? row.material[0] : row.material;
+        if (mat?.slug === slug) {
+          return { rating: row.rating, comment: row.comment };
+        }
+      }
+      return null;
+    },
+  });
+}
+
+interface RateInput {
+  slug: string;
+  rating: -1 | 1;
+  comment?: string;
+}
+
+/** 👍/👎 a material. Tapping the same rating twice clears it. */
+export function useRateMaterial() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RateInput): Promise<{ action: string; rating: -1 | 1 }> => {
+      const { data, error } = await supabase.rpc('rate_material', {
+        p_slug: input.slug,
+        p_rating: input.rating,
+        p_comment: input.comment ?? null,
+      });
+      if (error) throw error;
+      return data as { action: string; rating: -1 | 1 };
+    },
+    onSuccess: (_result, input) => {
+      queryClient.invalidateQueries({ queryKey: learningKeys.myFeedback(input.slug) });
+    },
+  });
 }
 
 /**

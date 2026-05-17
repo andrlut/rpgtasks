@@ -749,27 +749,25 @@ const styles = StyleSheet.create({
     color: tokens.brand.violet2,
   },
 
-  // Callout box
+  // Callout box — vertical layout (icon top, text below) so multi-line
+  // text doesn't wrap awkwardly around a fixed-position icon.
   callout: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: tokens.space[3],
+    gap: 10,
+    padding: tokens.space[4],
     borderRadius: tokens.radius.md,
     borderWidth: 1,
   },
   calloutIcon: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
   calloutText: {
-    flex: 1,
     fontFamily: 'Manrope_500Medium',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 14.5,
+    lineHeight: 22,
     color: tokens.text.base,
   },
 

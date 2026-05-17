@@ -562,6 +562,9 @@ export interface LearningMaterial {
   source_label_pt: string | null;
   source_label_en: string | null;
   cta_action: LearningCtaAction | null;
+  /** Structured drafter answers per reasoning step + reviewer notes. NULL
+   *  for legacy materials authored before the publisher pipeline. */
+  reasoning_log: LearningReasoningLog | null;
   released_at: string;
   version: number;
   is_archived: boolean;
@@ -569,14 +572,44 @@ export interface LearningMaterial {
   updated_at: string;
 }
 
-/** Shape returned from feed queries — body / takeaways / signs / tracking
- *  stripped to keep payload light. None of those are shown in the card. */
+/** Drafter agent fills `steps` (one entry per reasoning step in the
+ *  material_type_template); reviewer agent fills `review` with pass/fail
+ *  per editorial rule. Both halves are optional so the structure can
+ *  evolve without breaking older logs. */
+export interface LearningReasoningLog {
+  template_type: 'explainer' | 'summary' | 'news';
+  template_version?: number;
+  steps?: Array<{
+    id: string;
+    answer_pt?: string;
+    answer_en?: string;
+    notes?: string;
+  }>;
+  review?: {
+    passed: boolean;
+    issues?: Array<{ rule_id: string; severity: 'warn' | 'fail'; note: string }>;
+  };
+}
+
+export interface LearningMaterialFeedback {
+  id: string;
+  material_id: string;
+  character_id: string;
+  rating: -1 | 1;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Shape returned from feed queries — body / takeaways / signs / tracking /
+ *  reasoning_log stripped to keep payload light. None are shown in the card. */
 export type LearningMaterialCard = Omit<
   LearningMaterial,
   | 'body_pt' | 'body_en'
   | 'takeaways_pt' | 'takeaways_en'
   | 'signs_pt' | 'signs_en'
   | 'tracking_pt' | 'tracking_en'
+  | 'reasoning_log'
 >;
 
 export interface LearningMaterialSub {
