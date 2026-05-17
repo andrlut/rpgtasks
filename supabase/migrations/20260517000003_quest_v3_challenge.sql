@@ -60,7 +60,14 @@ alter table quest_template
   add column if not exists quest_type             quest_type_enum not null default 'skill',
   add column if not exists challenge_target_value numeric,
   add column if not exists challenge_unit_pt      text,
-  add column if not exists challenge_unit_en      text;
+  add column if not exists challenge_unit_en      text,
+  add column if not exists title_en               text,
+  add column if not exists description_en         text;
+
+-- v3 catalog seeds use title_pt as the primary title; legacy `title` is
+-- effectively superseded by title_pt/title_en. Existing rows keep their values.
+alter table quest_template
+  alter column title drop not null;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 4. character: global partial-reward toggle
@@ -309,15 +316,18 @@ $$;
 -- ─────────────────────────────────────────────────────────────────────────────
 
 insert into quest_template (
-  slug,
+  id,
   title_pt, title_en,
   description_pt, description_en,
+  category,
+  suggested_duration_days,
   quest_type,
   reward_xp, reward_coins,
   allow_partial,
   challenge_target_value,
   challenge_unit_pt, challenge_unit_en,
-  requirements
+  requirements,
+  sort_order
 )
 values
 
@@ -330,9 +340,11 @@ values
   '20 push-up set',
   'Consiga completar 20 flexões seguidas. Registre sua melhor série em cada treino como entrada de habilidade.',
   'Complete 20 consecutive push-ups. Log your best set after each workout as a skill entry.',
+  'strength', 60,
   'skill', 250, 60, false,
   null, null, null,
-  '[{"kind": "reach_skill_value", "skill_slug": "forca_superior", "target_value": 20}]'
+  '[{"kind": "reach_skill_value", "skill_slug": "forca_superior", "target_value": 20}]',
+  100
 ),
 
 -- body / endurance — running
@@ -342,9 +354,11 @@ values
   'First 5 km run',
   'Alcance 5 km em uma única corrida dentro do prazo. Registre a distância de cada treino.',
   'Reach 5 km in a single run within the deadline. Log the distance of each training run.',
+  'strength', 90,
   'skill', 300, 80, false,
   null, null, null,
-  '[{"kind": "reach_skill_value", "skill_slug": "corrida", "target_value": 5}]'
+  '[{"kind": "reach_skill_value", "skill_slug": "corrida", "target_value": 5}]',
+  101
 ),
 
 -- mind / learning — reading
@@ -354,9 +368,11 @@ values
   'Ten books read',
   'Registre a leitura de 10 livros completos dentro do prazo.',
   'Log 10 completed books within the deadline.',
+  'learn', 180,
   'skill', 400, 100, false,
   null, null, null,
-  '[{"kind": "reach_skill_value", "skill_slug": "leitura", "target_value": 10}]'
+  '[{"kind": "reach_skill_value", "skill_slug": "leitura", "target_value": 10}]',
+  102
 ),
 
 -- wealth / saving
@@ -366,9 +382,11 @@ values
   'Save R$1,000',
   'Acumule R$ 1.000 em economias registradas dentro do prazo.',
   'Accumulate R$1,000 in logged savings within the deadline.',
+  'money', 90,
   'skill', 350, 90, false,
   null, null, null,
-  '[{"kind": "reach_skill_value", "skill_slug": "poupanca", "target_value": 1000}]'
+  '[{"kind": "reach_skill_value", "skill_slug": "poupanca", "target_value": 1000}]',
+  103
 ),
 
 -- health / mind — meditation
@@ -378,9 +396,11 @@ values
   '30 meditation sessions',
   'Complete 30 sessões de meditação registradas dentro do prazo.',
   'Complete 30 logged meditation sessions within the deadline.',
+  'contemplate', 45,
   'skill', 280, 70, false,
   null, null, null,
-  '[{"kind": "reach_skill_value", "skill_slug": "meditacao", "target_value": 30}]'
+  '[{"kind": "reach_skill_value", "skill_slug": "meditacao", "target_value": 30}]',
+  104
 ),
 
 -- ── challenge quests ──────────────────────────────────────────────────────────
@@ -392,9 +412,11 @@ values
   'Hold a handstand for 10 s',
   'Treine até conseguir manter uma parada de mãos por 10 segundos. Registre seu tempo de equilíbrio a cada sessão.',
   'Train until you can hold a handstand for 10 seconds. Log your hold time after each session.',
+  'dexterity', 60,
   'challenge', 300, 80, true,
   10, 'segundos', 'seconds',
-  '[]'
+  '[]',
+  105
 ),
 
 -- health — cold showers
@@ -404,9 +426,11 @@ values
   '21-day cold shower streak',
   'Tome uma ducha fria todos os dias por 21 dias consecutivos. Registre quantos dias seguidos você manteve.',
   'Take a cold shower every day for 21 consecutive days. Log your current streak count.',
+  'sleep', 30,
   'challenge', 250, 65, true,
   21, 'dias consecutivos', 'consecutive days',
-  '[]'
+  '[]',
+  106
 ),
 
 -- mind / craft — journaling
@@ -416,9 +440,11 @@ values
   '30-day journaling habit',
   'Escreva no diário todos os dias por 30 dias. Registre o total de entradas feitas.',
   'Write in your journal every day for 30 days. Log your total entry count.',
+  'contemplate', 30,
   'challenge', 220, 55, true,
   30, 'entradas', 'entries',
-  '[]'
+  '[]',
+  107
 ),
 
 -- wealth — no-spend challenge
@@ -428,9 +454,11 @@ values
   'No-spend week',
   'Passe 7 dias sem gastar em itens não essenciais. Registre cada dia que você conseguiu manter.',
   'Go 7 days without spending on non-essentials. Log each successful day.',
+  'money', 14,
   'challenge', 200, 50, true,
   7, 'dias', 'days',
-  '[]'
+  '[]',
+  108
 ),
 
 -- bonds — reconnecting
@@ -440,12 +468,14 @@ values
   'Reconnect with 5 friends',
   'Entre em contato genuíno com 5 pessoas com quem perdeu o contato. Registre cada reconexão feita.',
   'Genuinely reach out to 5 people you have lost touch with. Log each reconnection.',
+  'circle', 30,
   'challenge', 180, 45, true,
   5, 'reconexões', 'reconnections',
-  '[]'
+  '[]',
+  109
 )
 
-on conflict (slug) do nothing;
+on conflict (id) do nothing;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- end of migration
