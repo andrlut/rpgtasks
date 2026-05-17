@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,11 +31,6 @@ import {
   useUnskipTaskToday,
 } from '@/lib/api/tasks';
 import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
-import {
-  useHomeBucketsStore,
-  useLoadHomeBuckets,
-  type HomeBucket,
-} from '@/lib/homeBuckets';
 import { formatCompactDate } from '@/lib/time';
 import { levelProgress, rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
@@ -46,20 +41,52 @@ interface FloatItem {
   coins: number;
 }
 
-interface BucketMeta {
-  id: HomeBucket;
+type TypeTab = 'daily' | 'weekly' | 'one_shot';
+
+interface TabMeta {
+  id: TypeTab;
   labelKey: string;
+  emptyKey: string;
   iconName: keyof typeof Ionicons.glyphMap;
-  color: string;
+  accent: string;
 }
 
-const BUCKET_META: BucketMeta[] = [
-  { id: 'today',      labelKey: 'home.buckets.today',     iconName: 'time',     color: tokens.brand.violet2 },
-  { id: 'this_week',  labelKey: 'home.buckets.thisWeek',  iconName: 'calendar', color: '#4DD0FF' },
-  { id: 'this_month', labelKey: 'home.buckets.thisMonth', iconName: 'calendar-outline', color: tokens.semantic.coin },
-  { id: 'one_time',   labelKey: 'home.buckets.oneTime',   iconName: 'flag',     color: '#FF8A3D' },
+const TAB_META: TabMeta[] = [
+  {
+    id: 'daily',
+    labelKey: 'home.typeTabs.daily',
+    emptyKey: 'home.typeTabs.emptyDaily',
+    iconName: 'sunny-outline',
+    accent: tokens.brand.violet2,
+  },
+  {
+    id: 'weekly',
+    labelKey: 'home.typeTabs.weekly',
+    emptyKey: 'home.typeTabs.emptyWeekly',
+    iconName: 'repeat',
+    accent: '#4DD0FF',
+  },
+  {
+    id: 'one_shot',
+    labelKey: 'home.typeTabs.oneShot',
+    emptyKey: 'home.typeTabs.emptyOneShot',
+    iconName: 'flag-outline',
+    accent: tokens.semantic.coin,
+  },
 ];
 
+/**
+ * Tasks home — pending tasks grouped by recurrence type (daily / weekly /
+ * one-shot) via a top tab strip. Replaces the V2 time-window buckets
+ * (today / this_week / this_month / one_time) which the user found
+ * confusing because periodicity intent was mixed with time pressure.
+ *
+ * The underlying useHomeBuckets fetcher still computes "pending" per
+ * task — daily not done today, weekly not enough this week, etc. We
+ * just regroup the result here by recurrence.type. "Recorrente"
+ * (weekly tab) folds in monthly tasks too — same category in the
+ * user's head.
+ */
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useT();
@@ -69,14 +96,9 @@ export default function HomeScreen() {
   const skipTask = useSkipTaskToday();
   const unskipTask = useUnskipTaskToday();
   const undoCompletion = useUndoCompletion();
-  useLoadHomeBuckets();
-  const collapsed = useHomeBucketsStore((s) => s.collapsed);
-  const toggleBucket = useHomeBucketsStore((s) => s.toggle);
+
+  const [activeTab, setActiveTab] = useState<TypeTab>('daily');
   const [floats, setFloats] = useState<FloatItem[]>([]);
-  /** Two stages of the long-press flow:
-   *   actionTask → which task's action menu is open
-   *   sheetTask  → which task's per-sub adjust popup is open (after picking
-   *                "Adjust stars" from the action menu) */
   const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
 
@@ -197,33 +219,44 @@ export default function HomeScreen() {
   const hasError = character.error || buckets.error;
 
   const handleRefresh = async () => {
-    await Promise.all([
-      character.refetch(),
-      buckets.refetch(),
-    ]);
+    await Promise.all([character.refetch(), buckets.refetch()]);
   };
-  const isRefreshing =
-    character.isRefetching || buckets.isRefetching;
+  const isRefreshing = character.isRefetching || buckets.isRefetching;
 
   const data = buckets.data;
+
+  // Regroup the bucket-flavored result into 3 type-flavored lists.
+  // - daily: today bucket items whose recurrence is daily
+  // - weekly: today's weekly/monthly + thisWeek + thisMonth, deduped
+  // - one_shot: oneTime bucket as-is (already type-filtered upstream)
+  const tasksByTab = useMemo<Record<TypeTab, TaskWithSubs[]>>(() => {
+    if (!data) {
+      return { daily: [], weekly: [], one_shot: [] };
+    }
+    const daily = data.today.filter((t) => t.recurrence.type === 'daily');
+    const seen = new Set<string>();
+    const weekly: TaskWithSubs[] = [];
+    const pushWeekly = (t: TaskWithSubs) => {
+      if (seen.has(t.id)) return;
+      if (t.recurrence.type !== 'weekly' && t.recurrence.type !== 'monthly') return;
+      seen.add(t.id);
+      weekly.push(t);
+    };
+    data.today.forEach(pushWeekly);
+    data.thisWeek.forEach(pushWeekly);
+    data.thisMonth.forEach(pushWeekly);
+    return { daily, weekly, one_shot: data.oneTime };
+  }, [data]);
+
   const totalPending =
-    (data?.today.length ?? 0) +
-    (data?.thisWeek.length ?? 0) +
-    (data?.thisMonth.length ?? 0) +
-    (data?.oneTime.length ?? 0);
+    tasksByTab.daily.length +
+    tasksByTab.weekly.length +
+    tasksByTab.one_shot.length;
 
-  const tasksFor = (b: HomeBucket): TaskWithSubs[] => {
-    if (!data) return [];
-    if (b === 'today') return data.today;
-    if (b === 'this_week') return data.thisWeek;
-    if (b === 'this_month') return data.thisMonth;
-    return data.oneTime;
-  };
-
-  // Pre-compute level progress so the header always renders something
-  // sensible, even on first load when character hasn't resolved yet.
   const charXp = character.data?.character.total_xp ?? 0;
   const lp = levelProgress(charXp);
+  const activeMeta = TAB_META.find((m) => m.id === activeTab) ?? TAB_META[0];
+  const activeList = tasksByTab[activeTab];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -262,7 +295,7 @@ export default function HomeScreen() {
               <Text style={styles.errorText}>{t('home.error')}</Text>
             </View>
           ) : totalPending === 0 ? (
-            <View style={styles.bucketsList}>
+            <View style={styles.body}>
               <View style={styles.emptyBox}>
                 <Ionicons
                   name="checkmark-circle"
@@ -292,40 +325,35 @@ export default function HomeScreen() {
               )}
             </View>
           ) : (
-            <View style={styles.bucketsList}>
-              {BUCKET_META.map((meta) => {
-                const items = tasksFor(meta.id);
-                const isCollapsed = collapsed[meta.id];
-                // Skip rendering empty This Week / This Month / One-time
-                // sections — keeps the surface tight when nothing's pending.
-                if (items.length === 0 && meta.id !== 'today') return null;
-                return (
-                  <BucketSection
-                    key={meta.id}
-                    meta={meta}
-                    label={t(meta.labelKey)}
-                    count={items.length}
-                    collapsed={isCollapsed}
-                    onToggle={() => toggleBucket(meta.id)}
-                  >
-                    {items.length === 0 ? (
-                      <Text style={styles.bucketEmpty}>{t('home.buckets.emptyToday')}</Text>
-                    ) : (
-                      items.map((task) => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          onComplete={() => handleQuickComplete(task)}
-                          onLongPress={() => handleLongPress(task)}
-                          onEdit={() =>
-                            router.push({ pathname: '/task-form', params: { id: task.id } })
-                          }
-                        />
-                      ))
-                    )}
-                  </BucketSection>
-                );
-              })}
+            <View style={styles.body}>
+              <TaskTypeTabs
+                active={activeTab}
+                counts={{
+                  daily: tasksByTab.daily.length,
+                  weekly: tasksByTab.weekly.length,
+                  one_shot: tasksByTab.one_shot.length,
+                }}
+                onChange={setActiveTab}
+                t={t}
+              />
+
+              <View style={styles.tabBody}>
+                {activeList.length === 0 ? (
+                  <Text style={styles.tabEmpty}>{t(activeMeta.emptyKey)}</Text>
+                ) : (
+                  activeList.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={() => handleQuickComplete(task)}
+                      onLongPress={() => handleLongPress(task)}
+                      onEdit={() =>
+                        router.push({ pathname: '/task-form', params: { id: task.id } })
+                      }
+                    />
+                  ))
+                )}
+              </View>
 
               {data && (
                 <TodayActivityDrawer
@@ -336,8 +364,6 @@ export default function HomeScreen() {
                 />
               )}
 
-              {/* Manage shortcut at the bottom — replaces the old "+ New task"
-                  card since adoption from the catalog lives on /tasks. */}
               <Pressable
                 onPress={() => router.push('/tasks')}
                 style={({ pressed }) => [
@@ -382,47 +408,68 @@ export default function HomeScreen() {
   );
 }
 
-interface BucketSectionProps {
-  meta: BucketMeta;
-  label: string;
-  count: number;
-  collapsed: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
+interface TaskTypeTabsProps {
+  active: TypeTab;
+  counts: Record<TypeTab, number>;
+  onChange: (next: TypeTab) => void;
+  t: (key: string) => string;
 }
 
-function BucketSection({
-  meta,
-  label,
-  count,
-  collapsed,
-  onToggle,
-  children,
-}: BucketSectionProps) {
+function TaskTypeTabs({ active, counts, onChange, t }: TaskTypeTabsProps) {
   return (
-    <View style={bucketStyles.wrap}>
-      <Pressable
-        onPress={onToggle}
-        style={({ pressed }) => [
-          bucketStyles.header,
-          pressed && { opacity: 0.7 },
-        ]}
-      >
-        <View style={bucketStyles.iconWrap}>
-          <Ionicons name={meta.iconName} size={14} color={meta.color} />
-        </View>
-        <Text style={bucketStyles.label}>{label}</Text>
-        <View style={bucketStyles.countChip}>
-          <Text style={bucketStyles.countText}>{count}</Text>
-        </View>
-        <View style={{ flex: 1 }} />
-        <Ionicons
-          name={collapsed ? 'chevron-down' : 'chevron-up'}
-          size={16}
-          color={tokens.text.dim}
-        />
-      </Pressable>
-      {!collapsed && <View style={bucketStyles.body}>{children}</View>}
+    <View style={tabStyles.row}>
+      {TAB_META.map((meta) => {
+        const isActive = meta.id === active;
+        const count = counts[meta.id];
+        return (
+          <Pressable
+            key={meta.id}
+            onPress={() => {
+              if (!isActive) Haptics.selectionAsync().catch(() => {});
+              onChange(meta.id);
+            }}
+            style={({ pressed }) => [
+              tabStyles.tab,
+              isActive && {
+                backgroundColor: `${meta.accent}1F`,
+                borderColor: `${meta.accent}55`,
+              },
+              pressed && { opacity: 0.85 },
+            ]}
+            hitSlop={4}
+          >
+            <Ionicons
+              name={meta.iconName}
+              size={14}
+              color={isActive ? meta.accent : tokens.text.dim}
+            />
+            <Text
+              style={[
+                tabStyles.label,
+                { color: isActive ? meta.accent : tokens.text.dim },
+              ]}
+              numberOfLines={1}
+            >
+              {t(meta.labelKey)}
+            </Text>
+            <View
+              style={[
+                tabStyles.countChip,
+                isActive && { backgroundColor: `${meta.accent}33` },
+              ]}
+            >
+              <Text
+                style={[
+                  tabStyles.countText,
+                  { color: isActive ? meta.accent : tokens.text.dim },
+                ]}
+              >
+                {count}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -447,6 +494,10 @@ const styles = StyleSheet.create({
     color: tokens.text.mid,
     textAlign: 'center',
     paddingHorizontal: tokens.space[5],
+  },
+  body: {
+    paddingHorizontal: tokens.space[3],
+    gap: tokens.space[3],
   },
   emptyBox: {
     paddingVertical: tokens.space[10],
@@ -479,15 +530,14 @@ const styles = StyleSheet.create({
     color: tokens.text.hi,
     fontFamily: 'Manrope_700Bold',
   },
-  bucketsList: {
-    paddingHorizontal: tokens.space[3],
-    gap: tokens.space[3],
+  tabBody: {
+    gap: tokens.space[2],
   },
-  bucketEmpty: {
+  tabEmpty: {
     ...tokens.type.caption,
     color: tokens.text.dim,
     fontStyle: 'italic',
-    paddingVertical: tokens.space[3],
+    paddingVertical: tokens.space[4],
     textAlign: 'center',
   },
   manageCta: {
@@ -509,45 +559,42 @@ const styles = StyleSheet.create({
   },
 });
 
-const bucketStyles = StyleSheet.create({
-  wrap: {
+const tabStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
     gap: 6,
   },
-  header: {
+  tab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-  },
-  iconWrap: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.bg.surface,
+    gap: 5,
+    paddingVertical: tokens.space[2],
+    paddingHorizontal: tokens.space[2],
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: 'transparent',
+    minHeight: 36,
   },
   label: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 13,
-    color: tokens.text.hi,
-    letterSpacing: 0.2,
+    fontSize: 11,
+    letterSpacing: 0.4,
   },
   countChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    minWidth: 20,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
     borderRadius: 999,
-    backgroundColor: tokens.bg.surface,
-    minWidth: 24,
+    backgroundColor: tokens.bg.glass,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   countText: {
-    fontFamily: 'Manrope_700Bold',
+    fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
-    color: tokens.text.mid,
-  },
-  body: {
-    gap: 8,
+    letterSpacing: 0.3,
   },
 });

@@ -348,6 +348,14 @@ const en = {
       oneTime: 'One-time',
       emptyToday: 'All clear for today.',
     },
+    typeTabs: {
+      daily: 'Daily',
+      weekly: 'Recurring',
+      oneShot: 'One-shot',
+      emptyDaily: 'Nothing daily pending.',
+      emptyWeekly: 'Nothing recurring pending.',
+      emptyOneShot: 'Nothing one-shot pending.',
+    },
     empty: {
       title: 'All clear.',
       body: 'Nothing pending right now. Add a task to get started.',
