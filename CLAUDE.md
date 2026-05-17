@@ -241,7 +241,7 @@ Generic schema seeded with 4 scales: **Avaliação v1** (24-item wellbeing), **B
 
 - **Branches**: `feat/<short>`, `fix/<short>`, `chore/<short>`, `docs/<short>`
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
-- **Co-author trailer**: every commit ends with `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`
+- **Co-author trailer**: every commit ends with `Co-Authored-By: Claude <model> <noreply@anthropic.com>` — Claude Code adds it automatically using whichever model is actually running (e.g. `Sonnet 4.6`, `Opus 4.7 (1M context)`). Don't hardcode a specific model; each contributor's machine signs with its own.
 - **PRs**: open with `gh pr create`, merge with `gh pr merge <n> --squash --admin --delete-branch`
 - **After merge**: `git switch main && git pull --rebase`
 - **CI**: typecheck (app + shared) + lint (app); both must be green before merge
