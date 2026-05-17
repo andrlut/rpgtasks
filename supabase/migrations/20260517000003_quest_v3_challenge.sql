@@ -207,6 +207,10 @@ grant execute on function log_quest_challenge_progress(uuid, numeric) to authent
 -- ratio is clamped to [0, 1]; nothing granted if ratio = 0.
 -- quest always flips to 'expired' regardless of partial reward outcome.
 
+-- drop the prior version first: postgres rejects CREATE OR REPLACE when the
+-- return type changes (existing function returned a row set; new returns void).
+drop function if exists expire_overdue_quests();
+
 create or replace function expire_overdue_quests()
 returns void
 language plpgsql
