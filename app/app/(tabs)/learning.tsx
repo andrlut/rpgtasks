@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { CarouselRow } from '@/components/learning/CarouselRow';
 import { LearningStatsPanel, type PillFilter } from '@/components/LearningStatsPanel';
 import { ScreenBackground } from '@/components/ScreenBackground';
@@ -39,6 +40,7 @@ export default function LearningScreen() {
   const [readFilter, setReadFilter] = useState<ReadFilter>('all');
   const [pillFilter, setPillFilter] = useState<PillFilter>(null);
   const [statsOpen, setStatsOpen] = useState(false);
+  const bottomClearance = useBottomNavClearance();
 
   const all = useMemo(() => feed.data ?? [], [feed.data]);
   const readSet = useMemo(() => reads.data ?? new Set<string>(), [reads.data]);
@@ -106,7 +108,7 @@ export default function LearningScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={{ paddingBottom: bottomClearance }}
           refreshControl={
             <RefreshControl
               refreshing={feed.isFetching && !feed.isLoading}
@@ -412,9 +414,6 @@ const readFilterStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
-  scroll: {
-    paddingBottom: tokens.layout.bottomNavClearance,
-  },
   header: {
     paddingHorizontal: tokens.space[4],
     paddingTop: tokens.space[4],

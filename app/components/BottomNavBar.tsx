@@ -33,6 +33,19 @@ const BAR_HEIGHT = 64;
 const INDICATOR_WIDTH = 32;
 const INDICATOR_HEIGHT = 3;
 
+export const TAB_BAR_HEIGHT = BAR_HEIGHT;
+
+/**
+ * paddingBottom that any tab-screen ScrollView should reserve so its last
+ * items don't hide behind the floating glass nav bar. Replicates the bar's
+ * own `bottom` formula (`Math.max(insets.bottom, 8)`) and adds the bar
+ * height plus 12px of visual breathing room.
+ */
+export function useBottomNavClearance(): number {
+  const insets = useSafeAreaInsets();
+  return TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 12;
+}
+
 export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();

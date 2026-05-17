@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddCard } from '@/components/AddCard';
+import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
 import { RewardCard } from '@/components/RewardCard';
@@ -72,6 +73,7 @@ export default function RewardsScreen() {
   );
   const [view, setView] = useState<RewardView>('shop');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const bottomClearance = useBottomNavClearance();
 
   const coins = character.data?.character.coins ?? 0;
   const bankCount = banked.data?.length ?? 0;
@@ -271,7 +273,7 @@ export default function RewardsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -642,7 +644,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
   content: {
     padding: tokens.space[4],
-    paddingBottom: tokens.layout.bottomNavClearance,
   },
   balanceHero: {
     alignItems: 'center',
