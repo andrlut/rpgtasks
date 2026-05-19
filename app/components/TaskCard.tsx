@@ -97,10 +97,12 @@ export function TaskCard({
       <Pressable
         style={({ pressed }) => [
           styles.bodyWrap,
-          pressed && onEdit && { opacity: 0.85 },
+          pressed && (onEdit || onLongPress) && { opacity: 0.85 },
         ]}
         onPress={onEdit}
-        disabled={!onEdit}
+        onLongPress={onLongPress}
+        delayLongPress={350}
+        disabled={!onEdit && !onLongPress}
       >
         <Text style={styles.title} numberOfLines={2}>
           {task.title}

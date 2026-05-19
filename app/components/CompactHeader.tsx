@@ -5,6 +5,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CoinIcon } from '@/components/CoinIcon';
 import { tokens } from '@/theme';
 
+interface TrackedReward {
+  name: string;
+  currentCoins: number;
+  totalCoins: number;
+  icon: string;
+}
+
 interface Props {
   displayName: string;
   totalXp: number;
@@ -16,17 +23,18 @@ interface Props {
   dateLabel: string;
   /** Tapping the calendar glyph in the eyebrow row opens history. */
   onHistoryPress?: () => void;
+  /** When set, renders a second row with the pinned reward's progress. */
+  trackedReward?: TrackedReward | null;
+  /** Tap on the reward row (opens the rewards screen). */
+  onTrackedRewardPress?: () => void;
 }
 
 /**
- * Single-row, dense header for the Tasks screen — replaces the big
- * HeroCard on Home. Date + name on top line; LV pill + XP bar + coins
- * + coins on the bottom line.
+ * Two-row header for the Tasks screen — replaces the V2 single-row variant.
+ * Row 1: coins · LV · XP bar (XP labels above the track).
+ * Row 2 (optional): tracked reward icon + name + progress bar + percent.
  *
- * Built around the V2 Spotlight design's CompactHeader (compressed to
- * fit one row so there's room for the bucket sections below). The
- * bigger HeroCard remains available for the Hero tab where status is
- * the focus rather than a side-channel.
+ * The eyebrow above keeps the date + user name as before.
  */
 export function CompactHeader({
   displayName,
@@ -36,8 +44,15 @@ export function CompactHeader({
   coins,
   dateLabel,
   onHistoryPress,
+  trackedReward,
+  onTrackedRewardPress,
 }: Props) {
   const xpPct = xpNeededForLevel === 0 ? 0 : (xpInLevel / xpNeededForLevel) * 100;
+  const rewardPct =
+    trackedReward && trackedReward.totalCoins > 0
+      ? Math.min(100, (trackedReward.currentCoins / trackedReward.totalCoins) * 100)
+      : 0;
+
   return (
     <View style={styles.wrap}>
       <View style={styles.eyebrowRow}>
@@ -56,15 +71,26 @@ export function CompactHeader({
           </Pressable>
         )}
       </View>
+
+      {/* Row 1: coins · LV · XP bar */}
       <View style={styles.row}>
-        {/* LV pill */}
+        <View style={styles.coinChip}>
+          <CoinIcon size={12} />
+          <Text style={styles.coinChipText}>{coins}</Text>
+        </View>
+
         <View style={styles.lvPill}>
           <Text style={styles.lvLabel}>LV</Text>
           <Text style={styles.lvValue}>{level}</Text>
         </View>
 
-        {/* XP bar (flexes) */}
-        <View style={styles.barCol}>
+        <View style={styles.xpCol}>
+          <View style={styles.xpLabels}>
+            <Text style={styles.xpLabelLeft}>XP</Text>
+            <Text style={styles.xpLabelRight}>
+              {xpInLevel} / {xpNeededForLevel}
+            </Text>
+          </View>
           <View style={styles.barTrack}>
             <LinearGradient
               colors={[tokens.brand.violet, tokens.brand.violet2]}
@@ -74,18 +100,43 @@ export function CompactHeader({
             />
           </View>
         </View>
-        <Text style={styles.xpText}>
-          {xpInLevel}
-          <Text style={styles.xpTextDim}>/{xpNeededForLevel}</Text>
-        </Text>
-
-        {/* Coins chip */}
-        <View style={styles.chip}>
-          <CoinIcon size={12} />
-          <Text style={styles.chipText}>{coins}</Text>
-        </View>
-
       </View>
+
+      {/* Row 2: tracked reward (optional) */}
+      {trackedReward && (
+        <Pressable
+          onPress={onTrackedRewardPress}
+          disabled={!onTrackedRewardPress}
+          style={({ pressed }) => [styles.rewardRow, pressed && styles.rewardRowPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Tracked reward: ${trackedReward.name}`}
+        >
+          <View style={styles.rewardIcon}>
+            <Ionicons
+              name={trackedReward.icon as never}
+              size={12}
+              color={tokens.semantic.coin}
+            />
+          </View>
+          <View style={styles.rewardCol}>
+            <View style={styles.rewardLabels}>
+              <Text style={styles.rewardName} numberOfLines={1}>
+                🎯 {trackedReward.name}
+              </Text>
+              <Text style={styles.rewardPct}>{Math.round(rewardPct)}%</Text>
+            </View>
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  styles.rewardBarFill,
+                  { width: `${rewardPct}%` },
+                ]}
+              />
+            </View>
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -126,59 +177,114 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+  },
+  coinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 200, 61, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 61, 0.2)',
+  },
+  coinChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.semantic.coin,
   },
   lvPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    backgroundColor: tokens.bg.glass,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: tokens.radius.sm,
+    backgroundColor: tokens.bg.surface,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: tokens.border.base,
   },
   lvLabel: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 9,
+    letterSpacing: 0.6,
     color: tokens.brand.violet2,
   },
   lvValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 13,
-    color: tokens.text.hi,
+    fontSize: 11,
+    color: tokens.brand.violet2,
   },
-  barCol: {
+  xpCol: {
     flex: 1,
   },
+  xpLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+  },
+  xpLabelLeft: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 10,
+    color: tokens.text.mid,
+  },
+  xpLabelRight: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.brand.violet2,
+  },
   barTrack: {
-    height: 6,
-    borderRadius: 3,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: tokens.bg.surface,
     overflow: 'hidden',
   },
   barFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 2,
   },
-  xpText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.hi,
-  },
-  xpTextDim: {
-    color: tokens.text.dim,
-  },
-  chip: {
+  rewardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
+    marginTop: 4,
   },
-  chipText: {
+  rewardRowPressed: {
+    opacity: 0.7,
+  },
+  rewardIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 200, 61, 0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rewardCol: {
+    flex: 1,
+  },
+  rewardLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+    gap: 8,
+  },
+  rewardName: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 12,
-    color: tokens.text.hi,
+    fontSize: 10,
+    color: tokens.text.mid,
+    flex: 1,
+  },
+  rewardPct: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.semantic.coin,
+  },
+  rewardBarFill: {
+    backgroundColor: tokens.semantic.coin,
   },
 });
