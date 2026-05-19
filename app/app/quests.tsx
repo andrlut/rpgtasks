@@ -4,7 +4,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -161,7 +160,7 @@ export default function QuestBoardScreen() {
   };
 
   const handleCreateCustom = () => {
-    Alert.alert(t('quests.board.createCta'), t('quests.board.comingSoon'));
+    router.push('/quest-create');
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
