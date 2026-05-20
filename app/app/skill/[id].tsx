@@ -255,9 +255,7 @@ export default function SkillDetailScreen() {
                 color={tokens.text.hi}
               />
             </Pressable>
-          ) : (
-            <View style={styles.iconButton} />
-          )}
+          ) : null}
         </View>
 
         <KeyboardAvoidingView
@@ -480,6 +478,18 @@ export default function SkillDetailScreen() {
             </View>
           </ScrollView>
 
+          {/* Solid backdrop behind the system gesture bar so the page bg
+             doesn't show transparent through the OS nav area. */}
+          {insets.bottom > 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.systemBarBackdrop,
+                { height: insets.bottom, backgroundColor: tokens.bg.deep },
+              ]}
+            />
+          )}
+
           {/* CTA bar — sticky at bottom, respects safe-area gesture bar */}
           <View style={[styles.ctaBar, { bottom: ctaBottom }]}>
             <View style={styles.inputPill}>
@@ -635,11 +645,15 @@ const styles = StyleSheet.create({
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   topBar: {
+    position: 'absolute',
+    top: tokens.space[1],
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[2],
+    paddingHorizontal: tokens.space[3],
   },
   iconButton: {
     width: 40,
@@ -658,7 +672,7 @@ const styles = StyleSheet.create({
 
   hero: {
     alignItems: 'center',
-    paddingTop: tokens.space[3],
+    paddingTop: tokens.space[6],
     paddingBottom: tokens.space[2],
   },
   tierEyebrow: {
@@ -966,6 +980,12 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 8,
+  },
+  systemBarBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   inputPill: {
     flex: 1,
