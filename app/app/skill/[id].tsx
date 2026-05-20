@@ -15,9 +15,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import {
@@ -116,7 +115,12 @@ export default function SkillDetailScreen() {
   const deleteSkill = useDeleteCustomSkill();
 
   const [valueStr, setValueStr] = useState('');
-  const bottomClearance = useBottomNavClearance();
+  const insets = useSafeAreaInsets();
+  // CTA bar sits above the system gesture bar via insets.bottom + a small
+  // visual gap. Content padding must reserve room for the CTA bar height
+  // (56) + its bottom offset so the scroll's last items aren't hidden.
+  const ctaBottom = Math.max(insets.bottom, 8) + 16;
+  const ctaClearance = 56 + ctaBottom + 8;
 
   const state = skillStates.data?.find((s) => s.skill.id === skillId);
 
@@ -261,7 +265,7 @@ export default function SkillDetailScreen() {
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
+            contentContainerStyle={[styles.content, { paddingBottom: ctaClearance }]}
             keyboardShouldPersistTaps="handled"
           >
             {/* Hero — orbital medallion + tier eyebrow + skill name + PR row */}
@@ -476,8 +480,8 @@ export default function SkillDetailScreen() {
             </View>
           </ScrollView>
 
-          {/* CTA bar — sticky at bottom */}
-          <View style={styles.ctaBar}>
+          {/* CTA bar — sticky at bottom, respects safe-area gesture bar */}
+          <View style={[styles.ctaBar, { bottom: ctaBottom }]}>
             <View style={styles.inputPill}>
               <Ionicons
                 name={state.skill.icon as never}

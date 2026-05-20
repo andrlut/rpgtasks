@@ -356,22 +356,21 @@ export default function QuestDetailScreen() {
         {/* Challenge log input — only for active challenge quests */}
         {quest && isChallenge && !quest.isComplete && (
           <View style={styles.section}>
-            <Text style={styles.secTitle}>{t('quests.detail.logProgress')}</Text>
+            <Text style={styles.secTitle}>
+              {challengeUnit
+                ? t('quests.detail.logProgressIn', { unit: challengeUnit })
+                : t('quests.detail.logProgress')}
+            </Text>
             <View style={styles.logRow}>
               <View style={styles.logInputWrap}>
                 <TextInput
                   value={logValue}
                   onChangeText={setLogValue}
-                  placeholder={t('quests.detail.logPlaceholder', {
-                    unit: challengeUnit ?? '',
-                  })}
+                  placeholder={t('quests.detail.logPlaceholderShort')}
                   placeholderTextColor={tokens.text.faint}
                   keyboardType="numeric"
                   style={styles.logInput}
                 />
-                {challengeUnit && (
-                  <Text style={styles.logUnit}>{challengeUnit}</Text>
-                )}
               </View>
               <Pressable
                 onPress={handleLogChallenge}
