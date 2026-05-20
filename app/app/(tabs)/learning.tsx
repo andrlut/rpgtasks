@@ -27,7 +27,6 @@ import { DIMENSION_ORDER, SUB_META } from '@/theme/dimensions';
 type Translator = (key: string, options?: TranslateOptions) => string;
 type ReadFilter = 'all' | 'unread' | 'read';
 
-const TYPE_ORDER: LearningMaterialType[] = ['explainer', 'summary', 'news'];
 const NEW_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export default function LearningScreen() {
@@ -37,12 +36,24 @@ export default function LearningScreen() {
   const reads = useReadMaterialIds();
   const meta = useMetaLookup();
 
-  const [readFilter, setReadFilter] = useState<ReadFilter>('all');
+  const [readFilter, setReadFilter] = useState<ReadFilter>('unread');
   const [pillFilter, setPillFilter] = useState<PillFilter>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const bottomClearance = useBottomNavClearance();
 
-  const all = useMemo(() => feed.data ?? [], [feed.data]);
+  // Chronological: newest released material first. Sorting once at the
+  // source means every derived bucket (filtered, byDim, novidades)
+  // inherits the order without each carousel re-sorting.
+  const all = useMemo(
+    () =>
+      (feed.data ?? [])
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.released_at).getTime() - new Date(a.released_at).getTime(),
+        ),
+    [feed.data],
+  );
   const readSet = useMemo(() => reads.data ?? new Set<string>(), [reads.data]);
 
   // Apply both filters (read-state AND pill). Each carousel reads from
@@ -80,24 +91,8 @@ export default function LearningScreen() {
       byDim.set(c.dimension_id, arr);
     }
 
-    const byType = new Map<LearningMaterialType, LearningFeedCard[]>();
-    for (const c of filtered) {
-      const arr = byType.get(c.type) ?? [];
-      arr.push(c);
-      byType.set(c.type, arr);
-    }
-
-    return { novidades, byDim, byType };
+    return { novidades, byDim };
   }, [filtered]);
-
-  // Show "by type" rows only when there is real variety across types,
-  // i.e. at least 2 types have content. Until summaries / news ship,
-  // this section sleeps.
-  const showByType = useMemo(() => {
-    let withContent = 0;
-    for (const v of buckets.byType.values()) if (v.length > 0) withContent++;
-    return withContent >= 2;
-  }, [buckets.byType]);
 
   const onCardPress = (card: LearningFeedCard) => {
     Haptics.selectionAsync().catch(() => {});
@@ -185,28 +180,8 @@ export default function LearningScreen() {
             />
           )}
 
-          {/* Por tipo — only when content variety exists */}
-          {showByType && (
-            <View style={styles.sectionGroup}>
-              <Text style={styles.sectionGroupTitle}>{t('learning.section.byType')}</Text>
-              {TYPE_ORDER.map((type) => {
-                const list = buckets.byType.get(type);
-                if (!list || list.length === 0) return null;
-                return (
-                  <CarouselRow
-                    key={type}
-                    title={t(`learning.type.${type}`)}
-                    cards={list}
-                    readSet={readSet}
-                    onCardPress={onCardPress}
-                    count={list.length}
-                  />
-                );
-              })}
-            </View>
-          )}
-
-          {/* Por dimensão — 6 rows */}
+          {/* Por dimensão — 6 rows. "Por tipo" was removed since the
+             TypeSash on each cover now communicates type inline. */}
           <View style={styles.sectionGroup}>
             <Text style={styles.sectionGroupTitle}>{t('learning.section.byDim')}</Text>
             {DIMENSION_ORDER.map((dimId) => {
@@ -342,9 +317,9 @@ interface ReadFilterRowProps {
 
 function ReadFilterRow({ value, onChange, t }: ReadFilterRowProps) {
   const opts: { key: ReadFilter; label: string }[] = [
-    { key: 'all', label: t('learning.readFilter.all') },
     { key: 'unread', label: t('learning.readFilter.unread') },
     { key: 'read', label: t('learning.readFilter.read') },
+    { key: 'all', label: t('learning.readFilter.all') },
   ];
   return (
     <View style={readFilterStyles.row}>

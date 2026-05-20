@@ -64,7 +64,7 @@ export const SUB_META: Record<SubId, SubMeta> = {
   sleep: { iconName: 'moon', dimensionId: 'health' },
   nutrition: { iconName: 'restaurant', dimensionId: 'health' },
   strength: { iconName: 'barbell', dimensionId: 'body' },
-  dexterity: { iconName: 'body', dimensionId: 'body' },
+  dexterity: { iconName: 'flash', dimensionId: 'body' },
   learn: { iconName: 'book', dimensionId: 'mind' },
   contemplate: { iconName: 'leaf', dimensionId: 'mind' },
   money: { iconName: 'wallet', dimensionId: 'wealth' },
