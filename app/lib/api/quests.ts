@@ -118,6 +118,23 @@ export function useQuests() {
         }
       }
 
+      // 2d. challenge quests — read max(value) per quest from quest_challenge_log.
+      const challengeIds = quests
+        .filter((q) => q.quest_type === 'challenge' && q.status === 'active')
+        .map((q) => q.id);
+      const maxByChallengeId = new Map<string, number>();
+      if (challengeIds.length > 0) {
+        const { data: logs } = await supabase
+          .from('quest_challenge_log')
+          .select('quest_id, value')
+          .in('quest_id', challengeIds);
+        for (const log of (logs ?? []) as { quest_id: string; value: number }[]) {
+          const cur = maxByChallengeId.get(log.quest_id) ?? 0;
+          const v = Number(log.value);
+          if (v > cur) maxByChallengeId.set(log.quest_id, v);
+        }
+      }
+
       // 3. Stitch into QuestWithProgress.
       return quests.map<QuestWithProgress>((q) => {
         const requirements: QuestRequirementWithProgress[] = q.quest_requirement
@@ -136,16 +153,46 @@ export function useQuests() {
               isMet,
             };
           });
+        const currentChallengeValue = maxByChallengeId.get(q.id) ?? 0;
+        const challengeMet =
+          q.quest_type === 'challenge' &&
+          q.challenge_target_value != null &&
+          currentChallengeValue >= Number(q.challenge_target_value);
         const isComplete =
           q.status === 'active' &&
-          requirements.length > 0 &&
-          requirements.every((rr) => rr.isMet);
+          (challengeMet ||
+            (requirements.length > 0 && requirements.every((rr) => rr.isMet)));
         return {
           quest: q,
           requirements,
+          currentChallengeValue,
           isComplete,
         };
       });
+    },
+  });
+}
+
+/**
+ * Append a row to `quest_challenge_log` for a challenge-type quest via
+ * the `log_quest_challenge_progress` RPC. The RPC also auto-completes
+ * the quest when the logged value reaches `challenge_target_value`,
+ * so on success we invalidate the active quests + character (for the
+ * XP/coin credit) caches.
+ */
+export function useLogChallengeProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { questId: string; value: number }) => {
+      const { error } = await supabase.rpc('log_quest_challenge_progress', {
+        p_quest_id: params.questId,
+        p_value: params.value,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: questKeys.active() });
+      queryClient.invalidateQueries({ queryKey: characterKeys.me() });
     },
   });
 }

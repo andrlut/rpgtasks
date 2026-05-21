@@ -11,7 +11,7 @@ import { SUB_META } from '@/theme/dimensions';
 
 import { MaterialCover } from '../MaterialCover';
 
-import { coverFontForSlug, coverFontSize } from './coverFont';
+import { TypeSash } from './TypeSash';
 
 /**
  * Book-cover-style tile for the Learn carousel. 2:3 aspect ratio, title
@@ -34,8 +34,6 @@ export function CoverCard({ card, read, onPress }: Props) {
 
   const title = locale === 'pt' ? card.title_pt : card.title_en;
   const summary = locale === 'pt' ? card.summary_pt : card.summary_en;
-  const fontName = coverFontForSlug(card.slug);
-  const fontMetrics = coverFontSize(fontName);
   const dim = meta.dim(card.dimension_id);
   const primarySub = card.subs[0];
   const subMeta = primarySub ? meta.sub(primarySub) : null;
@@ -57,23 +55,23 @@ export function CoverCard({ card, read, onPress }: Props) {
           variant="card"
         />
 
-        {/* Bottom gradient mask so title sits readable over the cover */}
+        {/* Bottom dark fade — only the lower 55% of the cover, transparent
+           at the top fading to a stronger opacity at the bottom. Matches
+           the design's `bottom-anchored 55% height` mask so the title
+           reads without darkening the upper cover art. */}
         <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.55)'] as [string, string]}
-          start={{ x: 0.5, y: 0.4 }}
+          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)'] as [string, string]}
+          start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
+          style={styles.bottomFade}
         />
+
+        {/* Top-left type sash — distinguishes explainer / summary / news */}
+        <TypeSash type={card.type} />
 
         {/* Title overlay — bottom-anchored with padding */}
         <View style={styles.titleWrap}>
-          <Text
-            style={[
-              styles.title,
-              { fontFamily: fontName, fontSize: fontMetrics.fontSize, lineHeight: fontMetrics.lineHeight },
-            ]}
-            numberOfLines={3}
-          >
+          <Text style={styles.title} numberOfLines={4}>
             {title}
           </Text>
         </View>
@@ -121,6 +119,19 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radius.md,
     overflow: 'hidden',
     position: 'relative',
+    // Subtle elevation — matches the design's `0 8px 18px rgba(0,0,0,0.35)`.
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
   },
   titleWrap: {
     position: 'absolute',
@@ -128,13 +139,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 12,
-    paddingBottom: 12,
-    paddingTop: 18,
+    paddingBottom: 14,
+    paddingTop: 20,
   },
   title: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 15,
+    lineHeight: 18,
     color: '#FFFFFF',
-    letterSpacing: 0.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    letterSpacing: 0.1,
+    textShadowColor: 'rgba(0, 0, 0, 0.65)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },

@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tasks · Variante A v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d1a;
+    --bg-surface: #13162b;
+    --bg-surface-2: #1a1e38;
+    --bg-surface-3: #1e2240;
+    --border: #252848;
+    --text: #e0e4ff;
+    --text-mid: #7880b0;
+    --text-faint: #3d4270;
+    --violet: #7b5cff;
+    --violet-2: #a08fff;
+    --violet-glow: rgba(123,92,255,0.18);
+    --coin: #ffc83d;
+    --coin-bg: rgba(255,200,61,0.14);
+    --health: #ff6b7a;
+    --health-bg: rgba(255,107,122,0.14);
+    --mind: #b07bff;
+    --mind-bg: rgba(176,123,255,0.14);
+    --bonds: #4dd0ff;
+    --bonds-bg: rgba(77,208,255,0.14);
+    --body-c: #ff8a3d;
+    --body-bg: rgba(255,138,61,0.14);
+    --wealth: #ffc83d;
+    --wealth-bg: rgba(255,200,61,0.14);
+    --craft: #3dd68c;
+    --craft-bg: rgba(61,214,140,0.14);
+    --font: 'Manrope', -apple-system, sans-serif;
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 20px;
+    --r-pill: 999px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    overscroll-behavior: none;
+  }
+
+  .screen {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    max-width: 430px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    padding: calc(var(--safe-top) + 10px) 20px 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-mid);
+    flex-shrink: 0;
+  }
+  .status-right { display: flex; gap: 6px; align-items: center; }
+
+  /* ── Header ── */
+  .header {
+    padding: 6px 16px 10px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-faint);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Row 1: moedas + LV pill + XP bar */
+  .stats-row-1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .coin-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--coin);
+    background: var(--coin-bg);
+    border: 1px solid rgba(255,200,61,0.2);
+    border-radius: var(--r-pill);
+    padding: 4px 9px;
+    flex-shrink: 0;
+  }
+  .coin-icon { font-size: 12px; }
+
+  .lv-pill {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--violet-2);
+    flex-shrink: 0;
+  }
+
+  .xp-col { flex: 1; }
+  .xp-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+  }
+  .xp-label-left { font-size: 10px; font-weight: 700; color: var(--text-mid); }
+  .xp-label-right { font-size: 10px; font-weight: 800; color: var(--violet-2); }
+  .bar-track {
+    height: 4px;
+    background: var(--bg-surface-2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+  .bar-fill-xp { background: var(--violet); width: 17.6%; }
+
+  /* Row 2: Tracked reward bar */
+  .reward-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .reward-icon {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    background: var(--coin-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .reward-col { flex: 1; }
+  .reward-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 3px;
+  }
+  .reward-name { font-size: 10px; font-weight: 700; color: var(--text-mid); }
+  .reward-pct { font-size: 10px; font-weight: 800; color: var(--coin); }
+  .bar-fill-reward { background: var(--coin); width: 68%; }
+
+  /* ── Ring row ── */
+  .ring-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px 4px;
+    flex-shrink: 0;
+  }
+
+  .ring-wrap {
+    position: relative;
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+  }
+  .ring-wrap svg { width: 100%; height: 100%; }
+  .ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring-num { font-size: 19px; font-weight: 800; color: var(--text); line-height: 1; }
+  .ring-den { font-size: 9px; font-weight: 700; color: var(--text-faint); }
+
+  .ring-info { flex: 1; }
+  .ring-title { font-size: 17px; font-weight: 800; color: var(--text); line-height: 1.1; }
+  .ring-sub { font-size: 11px; color: var(--text-mid); margin-top: 3px; }
+  .xp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    background: var(--violet-glow);
+    border: 1px solid rgba(123,92,255,0.3);
+    border-radius: var(--r-pill);
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--violet-2);
+  }
+
+  /* ── Scroll area ── */
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  .scroll-area::-webkit-scrollbar { display: none; }
+
+  /* ── Quest card ── */
+  .quest-card {
+    margin: 10px 12px 6px;
+    background: linear-gradient(135deg, #161938, #1c1f42);
+    border: 1px solid #2e3260;
+    border-radius: var(--r-xl);
+    padding: 10px 14px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .quest-card:active { opacity: 0.85; }
+
+  .quest-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .quest-label {
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--violet);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .quest-toggle { font-size: 10px; color: var(--text-faint); }
+
+  .quest-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 7px;
+  }
+  .quest-item:last-child { margin-bottom: 0; }
+  .quest-icon {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .quest-body { flex: 1; min-width: 0; }
+  .quest-name { font-size: 12px; font-weight: 700; color: var(--text); }
+  .quest-prog-wrap { margin-top: 3px; height: 3px; background: var(--bg-surface-3); border-radius: 2px; overflow: hidden; }
+  .quest-prog-fill { height: 100%; border-radius: 2px; }
+  .quest-prog-label { font-size: 9px; color: var(--text-faint); margin-top: 2px; }
+  .quest-type-tag {
+    font-size: 9px; font-weight: 700;
+    color: var(--text-faint);
+    background: var(--bg-surface-3);
+    border-radius: var(--r-pill);
+    padding: 2px 7px;
+    flex-shrink: 0;
+  }
+
+  /* ── Bucket tabs ── */
+  .bucket-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+  }
+  .bucket-tabs::-webkit-scrollbar { display: none; }
+
+  .bucket-tab {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 11px;
+    border-radius: var(--r-pill);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+    background: var(--bg-surface-2);
+    color: var(--text-mid);
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .bucket-tab.active {
+    background: var(--violet-glow);
+    color: var(--violet-2);
+    border-color: rgba(123,92,255,0.3);
+  }
+  .bucket-count {
+    background: rgba(123,92,255,0.25);
+    border-radius: var(--r-pill);
+    padding: 1px 5px;
+    font-size: 9px;
+    color: var(--violet-2);
+  }
+  .bucket-tab.active .bucket-count { background: rgba(123,92,255,0.35); }
+
+  /* ── Section label ── */
+  .section-label {
+    padding: 4px 16px 6px;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-faint);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  /* ── Task cards ── */
+  .task-card {
+    margin: 0 10px 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 11px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.3s ease;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .task-card:active { transform: scale(0.98); }
+  .task-card.done {
+    opacity: 0.35;
+    border-color: transparent;
+  }
+
+  .task-dim-dot {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-meta {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .dim-pill {
+    border-radius: 5px;
+    padding: 2px 6px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .task-xp { font-size: 10px; color: var(--violet-2); font-weight: 800; }
+  .task-coins { font-size: 10px; color: var(--coin); font-weight: 800; }
+
+  .check-btn {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 15px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .check-btn.done-btn { background: var(--violet); color: #fff; }
+  .check-btn.empty-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+  }
+  .check-btn:active { transform: scale(0.85); }
+
+  /* ── Recurring card ── */
+  .recurring-card {
+    margin: 0 10px 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .recurring-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 12px;
+  }
+  .recurring-left { display: flex; align-items: center; gap: 9px; }
+  .rec-icon {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .rec-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .rec-sub { font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+  .chevron { font-size: 11px; color: var(--text-faint); transition: transform 0.2s ease; }
+  .chevron.open { transform: rotate(180deg); }
+  .rec-body {
+    padding: 0 12px 10px;
+    border-top: 1px solid var(--border);
+  }
+  .cadence-dots { display: flex; gap: 4px; padding-top: 8px; }
+  .cadence-dot {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 800;
+  }
+  .cadence-dot.done-d { background: var(--craft-bg); color: var(--craft); }
+  .cadence-dot.today-d { background: var(--violet); color: #fff; }
+  .cadence-dot.future-d { background: var(--bg-surface-2); color: var(--text-faint); }
+
+  /* ── Completed bucket ── */
+  .completed-section {
+    margin: 8px 10px 6px;
+  }
+
+  .completed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: border-radius 0.2s ease;
+  }
+  .completed-header.open {
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    border-bottom-color: transparent;
+  }
+
+  .completed-left { display: flex; align-items: center; gap: 8px; }
+  .completed-title { font-size: 12px; font-weight: 800; color: var(--text-mid); }
+  .completed-count {
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-pill);
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--craft);
+  }
+  .completed-toggle { font-size: 11px; color: var(--text-faint); transition: transform 0.2s ease; }
+  .completed-toggle.open { transform: rotate(180deg); }
+
+  .completed-body {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    overflow: hidden;
+  }
+
+  .completed-task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    opacity: 0.55;
+  }
+  .completed-task:last-child { border-bottom: none; }
+  .completed-task-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .completed-task-name { flex: 1; font-size: 12px; font-weight: 700; color: var(--text); text-decoration: line-through; }
+  .completed-check { font-size: 14px; color: var(--violet); }
+
+  /* ── Manage tasks button ── */
+  .manage-btn-wrap {
+    padding: 6px 10px 12px;
+  }
+
+  .manage-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--bg-surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-mid);
+    transition: all 0.15s ease;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .manage-btn:active {
+    background: var(--violet-glow);
+    color: var(--violet-2);
+    border-color: rgba(123,92,255,0.3);
+  }
+  .manage-btn-icon { font-size: 16px; }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 calc(var(--safe-bottom) + 10px);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    min-width: 44px;
+    padding: 2px 0;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .tab-icon { font-size: 20px; }
+  .tab-label { font-size: 10px; font-weight: 700; }
+  .tab-item.active .tab-label { color: var(--violet); }
+  .tab-item:not(.active) .tab-label { color: var(--text-faint); }
+  .tab-item:not(.active) .tab-icon { opacity: 0.4; }
+
+  .spacer { height: 4px; }
+
+  /* Animations */
+  @keyframes checkPop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+  }
+  .popping { animation: checkPop 0.3s ease forwards; }
+
+  @keyframes xpPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+  .pulsing { animation: xpPulse 0.5s ease; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span id="clock">9:30</span>
+    <div class="status-right"><span>●●●</span><span>WiFi</span><span>🔋</span></div>
+  </div>
+
+  <!-- Header compacto -->
+  <div class="header">
+    <div class="eyebrow" id="eyebrow">SUN, MAY 17 · DECO</div>
+
+    <!-- Row 1: moedas + nível + XP -->
+    <div class="stats-row-1">
+      <div class="coin-chip">
+        <span class="coin-icon">🪙</span>
+        <span id="coinDisplay">408</span>
+      </div>
+      <div class="lv-pill">LV 3</div>
+      <div class="xp-col">
+        <div class="xp-labels">
+          <span class="xp-label-left">XP</span>
+          <span class="xp-label-right" id="xpLabel">88 / 500</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-xp" id="xpBar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: tracked reward -->
+    <div class="reward-row">
+      <div class="reward-icon">🎮</div>
+      <div class="reward-col">
+        <div class="reward-labels">
+          <span class="reward-name">🎯 PS5 controller</span>
+          <span class="reward-pct" id="rewardPct">68%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill-reward" id="rewardBar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ring + contador -->
+  <div class="ring-row">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="26" stroke="#1e2240" stroke-width="5.5"/>
+        <circle cx="32" cy="32" r="26" stroke="#7b5cff" stroke-width="5.5"
+          stroke-dasharray="163.4" stroke-dashoffset="97.7"
+          stroke-linecap="round" transform="rotate(-90 32 32)"
+          id="ringArc"/>
+      </svg>
+      <div class="ring-center">
+        <span class="ring-num" id="ringNum">2</span>
+        <span class="ring-den" id="ringDen">/5</span>
+      </div>
+    </div>
+    <div class="ring-info">
+      <div class="ring-title" id="ringTitle">3 a fazer</div>
+      <div class="ring-sub">pra fechar o dia</div>
+      <div class="xp-badge">⚡ +10 XP hoje</div>
+    </div>
+  </div>
+
+  <!-- Scroll area -->
+  <div class="scroll-area" id="scrollArea">
+
+    <!-- Quest card -->
+    <div class="quest-card" id="questCard" onclick="toggleQuests()">
+      <div class="quest-top">
+        <span class="quest-label">⚔ Quests ativas · 2</span>
+        <span class="quest-toggle" id="questToggle">▲ ocultar</span>
+      </div>
+      <div id="questBody">
+        <div class="quest-item">
+          <div class="quest-icon" style="background:rgba(255,200,61,0.15)">🌟</div>
+          <div class="quest-body">
+            <div class="quest-name">Semana de saúde</div>
+            <div class="quest-prog-wrap">
+              <div class="quest-prog-fill" style="width:60%;background:var(--coin)"></div>
+            </div>
+            <div class="quest-prog-label">3 de 5 dias</div>
+          </div>
+          <div class="quest-type-tag">Daily</div>
+        </div>
+        <div class="quest-item">
+          <div class="quest-icon" style="background:rgba(77,208,255,0.15)">🧠</div>
+          <div class="quest-body">
+            <div class="quest-name">Mente afiada</div>
+            <div class="quest-prog-wrap">
+              <div class="quest-prog-fill" style="width:33%;background:var(--bonds)"></div>
+            </div>
+            <div class="quest-prog-label">1 de 3 semanas</div>
+          </div>
+          <div class="quest-type-tag">Weekly</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bucket tabs -->
+    <div class="bucket-tabs">
+      <div class="bucket-tab active" onclick="switchBucket('today', this)">
+        Hoje <span class="bucket-count" id="todayCount">3</span>
+      </div>
+      <div class="bucket-tab" onclick="switchBucket('week', this)">
+        Esta semana <span class="bucket-count">2</span>
+      </div>
+      <div class="bucket-tab" onclick="switchBucket('recurring', this)">
+        Recorrentes <span class="bucket-count">2</span>
+      </div>
+      <div class="bucket-tab" onclick="switchBucket('oneshot', this)">
+        One-shot <span class="bucket-count">1</span>
+      </div>
+    </div>
+
+    <!-- BUCKET: Hoje -->
+    <div id="bucket-today">
+      <div class="section-label">Next up · toque pra completar</div>
+
+      <div class="task-card" id="task-1">
+        <div class="task-dim-dot" style="background:var(--health-bg)">🌙</div>
+        <div class="task-body">
+          <div class="task-title">Dormir 7 horas ou mais</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--health-bg);color:var(--health)">saúde</span>
+            <span class="task-xp">+15 XP</span>
+            <span class="task-coins">🪙 15</span>
+          </div>
+        </div>
+        <div class="check-btn done-btn" onclick="toggleTask(1,event)">✓</div>
+      </div>
+
+      <div class="task-card" id="task-2">
+        <div class="task-dim-dot" style="background:var(--mind-bg)">🧘</div>
+        <div class="task-body">
+          <div class="task-title">Meditar 10 minutos</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--mind-bg);color:var(--mind)">mente</span>
+            <span class="task-xp">+15 XP</span>
+            <span class="task-coins">🪙 15</span>
+          </div>
+        </div>
+        <div class="check-btn empty-btn" onclick="toggleTask(2,event)"></div>
+      </div>
+
+      <div class="task-card" id="task-3">
+        <div class="task-dim-dot" style="background:var(--bonds-bg)">💬</div>
+        <div class="task-body">
+          <div class="task-title">Mandar msg real pra alguém</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--bonds-bg);color:var(--bonds)">vínculos</span>
+            <span class="task-xp">+5 XP</span>
+            <span class="task-coins">🪙 5</span>
+          </div>
+        </div>
+        <div class="check-btn empty-btn" onclick="toggleTask(3,event)"></div>
+      </div>
+
+      <!-- Completed bucket -->
+      <div class="completed-section" id="completedSection">
+        <div class="completed-header" id="completedHeader" onclick="toggleCompleted()">
+          <div class="completed-left">
+            <span class="completed-title">Feitas hoje</span>
+            <span class="completed-count" id="completedCount">2</span>
+          </div>
+          <span class="completed-toggle" id="completedToggle">▼</span>
+        </div>
+        <div class="completed-body" id="completedBody" style="display:none">
+          <div class="completed-task">
+            <div class="completed-task-icon" style="background:var(--craft-bg)">☀️</div>
+            <span class="completed-task-name">Routine matinal</span>
+            <span class="completed-check">✓</span>
+          </div>
+          <div class="completed-task">
+            <div class="completed-task-icon" style="background:var(--body-bg)">💪</div>
+            <span class="completed-task-name">Dormir 7 horas ou mais</span>
+            <span class="completed-check">✓</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BUCKET: Esta semana -->
+    <div id="bucket-week" style="display:none">
+      <div class="section-label">Acontece esta semana / mês</div>
+
+      <div class="task-card" id="task-w1">
+        <div class="task-dim-dot" style="background:var(--wealth-bg)">📊</div>
+        <div class="task-body">
+          <div class="task-title">Planejar a semana</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--wealth-bg);color:var(--wealth)">riqueza</span>
+            <span class="task-xp">+15 XP</span>
+            <span class="task-coins">🪙 15</span>
+          </div>
+        </div>
+        <div class="check-btn empty-btn" onclick="toggleTask('w1',event)"></div>
+      </div>
+
+      <div class="task-card" id="task-w2">
+        <div class="task-dim-dot" style="background:var(--bonds-bg)">📞</div>
+        <div class="task-body">
+          <div class="task-title">Ligar pra família</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--bonds-bg);color:var(--bonds)">vínculos</span>
+            <span class="task-xp">+20 XP</span>
+            <span class="task-coins">🪙 20</span>
+          </div>
+        </div>
+        <div class="check-btn empty-btn" onclick="toggleTask('w2',event)"></div>
+      </div>
+
+      <div class="completed-section">
+        <div class="completed-header" onclick="toggleCompletedWeek(this)">
+          <div class="completed-left">
+            <span class="completed-title">Feitas esta semana</span>
+            <span class="completed-count">1</span>
+          </div>
+          <span class="completed-toggle">▼</span>
+        </div>
+        <div class="completed-body" style="display:none">
+          <div class="completed-task">
+            <div class="completed-task-icon" style="background:var(--craft-bg)">📋</div>
+            <span class="completed-task-name">Revisão de gastos</span>
+            <span class="completed-check">✓</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUCKET: Recorrentes -->
+    <div id="bucket-recurring" style="display:none">
+      <div class="section-label">Cadências ativas</div>
+
+      <div class="recurring-card" onclick="toggleRecurring('rec-1')">
+        <div class="recurring-header">
+          <div class="recurring-left">
+            <div class="rec-icon" style="background:var(--body-bg)">💪</div>
+            <div>
+              <div class="rec-name">Treino de força</div>
+              <div class="rec-sub">3×/semana · 1 de 3 feito</div>
+            </div>
+          </div>
+          <div class="chevron" id="chevron-rec-1">▼</div>
+        </div>
+        <div class="rec-body" id="body-rec-1" style="display:none">
+          <div class="cadence-dots">
+            <div class="cadence-dot done-d">S</div>
+            <div class="cadence-dot future-d">T</div>
+            <div class="cadence-dot today-d">Q</div>
+            <div class="cadence-dot future-d">Q</div>
+            <div class="cadence-dot future-d">S</div>
+            <div class="cadence-dot future-d">S</div>
+            <div class="cadence-dot future-d">D</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="recurring-card" onclick="toggleRecurring('rec-2')">
+        <div class="recurring-header">
+          <div class="recurring-left">
+            <div class="rec-icon" style="background:var(--mind-bg)">📖</div>
+            <div>
+              <div class="rec-name">Leitura diária</div>
+              <div class="rec-sub">diário · 5 de 7 feito</div>
+            </div>
+          </div>
+          <div class="chevron" id="chevron-rec-2">▼</div>
+        </div>
+        <div class="rec-body" id="body-rec-2" style="display:none">
+          <div class="cadence-dots">
+            <div class="cadence-dot done-d">S</div>
+            <div class="cadence-dot done-d">T</div>
+            <div class="cadence-dot done-d">Q</div>
+            <div class="cadence-dot done-d">Q</div>
+            <div class="cadence-dot done-d">S</div>
+            <div class="cadence-dot future-d">S</div>
+            <div class="cadence-dot today-d">D</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUCKET: One-shot -->
+    <div id="bucket-oneshot" style="display:none">
+      <div class="section-label">Faça quando quiser</div>
+
+      <div class="task-card" id="task-os1">
+        <div class="task-dim-dot" style="background:var(--health-bg)">🦷</div>
+        <div class="task-body">
+          <div class="task-title">Marcar dentista</div>
+          <div class="task-meta">
+            <span class="dim-pill" style="background:var(--health-bg);color:var(--health)">saúde</span>
+            <span class="task-xp">+10 XP</span>
+            <span class="task-coins">🪙 10</span>
+          </div>
+        </div>
+        <div class="check-btn empty-btn" onclick="toggleTask('os1',event)"></div>
+      </div>
+
+      <div class="completed-section">
+        <div class="completed-header" onclick="toggleCompletedOneshot(this)">
+          <div class="completed-left">
+            <span class="completed-title">Concluídas</span>
+            <span class="completed-count" style="color:var(--text-faint)">0</span>
+          </div>
+          <span class="completed-toggle">▼</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage tasks button -->
+    <div class="manage-btn-wrap">
+      <div class="manage-btn" onclick="this.style.opacity='0.6';setTimeout(()=>this.style.opacity='1',300)">
+        <span class="manage-btn-icon">⚙️</span>
+        <span>Manage tasks</span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <div class="tab-item active">
+      <span class="tab-icon">☰</span>
+      <span class="tab-label">Tasks</span>
+    </div>
+    <div class="tab-item">
+      <span class="tab-icon">🎁</span>
+      <span class="tab-label">Rewards</span>
+    </div>
+    <div class="tab-item">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">Mo</span>
+    </div>
+    <div class="tab-item">
+      <span class="tab-icon">📖</span>
+      <span class="tab-label">Learn</span>
+    </div>
+    <div class="tab-item">
+      <span class="tab-icon">⚙</span>
+      <span class="tab-label">Settings</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.getHours().toString().padStart(2,'0') + ':' +
+      now.getMinutes().toString().padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  // Day label
+  const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const now = new Date();
+  document.getElementById('eyebrow').textContent =
+    DAYS[now.getDay()] + ', ' + MONTHS[now.getMonth()] + ' ' + now.getDate() + ' · DECO';
+
+  // State
+  let xp = 88, coins = 408, rewardCoins = 340, rewardTotal = 500;
+  let taskState = { 1: true, 2: false, 3: false, w1: false, w2: false, os1: false };
+  let completedToday = 2; // dormir já estava done
+
+  function updateHeader() {
+    document.getElementById('coinDisplay').textContent = coins;
+    const xpPct = (xp / 500 * 100).toFixed(1);
+    document.getElementById('xpBar').style.width = xpPct + '%';
+    document.getElementById('xpLabel').textContent = xp + ' / 500';
+    const rwPct = Math.round(rewardCoins / rewardTotal * 100);
+    document.getElementById('rewardBar').style.width = rwPct + '%';
+    document.getElementById('rewardPct').textContent = rwPct + '%';
+  }
+  updateHeader();
+
+  function updateRing() {
+    const done = [taskState[1], taskState[2], taskState[3]].filter(Boolean).length;
+    const total = 3;
+    const remaining = total - done;
+    const pct = done / total;
+    const circ = 163.4;
+    const offset = circ - pct * circ;
+    document.getElementById('ringArc').setAttribute('stroke-dashoffset', offset.toFixed(1));
+    document.getElementById('ringNum').textContent = done;
+    document.getElementById('ringDen').textContent = '/' + total;
+    document.getElementById('ringTitle').textContent =
+      remaining === 0 ? 'Tudo feito! 🎉' : remaining + ' a fazer';
+    document.getElementById('todayCount').textContent = remaining;
+  }
+
+  function addXP(amount) {
+    xp += amount;
+    document.getElementById('xpBar').classList.add('pulsing');
+    setTimeout(() => document.getElementById('xpBar').classList.remove('pulsing'), 500);
+    updateHeader();
+  }
+
+  function addCoins(amount) {
+    coins += amount;
+    rewardCoins = Math.min(rewardCoins + Math.round(amount * 0.5), rewardTotal);
+    updateHeader();
+  }
+
+  function toggleTask(id, event) {
+    event.stopPropagation();
+    const card = document.getElementById('task-' + id);
+    const btn = card.querySelector('.check-btn');
+    taskState[id] = !taskState[id];
+
+    btn.classList.add('popping');
+    setTimeout(() => btn.classList.remove('popping'), 300);
+
+    if (taskState[id]) {
+      btn.classList.remove('empty-btn');
+      btn.classList.add('done-btn');
+      btn.textContent = '✓';
+      card.classList.add('done');
+      // XP/coins based on task
+      const xpMap = { 1: 15, 2: 15, 3: 5, w1: 15, w2: 20, os1: 10 };
+      const coinMap = { 1: 15, 2: 15, 3: 5, w1: 15, w2: 20, os1: 10 };
+      addXP(xpMap[id] || 10);
+      addCoins(coinMap[id] || 10);
+      if (typeof id === 'number') {
+        completedToday++;
+        document.getElementById('completedCount').textContent = completedToday;
+      }
+    } else {
+      btn.classList.remove('done-btn');
+      btn.classList.add('empty-btn');
+      btn.textContent = '';
+      card.classList.remove('done');
+      if (typeof id === 'number' && completedToday > 0) {
+        completedToday--;
+        document.getElementById('completedCount').textContent = completedToday;
+      }
+    }
+
+    if (typeof id === 'number') updateRing();
+  }
+
+  // Bucket switch
+  const buckets = ['today', 'week', 'recurring', 'oneshot'];
+  function switchBucket(name, el) {
+    document.querySelectorAll('.bucket-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    buckets.forEach(b => {
+      const el = document.getElementById('bucket-' + b);
+      if (el) el.style.display = 'none';
+    });
+    document.getElementById('bucket-' + name).style.display = 'block';
+  }
+
+  // Quest toggle
+  let questsOpen = true;
+  function toggleQuests() {
+    questsOpen = !questsOpen;
+    document.getElementById('questBody').style.display = questsOpen ? 'block' : 'none';
+    document.getElementById('questToggle').textContent = questsOpen ? '▲ ocultar' : '▼ ver quests';
+  }
+
+  // Recurring toggle
+  function toggleRecurring(id) {
+    const body = document.getElementById('body-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    chevron.classList.toggle('open', !open);
+  }
+
+  // Completed today toggle
+  let completedOpen = false;
+  function toggleCompleted() {
+    completedOpen = !completedOpen;
+    const header = document.getElementById('completedHeader');
+    const body = document.getElementById('completedBody');
+    const toggle = document.getElementById('completedToggle');
+    body.style.display = completedOpen ? 'block' : 'none';
+    header.classList.toggle('open', completedOpen);
+    toggle.classList.toggle('open', completedOpen);
+  }
+
+  function toggleCompletedWeek(headerEl) {
+    const body = headerEl.nextElementSibling;
+    const toggle = headerEl.querySelector('.completed-toggle');
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    headerEl.classList.toggle('open', !open);
+    toggle.classList.toggle('open', !open);
+  }
+
+  function toggleCompletedOneshot(headerEl) {
+    // no items — just toggle visually
+    headerEl.classList.toggle('open');
+    headerEl.querySelector('.completed-toggle').classList.toggle('open');
+  }
+</script>
+</body>
+</html>

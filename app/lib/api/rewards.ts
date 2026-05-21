@@ -4,7 +4,7 @@ import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { getCurrentLocale } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 
-import { characterKeys, type CharacterWithProfile } from './character';
+import { characterKeys, useCharacter, type CharacterWithProfile } from './character';
 
 export const rewardKeys = {
   all: ['rewards'] as const,
@@ -366,6 +366,36 @@ export function useSetTrackedReward() {
       queryClient.invalidateQueries({ queryKey: rewardKeys.tracked() });
     },
   });
+}
+
+/**
+ * Composite view of the user's currently-tracked reward: name + progress
+ * (coins vs. cost) + icon. Returns `null` when no reward is pinned, when
+ * the pinned reward was archived, or while character/rewards are loading.
+ *
+ * Built from the two existing hooks (`useTrackedRewardId`, `useRewards`)
+ * plus `useCharacter` for coin balance — the Home header binds to this
+ * to render the row 2 progress bar without coupling to the rewards screen.
+ */
+export function useTrackedReward(): {
+  name: string;
+  currentCoins: number;
+  totalCoins: number;
+  icon: string;
+} | null {
+  const trackedId = useTrackedRewardId();
+  const rewards = useRewards();
+  const character = useCharacter();
+  if (!trackedId.data) return null;
+  const reward = (rewards.data ?? []).find((r) => r.id === trackedId.data);
+  if (!reward) return null;
+  const coins = character.data?.character.coins ?? 0;
+  return {
+    name: reward.title,
+    currentCoins: Math.min(coins, reward.cost),
+    totalCoins: reward.cost,
+    icon: reward.icon,
+  };
 }
 
 /** Mark a banked redemption as used (consumed). */

@@ -1,6 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as RNImage, StyleSheet, View } from 'react-native';
+import Svg, {
+  Defs,
+  Line,
+  Pattern,
+  RadialGradient,
+  Rect,
+  Stop,
+} from 'react-native-svg';
 
 import type { DimensionId, SubId } from '@/lib/db/types';
 import { SUB_META } from '@/theme/dimensions';
@@ -55,7 +63,7 @@ export function MaterialCover({
       ? (SUB_META[subId].iconName as keyof typeof Ionicons.glyphMap)
       : ((dimIconName ?? 'sparkles') as keyof typeof Ionicons.glyphMap);
 
-  const size = variant === 'hero' ? 88 : 64;
+  const size = variant === 'hero' ? 88 : 80;
   const containerStyle = variant === 'hero' ? styles.hero : styles.card;
 
   if (imageUrl) {
@@ -85,8 +93,54 @@ export function MaterialCover({
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      {/* Soft radial highlight in the top-left for depth. */}
-      <View style={styles.glow} />
+      {/* Faint diagonal stripes — gives the cover the "Headway-ish" texture
+         (white lines at 45°, 8% opacity over the gradient). */}
+      <Svg
+        width="100%"
+        height="100%"
+        style={StyleSheet.absoluteFill}
+        opacity={0.08}
+        preserveAspectRatio="none"
+      >
+        <Defs>
+          <Pattern
+            id="cover-stripes"
+            width="14"
+            height="14"
+            patternUnits="userSpaceOnUse"
+            patternTransform="rotate(45)"
+          >
+            <Line x1="0" y1="0" x2="0" y2="14" stroke="#ffffff" strokeWidth="1.5" />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#cover-stripes)" />
+      </Svg>
+      {/* Soft radial highlight anchored at top-left corner. SVG radial
+         gradient fades from 20% white at the corner out to 0% at the
+         edge — replaces the previous solid circle that read as a sharp
+         bright spot. */}
+      <Svg
+        width="100%"
+        height="100%"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        <Defs>
+          <RadialGradient
+            id="cover-glow"
+            cx="0%"
+            cy="0%"
+            rx="80%"
+            ry="80%"
+            fx="0%"
+            fy="0%"
+          >
+            <Stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
+            <Stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#cover-glow)" />
+      </Svg>
       <View style={styles.iconWrap}>
         <Ionicons name={iconName} size={size} color="rgba(255,255,255,0.92)" />
       </View>
@@ -96,8 +150,10 @@ export function MaterialCover({
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%',
-    aspectRatio: 16 / 10,
+    // Fills its parent fully — CoverCard wraps it in a fixed 2:3 frame
+    // so we don't need our own aspect ratio constraint here. Without
+    // this, an aspectRatio:16/10 left a dark band below the cover art.
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
     backgroundColor: '#1A1F44',
     alignItems: 'center',
@@ -110,15 +166,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1F44',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  glow: {
-    position: 'absolute',
-    top: -60,
-    left: -60,
-    width: 200,
-    height: 200,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   iconWrap: {
     alignItems: 'center',

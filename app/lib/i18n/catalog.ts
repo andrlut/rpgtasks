@@ -50,8 +50,36 @@ export function localizedNullable(
 export function useLocalizedPick() {
   const { locale } = useT();
   return {
-    pick: (en: string, pt: string | null | undefined) => pick(en, pt, locale),
-    pickNullable: (en: string | null, pt: string | null) =>
-      pickNullable(en, pt, locale),
+    pick: (en: string | null | undefined, pt: string | null | undefined) =>
+      pick(en, pt, locale),
+    pickNullable: (
+      en: string | null | undefined,
+      pt: string | null | undefined,
+    ) => pickNullable(en, pt, locale),
+    /**
+     * Locale-aware cascade for catalog fields that may have BOTH locale
+     * variants nullable (e.g. quest_template post-v3 — `title` is the
+     * legacy mono field, often NULL on v3 rows; `title_pt` and `title_en`
+     * are the bilingual fields). Falls back across locales and then the
+     * legacy field, in that priority.
+     */
+    pickCascade: (
+      en: string | null | undefined,
+      pt: string | null | undefined,
+      legacy?: string | null | undefined,
+    ): string => {
+      const first = locale === 'pt' ? pt : en;
+      const second = locale === 'pt' ? en : pt;
+      return (first || second || legacy || '') as string;
+    },
+    pickCascadeNullable: (
+      en: string | null | undefined,
+      pt: string | null | undefined,
+      legacy?: string | null | undefined,
+    ): string | null => {
+      const first = locale === 'pt' ? pt : en;
+      const second = locale === 'pt' ? en : pt;
+      return (first || second || legacy || null) as string | null;
+    },
   };
 }

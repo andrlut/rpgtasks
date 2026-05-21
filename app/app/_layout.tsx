@@ -136,6 +136,14 @@ export default function RootLayout() {
               options={{ presentation: 'modal', headerShown: false }}
             />
             <Stack.Screen
+              name="quest-detail/[id]"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="quest-create"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
               name="self-assessment"
               options={{ presentation: 'modal', headerShown: false }}
             />

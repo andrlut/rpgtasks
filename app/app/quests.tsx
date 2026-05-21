@@ -13,80 +13,107 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useBottomNavClearance } from '@/components/BottomNavBar';
+import { CategoryHeader } from '@/components/CategoryHeader';
 import { QuestCard } from '@/components/QuestCard';
-import { QuestTemplateCard } from '@/components/QuestTemplateCard';
 import {
-  useAbandonQuest,
   useCompleteQuest,
   useQuestTemplates,
   useQuests,
   useStartQuestFromTemplate,
 } from '@/lib/api/quests';
-import type { QuestTemplate } from '@/lib/db/types';
-import { confirmAction, showInfo } from '@/lib/util/confirm';
+import { useT } from '@/lib/i18n';
+import type { QuestTemplate, QuestWithProgress } from '@/lib/db/types';
+import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
-import { getQuestCategoryMeta } from '@/theme/quests';
+import { QUEST_CATEGORY_ORDER, getQuestCategoryMeta } from '@/theme/quests';
 
-/** Display order for category groupings — keeps the board scannable. */
-const CATEGORY_ORDER = ['fitness', 'health', 'mind', 'wealth', 'bonds', 'craft'];
-
+/**
+ * Quest Board — list of every available template + the user's in-flight
+ * quests, grouped by category. Active and inactive cards interleave in
+ * each category section so the user sees what they're doing in context
+ * with what's still on offer.
+ *
+ * Long-press wiring is a stub until the detail screen lands (Phase 2 of
+ * the redesign): tapping the play badge starts the quest; long-press
+ * on an active card opens an abandon confirmation.
+ */
 export default function QuestBoardScreen() {
   const router = useRouter();
+  const { t } = useT();
   const quests = useQuests();
   const templates = useQuestTemplates();
   const startTemplate = useStartQuestFromTemplate();
   const completeQuest = useCompleteQuest();
-  const abandonQuest = useAbandonQuest();
+  const bottomClearance = useBottomNavClearance();
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const { active, others } = useMemo(() => {
-    const all = quests.data ?? [];
-    return {
-      active: all.filter((q) => q.quest.status === 'active'),
-      others: all.filter((q) => q.quest.status !== 'active').slice(0, 5),
-    };
-  }, [quests.data]);
+  // ── Derived ────────────────────────────────────────────────────────────
+  const active = useMemo(
+    () => (quests.data ?? []).filter((q) => q.quest.status === 'active'),
+    [quests.data],
+  );
 
-  // Templates the user already has an active or recent copy of —
-  // dim them so the user knows.
-  const activeTemplateIds = useMemo(() => {
-    const set = new Set<string>();
-    (quests.data ?? []).forEach((q) => {
-      if (q.quest.template_id && q.quest.status === 'active') {
-        set.add(q.quest.template_id);
-      }
-    });
-    return set;
-  }, [quests.data]);
-
-  // Group templates by category so the board reads as a curated catalog
-  // instead of a flat dump. Categories rendered in CATEGORY_ORDER first,
-  // then any unknown ones at the end (defensive — catalog can grow).
-  const templatesByCategory = useMemo(() => {
-    const map = new Map<string, QuestTemplate[]>();
-    for (const t of templates.data ?? []) {
-      const arr = map.get(t.category) ?? [];
-      arr.push(t);
-      map.set(t.category, arr);
+  /** template_id → active quest using that template (for dimming). */
+  const activeByTemplateId = useMemo(() => {
+    const map = new Map<string, QuestWithProgress>();
+    for (const q of active) {
+      if (q.quest.template_id) map.set(q.quest.template_id, q);
     }
     return map;
-  }, [templates.data]);
+  }, [active]);
 
-  const orderedCategories = useMemo(() => {
-    const known = CATEGORY_ORDER.filter((c) => templatesByCategory.has(c));
-    const unknown = Array.from(templatesByCategory.keys()).filter(
-      (c) => !CATEGORY_ORDER.includes(c),
-    );
-    return [...known, ...unknown];
-  }, [templatesByCategory]);
+  /** Templates the user hasn't started (or that don't dedupe to an active row). */
+  const inactiveTemplates = useMemo(
+    () => (templates.data ?? []).filter((tmpl) => !activeByTemplateId.has(tmpl.id)),
+    [templates.data, activeByTemplateId],
+  );
 
+  /** Bucketed by category for rendering. */
+  const sections = useMemo(() => {
+    const map = new Map<
+      string,
+      { actives: QuestWithProgress[]; templates: QuestTemplate[] }
+    >();
+    for (const q of active) {
+      // Active quests don't carry category — resolve via the linked template
+      // when available; otherwise drop into a synthetic "custom" bucket.
+      const tmpl = (templates.data ?? []).find((t) => t.id === q.quest.template_id);
+      const cat = tmpl?.category ?? 'custom';
+      const slot = map.get(cat) ?? { actives: [], templates: [] };
+      slot.actives.push(q);
+      map.set(cat, slot);
+    }
+    for (const tmpl of inactiveTemplates) {
+      const slot = map.get(tmpl.category) ?? { actives: [], templates: [] };
+      slot.templates.push(tmpl);
+      map.set(tmpl.category, slot);
+    }
+    // Order: predefined categories first, then any unknown ones alphabetically.
+    const knownOrder = QUEST_CATEGORY_ORDER.filter((c) => map.has(c));
+    const unknown = [...map.keys()]
+      .filter((c) => !QUEST_CATEGORY_ORDER.includes(c))
+      .sort();
+    return [...knownOrder, ...unknown].map((cat) => ({
+      cat,
+      ...map.get(cat)!,
+    }));
+  }, [active, inactiveTemplates, templates.data]);
+
+  const totalActiveCount = active.length;
+
+  // ── Handlers ───────────────────────────────────────────────────────────
   const handleStart = async (templateId: string) => {
     setBusyId(templateId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     try {
       await startTemplate.mutateAsync(templateId);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
+      const err = e as { message?: string; code?: string; details?: string; hint?: string };
+      console.error('[start_quest_from_template] failed', err);
+      const msg =
+        [err.message, err.code, err.details, err.hint].filter(Boolean).join('\n') ||
+        'Unknown error';
       showInfo('Could not start quest', msg);
     } finally {
       setBusyId(null);
@@ -105,53 +132,75 @@ export default function QuestBoardScreen() {
         `+${result.reward_xp} XP and +${result.reward_coins} coins.`,
       );
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
+      const err = e as { message?: string; code?: string; details?: string; hint?: string };
+      console.error('[complete_quest] failed', err);
+      const msg =
+        [err.message, err.code, err.details, err.hint].filter(Boolean).join('\n') ||
+        'Unknown error';
       showInfo('Could not claim', msg);
     } finally {
       setBusyId(null);
     }
   };
 
-  const handleAbandon = async (questId: string, title: string) => {
-    const ok = await confirmAction(
-      'Abandon quest?',
-      `"${title}" will be marked as abandoned. No reward.`,
-      { okText: 'Abandon', cancelText: 'Keep it', destructive: true },
-    );
-    if (!ok) return;
-    setBusyId(questId);
-    try {
-      await abandonQuest.mutateAsync(questId);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not abandon', msg);
-    } finally {
-      setBusyId(null);
-    }
+  const handleInactiveLongPress = (templateId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    router.push({
+      pathname: '/quest-detail/[id]',
+      params: { id: templateId, kind: 'template' },
+    });
   };
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <Stack.Screen options={{ headerShown: false, presentation: 'modal' }} />
+  const handleActiveLongPress = (q: QuestWithProgress) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    router.push({
+      pathname: '/quest-detail/[id]',
+      params: { id: q.quest.id, kind: 'quest' },
+    });
+  };
 
+  const handleCreateCustom = () => {
+    router.push('/quest-create');
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────
+  const isLoading = quests.isLoading || templates.isLoading;
+  const refreshing = quests.isRefetching || templates.isRefetching;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => router.back()}
-          style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
-          hitSlop={8}
+          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
         >
-          <Ionicons name="close" size={24} color={tokens.text.hi} />
+          <Ionicons name="close" size={16} color={tokens.text.mid} />
         </Pressable>
-        <Text style={styles.headerTitle}>Quest Board</Text>
-        <View style={{ width: 36 }} />
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>{t('quests.board.title')}</Text>
+          {inactiveTemplates.length > 0 && (
+            <Text style={styles.headerSubtitle}>{t('quests.board.subtitle')}</Text>
+          )}
+        </View>
+        <View style={styles.activeChip}>
+          <Text style={styles.activeChipText}>
+            {t('quests.board.activeChip', { count: totalActiveCount })}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.scroll, { paddingBottom: bottomClearance }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={quests.isRefetching || templates.isRefetching}
+            refreshing={refreshing}
             onRefresh={() => {
               quests.refetch();
               templates.refetch();
@@ -160,130 +209,68 @@ export default function QuestBoardScreen() {
           />
         }
       >
-        <Text style={styles.tagline}>
-          Pick something hard. Claim a reward. Or set your own.
-        </Text>
-
-        {/* Active quests */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your active quests</Text>
-          {active.length > 0 && (
-            <Text style={styles.sectionMeta}>{active.length}</Text>
-          )}
-        </View>
-
-        {quests.isLoading ? (
-          <View style={styles.loadingBox}>
+        {isLoading ? (
+          <View style={styles.loading}>
             <ActivityIndicator color={tokens.brand.violet2} />
           </View>
-        ) : active.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Ionicons name="trophy-outline" size={36} color={tokens.text.dim} />
-            <Text style={styles.emptyTitle}>No active quests</Text>
-            <Text style={styles.emptySub}>
-              Tap a template below to take one on.
-            </Text>
+        ) : sections.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="flag-outline" size={36} color={tokens.text.dim} />
+            <Text style={styles.emptyText}>{t('quests.empty')}</Text>
           </View>
         ) : (
-          <View style={styles.list}>
-            {active.map((q) => (
-              <QuestCard
-                key={q.quest.id}
-                data={q}
-                onClaim={() => handleClaim(q.quest.id)}
-                onAbandon={
-                  busyId !== q.quest.id
-                    ? () => handleAbandon(q.quest.id, q.quest.title)
-                    : undefined
-                }
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Templates — grouped by category */}
-        <View style={[styles.sectionHeader, { marginTop: tokens.space[6] }]}>
-          <Text style={styles.sectionTitle}>Quest Board</Text>
-          <Text style={styles.sectionMeta}>system catalog</Text>
-        </View>
-
-        {templates.isLoading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator color={tokens.brand.violet2} />
-          </View>
-        ) : (
-          <View style={styles.categoryList}>
-            {orderedCategories.map((cat) => {
-              const meta = getQuestCategoryMeta(cat);
-              const items = templatesByCategory.get(cat) ?? [];
-              return (
-                <View key={cat} style={styles.categoryBlock}>
-                  <View style={styles.categoryHeader}>
-                    <View style={[styles.categoryIcon, { backgroundColor: meta.bg }]}>
-                      <Ionicons
-                        name={meta.icon as never}
-                        size={12}
-                        color={meta.color}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.categoryLabel,
-                        { color: meta.color },
-                      ]}
-                    >
-                      {meta.label.toUpperCase()}
-                    </Text>
-                    <Text style={styles.categoryCount}>{items.length}</Text>
-                  </View>
-                  <View style={styles.list}>
-                    {items.map((t) => (
-                      <View
-                        key={t.id}
-                        style={
-                          activeTemplateIds.has(t.id)
-                            ? styles.templateAlreadyActive
-                            : undefined
-                        }
-                      >
-                        <QuestTemplateCard
-                          template={t}
-                          onStart={() => handleStart(t.id)}
-                          isStarting={busyId === t.id}
-                        />
-                        {activeTemplateIds.has(t.id) && (
-                          <Text style={styles.alreadyActiveLabel}>Already active</Text>
-                        )}
-                      </View>
-                    ))}
-                  </View>
+          sections.map(({ cat, actives, templates: catTemplates }) => {
+            const meta = getQuestCategoryMeta(cat);
+            const totalInSection = actives.length + catTemplates.length;
+            if (totalInSection === 0) return null;
+            return (
+              <View key={cat} style={styles.section}>
+                <CategoryHeader
+                  label={meta.label}
+                  color={meta.color}
+                  count={totalInSection}
+                />
+                <View style={styles.cardsList}>
+                  {actives.map((q) => (
+                    <QuestCard
+                      key={`active-${q.quest.id}`}
+                      variant="active"
+                      data={q}
+                      onLongPress={() => handleActiveLongPress(q)}
+                      onClaim={() => handleClaim(q.quest.id)}
+                      isClaiming={busyId === q.quest.id}
+                    />
+                  ))}
+                  {catTemplates.map((tmpl) => (
+                    <QuestCard
+                      key={`tmpl-${tmpl.id}`}
+                      variant="inactive"
+                      template={tmpl}
+                      onStart={() => handleStart(tmpl.id)}
+                      onLongPress={() => handleInactiveLongPress(tmpl.id)}
+                      isStarting={busyId === tmpl.id}
+                      showLongPressHint={false}
+                    />
+                  ))}
                 </View>
-              );
-            })}
-          </View>
+              </View>
+            );
+          })
         )}
 
-        {/* Custom quests deferred — once start_custom_quest gets a UI, a
-            "Custom" block will sit above the system catalog (mirrors the
-            tasks "Mine vs Suggested" pattern). For now: doc the gap so
-            the user knows where the surface will live. */}
-        <Text style={styles.customDeferredNote}>
-          Custom quest creation is coming soon. For now, the system catalog
-          above covers the highest-yield arcs.
-        </Text>
-
-        {/* Recent history */}
-        {others.length > 0 && (
-          <>
-            <View style={[styles.sectionHeader, { marginTop: tokens.space[6] }]}>
-              <Text style={styles.sectionTitle}>Recently finished</Text>
+        {/* Create custom quest CTA */}
+        {!isLoading && (
+          <Pressable
+            onPress={handleCreateCustom}
+            style={({ pressed }) => [styles.createBtn, pressed && { opacity: 0.7 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t('quests.board.createCta')}
+          >
+            <View style={styles.createIcon}>
+              <Ionicons name="add" size={14} color={tokens.brand.violet} />
             </View>
-            <View style={styles.list}>
-              {others.map((q) => (
-                <QuestCard key={q.quest.id} data={q} />
-              ))}
-            </View>
-          </>
+            <Text style={styles.createText}>{t('quests.board.createCta')}</Text>
+          </Pressable>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -291,130 +278,105 @@ export default function QuestBoardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.base },
+  safe: { flex: 1, backgroundColor: tokens.bg.deep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[3],
+    gap: 8,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[2],
     borderBottomWidth: 1,
     borderBottomColor: tokens.border.base,
   },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: tokens.bg.surface,
-  },
-  headerTitle: {
-    ...tokens.type.h3,
-    color: tokens.text.hi,
-  },
-  content: {
-    padding: tokens.space[4],
-    paddingBottom: tokens.space[10],
-    gap: tokens.space[2],
-  },
-  tagline: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: tokens.space[3],
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: tokens.space[3],
-    marginBottom: tokens.space[3],
-  },
-  sectionTitle: {
-    ...tokens.type.h3,
-    color: tokens.text.hi,
-  },
-  sectionMeta: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  list: {
-    gap: tokens.space[3],
-  },
-  loadingBox: {
-    paddingVertical: tokens.space[6],
-    alignItems: 'center',
-  },
-  emptyBox: {
-    paddingVertical: tokens.space[6],
-    alignItems: 'center',
-    gap: tokens.space[2],
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
+  closeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: tokens.bg.surface2,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    borderStyle: 'dashed',
-  },
-  emptyTitle: {
-    ...tokens.type.h3,
-    color: tokens.text.hi,
-    marginTop: tokens.space[2],
-  },
-  emptySub: {
-    ...tokens.type.body,
-    color: tokens.text.mid,
-    textAlign: 'center',
-    paddingHorizontal: tokens.space[6],
-  },
-  templateAlreadyActive: {
-    opacity: 0.5,
-  },
-  alreadyActiveLabel: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    textAlign: 'center',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  categoryList: {
-    gap: tokens.space[5],
-  },
-  categoryBlock: {
-    gap: tokens.space[3],
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[2],
-  },
-  categoryIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: tokens.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryLabel: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    letterSpacing: 0.8,
+  headerInfo: {
     flex: 1,
+    minWidth: 0,
   },
-  categoryCount: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    fontFamily: 'Manrope_700Bold',
+  headerTitle: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 14,
+    color: tokens.text.hi,
   },
-  customDeferredNote: {
-    ...tokens.type.caption,
+  headerSubtitle: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 9,
+    color: tokens.text.faint,
+    marginTop: 1,
+  },
+  activeChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(123,92,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(123,92,255,0.3)',
+  },
+  activeChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.brand.violet2,
+  },
+  scroll: {
+    paddingHorizontal: tokens.space[2],
+    paddingTop: tokens.space[2],
+  },
+  loading: {
+    paddingVertical: tokens.space[10],
+    alignItems: 'center',
+  },
+  empty: {
+    paddingVertical: tokens.space[10],
+    alignItems: 'center',
+    gap: tokens.space[3],
+  },
+  emptyText: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12,
     color: tokens.text.dim,
-    fontStyle: 'italic',
     textAlign: 'center',
-    marginTop: tokens.space[5],
-    paddingHorizontal: tokens.space[6],
+    paddingHorizontal: tokens.space[5],
+  },
+  section: {
+    marginBottom: tokens.space[1],
+  },
+  cardsList: {
+    gap: 5,
+  },
+  createBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: tokens.space[3],
+    paddingVertical: tokens.space[3] + 1,
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: tokens.border.strong,
+    borderRadius: tokens.radius.md,
+  },
+  createIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    backgroundColor: 'rgba(123, 92, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: tokens.text.dim,
   },
 });

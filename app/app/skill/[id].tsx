@@ -15,9 +15,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import {
@@ -116,7 +115,12 @@ export default function SkillDetailScreen() {
   const deleteSkill = useDeleteCustomSkill();
 
   const [valueStr, setValueStr] = useState('');
-  const bottomClearance = useBottomNavClearance();
+  const insets = useSafeAreaInsets();
+  // CTA bar sits above the system gesture bar via insets.bottom + a small
+  // visual gap. Content padding must reserve room for the CTA bar height
+  // (56) + its bottom offset so the scroll's last items aren't hidden.
+  const ctaBottom = Math.max(insets.bottom, 8) + 16;
+  const ctaClearance = 56 + ctaBottom + 8;
 
   const state = skillStates.data?.find((s) => s.skill.id === skillId);
 
@@ -251,9 +255,7 @@ export default function SkillDetailScreen() {
                 color={tokens.text.hi}
               />
             </Pressable>
-          ) : (
-            <View style={styles.iconButton} />
-          )}
+          ) : null}
         </View>
 
         <KeyboardAvoidingView
@@ -261,7 +263,7 @@ export default function SkillDetailScreen() {
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
+            contentContainerStyle={[styles.content, { paddingBottom: ctaClearance }]}
             keyboardShouldPersistTaps="handled"
           >
             {/* Hero — orbital medallion + tier eyebrow + skill name + PR row */}
@@ -476,8 +478,20 @@ export default function SkillDetailScreen() {
             </View>
           </ScrollView>
 
-          {/* CTA bar — sticky at bottom */}
-          <View style={styles.ctaBar}>
+          {/* Solid backdrop behind the system gesture bar so the page bg
+             doesn't show transparent through the OS nav area. */}
+          {insets.bottom > 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.systemBarBackdrop,
+                { height: insets.bottom, backgroundColor: tokens.bg.deep },
+              ]}
+            />
+          )}
+
+          {/* CTA bar — sticky at bottom, respects safe-area gesture bar */}
+          <View style={[styles.ctaBar, { bottom: ctaBottom }]}>
             <View style={styles.inputPill}>
               <Ionicons
                 name={state.skill.icon as never}
@@ -631,11 +645,15 @@ const styles = StyleSheet.create({
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   topBar: {
+    position: 'absolute',
+    top: tokens.space[1],
+    left: 0,
+    right: 0,
+    zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[2],
+    paddingHorizontal: tokens.space[3],
   },
   iconButton: {
     width: 40,
@@ -654,7 +672,7 @@ const styles = StyleSheet.create({
 
   hero: {
     alignItems: 'center',
-    paddingTop: tokens.space[3],
+    paddingTop: tokens.space[6],
     paddingBottom: tokens.space[2],
   },
   tierEyebrow: {
@@ -962,6 +980,12 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 8,
+  },
+  systemBarBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   inputPill: {
     flex: 1,

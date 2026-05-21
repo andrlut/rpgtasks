@@ -1,0 +1,730 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.wrap {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-lg);
+  overflow-x: auto;
+  align-items: flex-start;
+}
+.col { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.col-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: 0.3px;
+}
+
+.phone {
+  width: 210px;
+  background: #0b0d1a;
+  border-radius: 24px;
+  border: 1.5px solid #252848;
+  overflow: hidden;
+  color: #e0e4ff;
+  font-family: -apple-system, sans-serif;
+}
+
+.sb {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #7880b0;
+}
+
+.sh {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px 8px;
+  border-bottom: 1px solid #1a1e38;
+  gap: 7px;
+}
+.sh-close {
+  width: 26px; height: 26px;
+  border-radius: 7px;
+  background: #1a1e38;
+  border: 1px solid #252848;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #7880b0; flex-shrink: 0;
+}
+.sh-info { flex: 1; min-width: 0; }
+.sh-title { font-size: 13px; font-weight: 800; color: #e0e4ff; }
+.sh-sub { font-size: 9px; color: #3d4270; }
+.sh-chip {
+  background: rgba(123,92,255,0.15);
+  border: 1px solid rgba(123,92,255,0.3);
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 9px; font-weight: 800; color: #a08fff;
+  flex-shrink: 0;
+}
+
+.body { padding: 8px 8px 12px; }
+
+.cat-hdr {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 2px 4px;
+}
+.cat-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.cat-name { font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; flex: 1; }
+.cat-ct { font-size: 9px; color: #3d4270; font-weight: 700; }
+
+.qcard {
+  background: #13162b;
+  border: 1px solid #1e2240;
+  border-radius: 11px;
+  padding: 9px 9px 8px;
+  margin-bottom: 5px;
+  position: relative;
+  overflow: hidden;
+}
+.qcard.active-q { border-color: #252850; background: #141730; }
+.qcard.inactive { opacity: 1; }
+
+.qacc {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.qtop {
+  display: flex; align-items: flex-start; gap: 7px;
+  margin-bottom: 5px;
+}
+.qico {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.qbody { flex: 1; min-width: 0; }
+.qnrow { display: flex; align-items: center; gap: 4px; margin-bottom: 1px; }
+.qname { font-size: 11px; font-weight: 800; color: #e0e4ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qdur { font-size: 9px; color: #4a5080; font-weight: 700; flex-shrink: 0; }
+.qdesc { font-size: 9px; color: #6670a0; line-height: 1.35; margin-bottom: 5px; }
+
+.qchips { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+.qchip { border-radius: 5px; padding: 1px 5px; font-size: 8px; font-weight: 700; }
+
+.qrew { display: flex; align-items: center; gap: 6px; }
+.rchip { font-size: 9px; font-weight: 800; display: flex; align-items: center; gap: 2px; }
+.ptag {
+  background: rgba(160,143,255,0.12);
+  border: 1px solid rgba(160,143,255,0.25);
+  border-radius: 20px;
+  padding: 1px 6px;
+  font-size: 8px; font-weight: 700; color: #a08fff;
+  margin-left: auto;
+}
+
+.qbtn {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1.5px solid #2a2d55;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.play-tri {
+  width: 0; height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #4a5080;
+  margin-left: 2px;
+}
+
+.qprog {
+  border-top: 1px solid #1a1e38;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+.prog-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.plabel { font-size: 9px; color: #6670a0; }
+.pval { font-size: 9px; font-weight: 800; color: #a08fff; }
+.ptrack { height: 3px; background: #1e2240; border-radius: 2px; overflow: hidden; }
+.pfill { height: 100%; border-radius: 2px; }
+.palabel { display: flex; align-items: center; gap: 3px; margin-top: 3px; }
+.pdot { width: 4px; height: 4px; border-radius: 50%; background: #3dd68c; }
+.ptxt { font-size: 8px; font-weight: 700; color: #3dd68c; }
+.pdays { font-size: 8px; color: #3d4270; margin-left: auto; }
+
+.long-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 0;
+  font-size: 8px;
+  color: #3d4270;
+}
+
+.create-btn {
+  width: 100%;
+  background: #1a1e38;
+  border: 1px dashed #2a2d55;
+  border-radius: 11px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #4a5080;
+  margin-top: 4px;
+}
+.plus-ico {
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  background: rgba(123,92,255,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: #7b5cff;
+}
+
+/* ── DETAIL SCREEN ── */
+.detail-screen { background: #0b0d1a; }
+.detail-hero {
+  padding: 10px 10px 0;
+}
+.hero-card {
+  background: #141730;
+  border: 1px solid #252850;
+  border-radius: 12px;
+  padding: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-accent { position: absolute; left:0;top:0;bottom:0; width:3px; }
+.hero-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hero-ico {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.hero-name { font-size: 14px; font-weight: 800; color: #e0e4ff; }
+.hero-cat { font-size: 9px; color: #6670a0; margin-top: 1px; letter-spacing: 0.5px; text-transform: uppercase; }
+.hero-desc { font-size: 10px; color: #7880b0; line-height: 1.45; margin-bottom: 8px; }
+
+.prog-block { margin-bottom: 8px; }
+.prog-header { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.prog-title { font-size: 9px; font-weight: 800; color: #6670a0; letter-spacing: 0.5px; text-transform: uppercase; }
+.prog-num { font-size: 9px; font-weight: 800; color: #a08fff; }
+.ptrack2 { height: 5px; background: #1e2240; border-radius: 3px; overflow: hidden; }
+.pfill2 { height: 100%; border-radius: 3px; }
+.prog-meta { display: flex; justify-content: space-between; margin-top: 2px; }
+.prog-meta span { font-size: 8px; color: #3d4270; }
+
+.section-block { padding: 0 10px 8px; }
+.sec-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.7px;
+  text-transform: uppercase; color: #4a5080;
+  margin: 8px 0 5px;
+}
+.task-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px;
+  background: #13162b;
+  border: 1px solid #1e2240;
+  border-radius: 8px;
+  margin-bottom: 3px;
+}
+.task-ico {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; flex-shrink: 0;
+}
+.task-name { font-size: 10px; font-weight: 700; color: #e0e4ff; flex: 1; }
+.task-done { font-size: 11px; color: #3dd68c; }
+.task-pend { width: 14px; height: 14px; border-radius: 4px; border: 1px solid #2a2d55; }
+
+.rules-block {
+  padding: 0 10px 8px;
+}
+.rule-row {
+  display: flex; gap: 5px; align-items: flex-start;
+  margin-bottom: 3px;
+}
+.rule-dot { width: 4px; height: 4px; border-radius: 50%; background: #4a5080; margin-top: 4px; flex-shrink: 0; }
+.rule-text { font-size: 9px; color: #6670a0; line-height: 1.4; }
+
+.rewards-row {
+  display: flex; gap: 6px;
+  padding: 0 10px 8px;
+}
+.rew-block {
+  flex: 1;
+  background: #13162b;
+  border: 1px solid #1e2240;
+  border-radius: 8px;
+  padding: 7px 8px;
+  display: flex; align-items: center; gap: 5px;
+}
+.rew-val { font-size: 12px; font-weight: 800; }
+.rew-lbl { font-size: 8px; color: #4a5080; font-weight: 700; }
+
+.abandon-btn {
+  margin: 0 10px 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,107,122,0.25);
+  background: rgba(255,107,122,0.06);
+  display: flex; align-items: center; justify-content: center;
+  gap: 5px;
+  font-size: 11px; font-weight: 800; color: #ff6b7a;
+}
+
+/* ── CREATE SCREEN ── */
+.create-screen { background: #0b0d1a; }
+.csh {
+  display: flex; align-items: center;
+  padding: 8px 10px 8px;
+  border-bottom: 1px solid #1a1e38;
+  gap: 7px;
+}
+.csh-close {
+  width: 26px; height: 26px;
+  border-radius: 7px; background: #1a1e38; border: 1px solid #252848;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #7880b0; flex-shrink: 0;
+}
+.csh-title { flex: 1; font-size: 13px; font-weight: 800; color: #e0e4ff; }
+.save-btn {
+  background: #7b5cff;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 10px; font-weight: 800; color: #fff;
+  flex-shrink: 0;
+}
+
+.cbody { padding: 10px; }
+
+.field-block { margin-bottom: 10px; }
+.field-label { font-size: 9px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase; color: #4a5080; margin-bottom: 4px; }
+.field-input {
+  width: 100%;
+  background: #13162b;
+  border: 1px solid #252848;
+  border-radius: 9px;
+  padding: 8px 10px;
+  font-size: 11px; color: #e0e4ff;
+  font-family: inherit;
+}
+.field-input.filled { border-color: #2a2d55; color: #e0e4ff; }
+.field-placeholder { color: #3d4270; }
+
+.cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.cat-opt {
+  background: #13162b;
+  border: 1px solid #252848;
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 9px; font-weight: 800; color: #4a5080;
+}
+.cat-opt.sel { border-color: #4dd0ff; color: #4dd0ff; background: rgba(77,208,255,0.08); }
+
+.dur-row { display: flex; gap: 4px; }
+.dur-opt {
+  flex: 1;
+  background: #13162b;
+  border: 1px solid #252848;
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 9px; font-weight: 700; color: #4a5080;
+}
+.dur-opt.sel { border-color: #7b5cff; color: #a08fff; background: rgba(123,92,255,0.1); }
+
+.tasks-add {
+  background: #13162b;
+  border: 1px solid #252848;
+  border-radius: 9px;
+  overflow: hidden;
+}
+.task-add-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 9px;
+  border-bottom: 1px solid #1a1e38;
+}
+.task-add-row:last-child { border-bottom: none; }
+.task-add-ico { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; }
+.task-add-name { flex: 1; font-size: 10px; font-weight: 700; color: #e0e4ff; }
+.task-add-check {
+  width: 16px; height: 16px;
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff; flex-shrink: 0;
+}
+.add-more {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 7px;
+  font-size: 10px; font-weight: 800; color: #4a5080;
+  border-top: 1px solid #1a1e38;
+}
+
+.partial-toggle {
+  display: flex; align-items: center; gap: 8px;
+  background: #13162b;
+  border: 1px solid #252848;
+  border-radius: 9px;
+  padding: 9px 10px;
+}
+.pt-info { flex: 1; }
+.pt-title { font-size: 11px; font-weight: 700; color: #e0e4ff; }
+.pt-sub { font-size: 9px; color: #4a5080; margin-top: 1px; }
+.toggle-on {
+  width: 30px; height: 17px;
+  border-radius: 9px;
+  background: #7b5cff;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle-knob {
+  position: absolute;
+  right: 2px; top: 2px;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #fff;
+}
+</style>
+
+<h2 class="sr-only">Três telas do Quest Board: lista principal com estados inativos ricos, tela de detalhe com long press, e tela de criação de nova quest.</h2>
+
+<div class="wrap">
+
+  <!-- TELA 1: Quest Board lista -->
+  <div class="col">
+    <div class="col-label">1 · Lista</div>
+    <div class="phone">
+      <div class="sb"><span>18:22</span><span>WiFi 🔋</span></div>
+      <div class="sh">
+        <div class="sh-close">✕</div>
+        <div class="sh-info">
+          <div class="sh-title">Quest Board</div>
+          <div class="sh-sub">Segure para ver detalhes</div>
+        </div>
+        <div class="sh-chip">2 ativas</div>
+      </div>
+      <div class="body">
+
+        <!-- Sleep -->
+        <div class="cat-hdr">
+          <div class="cat-dot" style="background:#4dd0ff"></div>
+          <div class="cat-name" style="color:#4dd0ff">Sleep</div>
+          <div class="cat-ct">3</div>
+        </div>
+
+        <!-- Ativa -->
+        <div class="qcard active-q">
+          <div class="qacc" style="background:#4dd0ff"></div>
+          <div class="qtop">
+            <div class="qico" style="background:rgba(77,208,255,0.12)">🌙</div>
+            <div class="qbody">
+              <div class="qnrow">
+                <div class="qname">Sono consistente</div>
+                <div class="qdur">21d</div>
+              </div>
+              <div class="qdesc">Durma 7h+ por 21 dias. Um dia abaixo conta como partial.</div>
+              <div class="qrew">
+                <div class="rchip" style="color:#a08fff">⚡ +200</div>
+                <div class="rchip" style="color:#ffc83d">🪙 +50</div>
+                <div class="ptag">partial OK</div>
+              </div>
+            </div>
+          </div>
+          <div class="qprog">
+            <div class="prog-row">
+              <div class="plabel">Progresso</div>
+              <div class="pval">14 / 21 dias</div>
+            </div>
+            <div class="ptrack"><div class="pfill" style="width:66%;background:#4dd0ff"></div></div>
+            <div class="palabel">
+              <div class="pdot"></div>
+              <div class="ptxt">Em andamento</div>
+              <div class="pdays">7 dias restantes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inativa: mostra tasks vinculadas -->
+        <div class="qcard inactive">
+          <div class="qacc" style="background:#4dd0ff"></div>
+          <div class="qtop">
+            <div class="qico" style="background:rgba(77,208,255,0.08)">🌙</div>
+            <div class="qbody">
+              <div class="qnrow">
+                <div class="qname">Mestre do sono</div>
+                <div class="qdur">30d</div>
+              </div>
+              <div class="qdesc">30 dias de sono regulado. Desbloqueada após Sono consistente.</div>
+              <div class="qchips">
+                <div class="qchip" style="background:rgba(77,208,255,0.1);color:#4dd0ff">Dormir 7h+</div>
+                <div class="qchip" style="background:rgba(77,208,255,0.1);color:#4dd0ff">Alongar</div>
+              </div>
+              <div class="qrew">
+                <div class="rchip" style="color:#a08fff">⚡ +250</div>
+                <div class="rchip" style="color:#ffc83d">🪙 +65</div>
+                <div class="ptag">partial OK</div>
+              </div>
+            </div>
+            <div class="qbtn"><div class="play-tri" style="border-left-color:#4dd0ff"></div></div>
+          </div>
+          <div class="long-hint">
+            <span style="font-size:10px">○</span>
+            <span>Segure para ver mais</span>
+          </div>
+        </div>
+
+        <!-- Nutrition -->
+        <div class="cat-hdr" style="margin-top:2px">
+          <div class="cat-dot" style="background:#3dd68c"></div>
+          <div class="cat-name" style="color:#3dd68c">Nutrition</div>
+          <div class="cat-ct">2</div>
+        </div>
+
+        <div class="qcard active-q">
+          <div class="qacc" style="background:#3dd68c"></div>
+          <div class="qtop">
+            <div class="qico" style="background:rgba(61,214,140,0.12)">🥗</div>
+            <div class="qbody">
+              <div class="qnrow">
+                <div class="qname">Reset nutricional</div>
+                <div class="qdur">14d</div>
+              </div>
+              <div class="qdesc">2 refeições balanceadas/dia durante 2 semanas.</div>
+              <div class="qrew">
+                <div class="rchip" style="color:#a08fff">⚡ +200</div>
+                <div class="rchip" style="color:#ffc83d">🪙 +50</div>
+              </div>
+            </div>
+          </div>
+          <div class="qprog">
+            <div class="prog-row">
+              <div class="plabel">Progresso</div>
+              <div class="pval">6 / 14 dias</div>
+            </div>
+            <div class="ptrack"><div class="pfill" style="width:43%;background:#3dd68c"></div></div>
+            <div class="palabel">
+              <div class="pdot"></div>
+              <div class="ptxt">Em andamento</div>
+              <div class="pdays">8 dias restantes</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Strength inativa -->
+        <div class="cat-hdr" style="margin-top:2px">
+          <div class="cat-dot" style="background:#ff8a3d"></div>
+          <div class="cat-name" style="color:#ff8a3d">Strength</div>
+          <div class="cat-ct">4</div>
+        </div>
+        <div class="qcard inactive">
+          <div class="qacc" style="background:#ff8a3d"></div>
+          <div class="qtop">
+            <div class="qico" style="background:rgba(255,138,61,0.1)">💪</div>
+            <div class="qbody">
+              <div class="qnrow">
+                <div class="qname">Construção muscular</div>
+                <div class="qdur">30d</div>
+              </div>
+              <div class="qdesc">3 treinos de força/semana por 30 dias. Frequência > intensidade.</div>
+              <div class="qchips">
+                <div class="qchip" style="background:rgba(255,138,61,0.1);color:#ff8a3d">Treino de força</div>
+              </div>
+              <div class="qrew">
+                <div class="rchip" style="color:#a08fff">⚡ +280</div>
+                <div class="rchip" style="color:#ffc83d">🪙 +70</div>
+              </div>
+            </div>
+            <div class="qbtn"><div class="play-tri" style="border-left-color:#ff8a3d"></div></div>
+          </div>
+          <div class="long-hint">
+            <span style="font-size:10px">○</span>
+            <span>Segure para ver mais</span>
+          </div>
+        </div>
+
+        <!-- Create -->
+        <div class="create-btn">
+          <div class="plus-ico">+</div>
+          <span>Nova quest personalizada</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 2: Detalhe (long press) -->
+  <div class="col">
+    <div class="col-label">2 · Detalhe (long press)</div>
+    <div class="phone detail-screen">
+      <div class="sb"><span>18:22</span><span>WiFi 🔋</span></div>
+      <div class="sh">
+        <div class="sh-close">←</div>
+        <div class="sh-info">
+          <div class="sh-title">Detalhe da Quest</div>
+          <div class="sh-sub">Sleep · 30 dias</div>
+        </div>
+        <div class="sh-chip" style="background:rgba(77,208,255,0.12);border-color:rgba(77,208,255,0.3);color:#4dd0ff">Sleep</div>
+      </div>
+
+      <div style="overflow-y:auto;max-height:560px">
+        <div class="detail-hero">
+          <div class="hero-card">
+            <div class="hero-accent" style="background:#4dd0ff"></div>
+            <div class="hero-top">
+              <div class="hero-ico" style="background:rgba(77,208,255,0.12)">🌙</div>
+              <div>
+                <div class="hero-name">Mestre do sono</div>
+                <div class="hero-cat">Sleep · 30 dias · partial OK</div>
+              </div>
+            </div>
+            <div class="hero-desc">Mantenha 7h+ de sono por 30 dias consecutivos. Dias com sono entre 6h e 7h contam como partial e não quebram a sequência — mas não incrementam o contador principal.</div>
+            <div class="prog-block">
+              <div class="prog-header">
+                <div class="prog-title">Seu progresso</div>
+                <div class="prog-num">0 / 30 dias</div>
+              </div>
+              <div class="ptrack2"><div class="pfill2" style="width:0%;background:#4dd0ff"></div></div>
+              <div class="prog-meta">
+                <span>Não iniciada</span>
+                <span>30 dias para completar</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-block">
+          <div class="sec-title">Tasks vinculadas</div>
+          <div class="task-row">
+            <div class="task-ico" style="background:rgba(77,208,255,0.1)">🌙</div>
+            <div class="task-name">Dormir 7 horas ou mais</div>
+            <div class="task-pend"></div>
+          </div>
+          <div class="task-row">
+            <div class="task-ico" style="background:rgba(255,138,61,0.1)">🤸</div>
+            <div class="task-name">Alongar antes de dormir</div>
+            <div class="task-pend"></div>
+          </div>
+        </div>
+
+        <div class="rules-block">
+          <div class="sec-title" style="padding:0 0 4px">Regras</div>
+          <div class="rule-row"><div class="rule-dot"></div><div class="rule-text">Partial: dias com 6h–7h de sono não quebram a sequência mas não contam para o total.</div></div>
+          <div class="rule-row"><div class="rule-dot"></div><div class="rule-text">Resetar: dormir menos de 6h reinicia o contador do zero.</div></div>
+          <div class="rule-row"><div class="rule-dot"></div><div class="rule-text">Pré-requisito: completar "Sono consistente (21d)" primeiro.</div></div>
+        </div>
+
+        <div class="rewards-row">
+          <div class="rew-block">
+            <div>
+              <div class="rew-val" style="color:#a08fff">+250</div>
+              <div class="rew-lbl">XP ao completar</div>
+            </div>
+          </div>
+          <div class="rew-block">
+            <div>
+              <div class="rew-val" style="color:#ffc83d">+65</div>
+              <div class="rew-lbl">Moedas ao completar</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:0 10px 6px">
+          <div style="width:100%;background:#7b5cff;border-radius:11px;padding:11px;text-align:center;font-size:12px;font-weight:800;color:#fff">
+            ▶  Iniciar quest
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 3: Criar quest -->
+  <div class="col">
+    <div class="col-label">3 · Criar quest</div>
+    <div class="phone create-screen">
+      <div class="sb"><span>18:22</span><span>WiFi 🔋</span></div>
+      <div class="csh">
+        <div class="csh-close">✕</div>
+        <div class="csh-title">Nova Quest</div>
+        <div class="save-btn">Salvar</div>
+      </div>
+      <div class="cbody" style="overflow-y:auto;max-height:560px">
+
+        <div class="field-block">
+          <div class="field-label">Nome da quest</div>
+          <div class="field-input filled">Foco matinal 30 dias</div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label">Descrição</div>
+          <div class="field-input" style="font-size:10px;color:#6670a0;line-height:1.4;min-height:46px">Comece o dia com intenção — complete as tarefas de manhã antes do meio-dia.</div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label">Categoria</div>
+          <div class="cat-grid">
+            <div class="cat-opt" style="color:#4dd0ff;border-color:#4dd0ff;background:rgba(77,208,255,0.08)">Sleep</div>
+            <div class="cat-opt sel">Mind</div>
+            <div class="cat-opt">Strength</div>
+            <div class="cat-opt">Nutrition</div>
+            <div class="cat-opt">Wealth</div>
+            <div class="cat-opt">Bonds</div>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label">Duração</div>
+          <div class="dur-row">
+            <div class="dur-opt">7d</div>
+            <div class="dur-opt">14d</div>
+            <div class="dur-opt sel">21d</div>
+            <div class="dur-opt">30d</div>
+            <div class="dur-opt">Custom</div>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <div class="field-label">Tasks vinculadas</div>
+          <div class="tasks-add">
+            <div class="task-add-row">
+              <div class="task-add-ico" style="background:rgba(176,123,255,0.1)">🧘</div>
+              <div class="task-add-name">Meditar 10 minutos</div>
+              <div class="task-add-check" style="background:#7b5cff">✓</div>
+            </div>
+            <div class="task-add-row">
+              <div class="task-add-ico" style="background:rgba(77,208,255,0.1)">📖</div>
+              <div class="task-add-name">Leitura diária</div>
+              <div class="task-add-check" style="background:#7b5cff">✓</div>
+            </div>
+            <div class="task-add-row" style="opacity:0.45">
+              <div class="task-add-ico" style="background:rgba(255,138,61,0.1)">💪</div>
+              <div class="task-add-name">Treino de força</div>
+              <div class="task-add-check" style="border:1px solid #2a2d55"></div>
+            </div>
+            <div class="add-more">+ Adicionar task</div>
+          </div>
+        </div>
+
+        <div class="field-block">
+          <div class="partial-toggle">
+            <div class="pt-info">
+              <div class="pt-title">Partial OK</div>
+              <div class="pt-sub">Dias incompletos não resetam o progresso</div>
+            </div>
+            <div class="toggle-on"><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
