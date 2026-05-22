@@ -19,10 +19,11 @@ import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import { TemplateCard } from '@/components/TemplateCard';
 import { TrackedRewardCard } from '@/components/TrackedRewardCard';
 import { TrackPickerSheet } from '@/components/TrackPickerSheet';
+import { VaultBankCard } from '@/components/VaultBankCard';
+import { VaultHero } from '@/components/VaultHero';
 import { useCharacter } from '@/lib/api/character';
 import {
   useAddTemplateToShop,
@@ -135,13 +136,14 @@ export default function RewardsScreen() {
     if (trackedReward) {
       const deficit = Math.max(0, trackedReward.cost - coins);
       return deficit > 0
-        ? `${deficit.toLocaleString()} to go for ${trackedReward.title}`
-        : `${trackedReward.title} is yours to claim`;
+        ? t('rewards.vault.heroStatusTrackable', {
+            deficit: deficit.toLocaleString(),
+            title: trackedReward.title,
+          })
+        : t('rewards.vault.heroStatusReady', { title: trackedReward.title });
     }
-    const affordable = sections.available.length;
-    if (affordable === 0) return t('reward.shop.noCoinsHint');
-    return `You can buy ${affordable} ${affordable === 1 ? 'reward' : 'rewards'} now`;
-  }, [trackedReward, coins, sections.available.length]);
+    return t('rewards.vault.heroStatusIdle');
+  }, [trackedReward, coins, t]);
 
   const toggleCategory = (cat: RewardCategory) => {
     setEnabledCategories((prev) => {
@@ -295,32 +297,60 @@ export default function RewardsScreen() {
           />
         }
       >
-        <View style={styles.balanceHero}>
-          <View style={styles.balanceRow}>
-            <CoinIcon size={48} />
-            <Text style={styles.balanceValue}>{coins.toLocaleString()}</Text>
-          </View>
-          <Text style={styles.headline} numberOfLines={2}>
-            {view === 'shop'
+        <VaultHero
+          topEyebrow={t('rewards.vault.eyebrow')}
+          title={t('rewards.vault.heroTitle')}
+          balanceLabel={coins.toLocaleString()}
+          status={
+            view === 'shop'
               ? headline
               : view === 'bank'
                 ? bankCount > 0
-                  ? `${bankCount} ${bankCount === 1 ? 'reward' : 'rewards'} ready to use`
-                  : 'Your bank is waiting on a first buy'
-                : `${(used.data ?? []).length} redeemed lifetime`}
-          </Text>
-        </View>
+                  ? t('rewards.vault.itemsCount', { count: bankCount })
+                  : t('rewards.vault.heroStatusIdle')
+                : t('rewards.vault.itemsCount', { count: (used.data ?? []).length })
+          }
+        />
 
-        <View style={styles.viewToggle}>
-          <SegmentedControl
-            options={[
-              { value: 'shop' as RewardView, label: 'Shop' },
-              { value: 'bank' as RewardView, label: bankCount > 0 ? `Bank (${bankCount})` : 'Bank' },
-              { value: 'used' as RewardView, label: 'Used' },
-            ]}
-            value={view}
-            onChange={setView}
-          />
+        <View style={styles.tabRow}>
+          {(
+            [
+              { value: 'shop', label: t('rewards.vault.tabs.shop') },
+              {
+                value: 'bank',
+                label: t('rewards.vault.tabs.bank', { count: bankCount }),
+              },
+              { value: 'used', label: t('rewards.vault.tabs.used') },
+            ] as { value: RewardView; label: string }[]
+          ).map((tab) => {
+            const active = view === tab.value;
+            return (
+              <Pressable
+                key={tab.value}
+                onPress={() => {
+                  if (!active) Haptics.selectionAsync().catch(() => {});
+                  setView(tab.value);
+                }}
+                style={({ pressed }) => [
+                  styles.tabBtn,
+                  active && styles.tabBtnActive,
+                  pressed && { opacity: 0.85 },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    active ? styles.tabLabelActive : styles.tabLabelInactive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {view === 'shop' && (
@@ -368,7 +398,15 @@ export default function RewardsScreen() {
                     style={[
                       styles.chip,
                       active
-                        ? { backgroundColor: m.bg, borderColor: m.color }
+                        ? {
+                            // Embossed treatment without elevation: Android
+                            // would paint a flat grey halo. Vertical
+                            // border-top bump fakes an inset highlight; the
+                            // colored border carries the chip's identity.
+                            backgroundColor: `${m.color}1A`,
+                            borderTopColor: `${m.color}80`,
+                            borderColor: `${m.color}70`,
+                          }
                         : styles.chipMuted,
                     ]}
                   >
@@ -407,9 +445,15 @@ export default function RewardsScreen() {
                 {sections.available.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>Available now</Text>
+                      <Text
+                        style={[styles.sectionTitle, { color: '#FFC83D' }]}
+                      >
+                        {t('rewards.vault.sections.available')}
+                      </Text>
                       <Text style={styles.sectionMeta}>
-                        {sections.available.length}
+                        {t('rewards.vault.itemsCount', {
+                          count: sections.available.length,
+                        })}
                       </Text>
                     </View>
                     {renderRewardGrid(sections.available)}
@@ -419,9 +463,15 @@ export default function RewardsScreen() {
                 {sections.almost.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>Almost there</Text>
+                      <Text
+                        style={[styles.sectionTitle, { color: '#FF9F43' }]}
+                      >
+                        {t('rewards.vault.sections.almost')}
+                      </Text>
                       <Text style={styles.sectionMeta}>
-                        {sections.almost.length}
+                        {t('rewards.vault.itemsCount', {
+                          count: sections.almost.length,
+                        })}
                       </Text>
                     </View>
                     {renderRewardGrid(sections.almost)}
@@ -431,9 +481,15 @@ export default function RewardsScreen() {
                 {sections.bigGoals.length > 0 && (
                   <View style={styles.section}>
                     <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>Big goals</Text>
+                      <Text
+                        style={[styles.sectionTitle, { color: '#9B82FF' }]}
+                      >
+                        {t('rewards.vault.sections.big')}
+                      </Text>
                       <Text style={styles.sectionMeta}>
-                        {sections.bigGoals.length}
+                        {t('rewards.vault.itemsCount', {
+                          count: sections.bigGoals.length,
+                        })}
                       </Text>
                     </View>
                     {renderRewardGrid(sections.bigGoals)}
@@ -492,67 +548,28 @@ export default function RewardsScreen() {
             ) : (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Ready to use</Text>
+                  <Text style={[styles.sectionTitle, { color: '#FFC83D' }]}>
+                    {t('rewards.vault.sections.available')}
+                  </Text>
                   <Text style={styles.sectionMeta}>
-                    {banked.data!.length}{' '}
-                    {banked.data!.length === 1 ? 'item' : 'items'}
+                    {t('rewards.vault.itemsCount', {
+                      count: banked.data!.length,
+                    })}
                   </Text>
                 </View>
                 <View style={styles.bankList}>
-                  {banked.data!.map((b) => {
-                    const cat = b.reward_category
-                      ? REWARD_CATEGORY_META[b.reward_category]
-                      : null;
-                    return (
-                      <View key={b.id} style={styles.bankCard}>
-                        <View
-                          style={[
-                            styles.bankIconWrap,
-                            cat
-                              ? { backgroundColor: cat.bg }
-                              : { backgroundColor: 'rgba(255,255,255,0.05)' },
-                          ]}
-                        >
-                          <Ionicons
-                            name={b.reward_icon as never}
-                            size={20}
-                            color={cat ? cat.color : tokens.text.mid}
-                          />
-                        </View>
-                        <View style={styles.bankBody}>
-                          <Text style={styles.bankTitle} numberOfLines={1}>
-                            {b.reward_title}
-                          </Text>
-                          <View style={styles.bankMetaRow}>
-                            <CoinIcon size={10} />
-                            <Text style={styles.bankMetaCost}>
-                              {b.cost_paid.toLocaleString()}
-                            </Text>
-                            <Text style={styles.bankMetaDot}>·</Text>
-                            <Text style={styles.bankMetaTime}>
-                              {timeAgo(b.redeemed_at)}
-                            </Text>
-                          </View>
-                        </View>
-                        <Pressable
-                          disabled={usingId === b.id}
-                          onPress={() => handleUse(b)}
-                          style={({ pressed }) => [
-                            styles.useBtn,
-                            pressed && { opacity: 0.85 },
-                            usingId === b.id && { opacity: 0.6 },
-                          ]}
-                          hitSlop={6}
-                        >
-                          {usingId === b.id ? (
-                            <ActivityIndicator size="small" color={tokens.text.hi} />
-                          ) : (
-                            <Text style={styles.useBtnText}>Use</Text>
-                          )}
-                        </Pressable>
-                      </View>
-                    );
-                  })}
+                  {banked.data!.map((b) => (
+                    <VaultBankCard
+                      key={b.id}
+                      entry={b}
+                      cta={t('rewards.vault.cta.use')}
+                      earnedTime={t('rewards.vault.earnedTime', {
+                        when: timeAgo(b.redeemed_at),
+                      })}
+                      busy={usingId === b.id}
+                      onUse={() => handleUse(b)}
+                    />
+                  ))}
                 </View>
               </>
             )}
@@ -576,10 +593,13 @@ export default function RewardsScreen() {
             ) : (
               <>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Used</Text>
+                  <Text style={styles.sectionTitle}>
+                    {t('rewards.title')}
+                  </Text>
                   <Text style={styles.sectionMeta}>
-                    {used.data!.length}{' '}
-                    {used.data!.length === 1 ? 'item' : 'items'}
+                    {t('rewards.vault.itemsCount', {
+                      count: used.data!.length,
+                    })}
                   </Text>
                 </View>
                 <View style={styles.historyList}>
@@ -645,34 +665,39 @@ const styles = StyleSheet.create({
   content: {
     padding: tokens.space[4],
   },
-  balanceHero: {
-    alignItems: 'center',
-    paddingTop: tokens.space[3],
-    paddingBottom: tokens.space[4],
-    gap: tokens.space[2],
-  },
-  balanceRow: {
+  // Underline view tabs (Loja / Banco · N / Histórico)
+  tabRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[3],
-  },
-  balanceValue: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 56,
-    lineHeight: 56,
-    color: tokens.semantic.coin,
-    letterSpacing: -1,
-  },
-  headline: {
-    ...tokens.type.body,
-    color: tokens.text.mid,
-    fontFamily: 'Manrope_600SemiBold',
-    textAlign: 'center',
-    marginTop: 2,
-    paddingHorizontal: tokens.space[4],
-  },
-  viewToggle: {
+    gap: 18,
+    paddingHorizontal: 0,
+    marginTop: tokens.space[3],
     marginBottom: tokens.space[5],
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: tokens.border.base,
+  },
+  tabBtn: {
+    paddingTop: tokens.space[2],
+    paddingBottom: tokens.space[3],
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    // Negative margin lifts the bottom border under the row border so the
+    // active gold underline reads as continuous with the divider.
+    marginBottom: -StyleSheet.hairlineWidth,
+  },
+  tabBtnActive: {
+    borderBottomColor: '#FFC83D',
+  },
+  tabLabel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  tabLabelActive: {
+    color: tokens.text.hi,
+  },
+  tabLabelInactive: {
+    color: tokens.text.mid,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -685,22 +710,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: tokens.space[3],
+    paddingVertical: 10,
     paddingHorizontal: tokens.space[2],
-    borderRadius: tokens.radius.pill,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: tokens.border.base,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   chipMuted: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     borderColor: tokens.border.base,
     opacity: 0.7,
   },
   chipText: {
-    ...tokens.type.caption,
-    fontFamily: 'Manrope_700Bold',
-    letterSpacing: 0.3,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 0.4,
   },
   section: {
     marginBottom: tokens.space[5],
@@ -764,70 +789,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
 
-  // BANK — clean rows with category-tinted tile + green USE pill
+  // BANK — list spacing only; the row is VaultBankCard
   bankList: {
     gap: tokens.space[2],
-  },
-  bankCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[3],
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[3],
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-  },
-  bankIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: tokens.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bankBody: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  bankTitle: {
-    ...tokens.type.bodyLg,
-    fontFamily: 'Manrope_700Bold',
-    color: tokens.text.hi,
-  },
-  bankMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  bankMetaCost: {
-    ...tokens.type.caption,
-    color: tokens.semantic.coin,
-    fontFamily: 'Manrope_700Bold',
-  },
-  bankMetaDot: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-  },
-  bankMetaTime: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-  },
-  useBtn: {
-    paddingHorizontal: tokens.space[4],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.pill,
-    backgroundColor: tokens.semantic.xp,
-    minWidth: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  useBtnText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
-    color: '#062416',
-    letterSpacing: 0.4,
   },
 
   // USED history — leanest possible row, same visual language as bank

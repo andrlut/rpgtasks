@@ -3,28 +3,41 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Reward } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
 import { CoinIcon } from './CoinIcon';
-import { ProgressBar } from './ProgressBar';
+import { PercevaGlyph } from './PercevaGlyph';
 
 interface Props {
   reward: Reward;
   coins: number;
+  /** Open the picker sheet to switch to a different tracked reward. */
   onChange: () => void;
+  /** Stop tracking this reward (close button in the top-right). */
   onUntrack: () => void;
+  /** Buy now — shown only when affordable. */
   onBuy?: () => void;
   isBuying?: boolean;
 }
 
 /**
- * Wide hero card surfaced at the top of the Rewards screen when the user has
- * a tracked reward. Shows coins-vs-cost progress, current state copy, and
- * the two affordances for switching or removing the tracked reward.
+ * Vault-style tracked-reward hero. Lives at the top of the Shop view when
+ * the user has pinned a reward. Shares the gold-rim embossed treatment
+ * with the affordable shop card, but bigger and with a gold-glowing
+ * gradient progress bar.
  *
- * - Affordable → primary CTA "Buy" (lights up gold).
- * - Not affordable → progress bar carries the narrative; CTA is "Change".
+ * Layout:
+ *   header  → "SUA META" eyebrow (pale gold) + untrack ✕
+ *   body    → 60px reward icon tile + title/description
+ *   meter   → gold gradient progress bar with glow
+ *   footer  → "{coins}/{cost}" left, "faltam · pct%" right
+ *
+ * `onChange` is kept on the API for callers that want to swap the pinned
+ * reward by tapping the card body — we route long-press for switching
+ * since the card doesn't have explicit "change"/"buy" actions in the
+ * Vault spec (those happen via the per-card buttons below or the picker).
  */
 export function TrackedRewardCard({
   reward,
@@ -34,122 +47,166 @@ export function TrackedRewardCard({
   onBuy,
   isBuying,
 }: Props) {
+  const { t } = useT();
   const cat = REWARD_CATEGORY_META[reward.category];
   const affordable = coins >= reward.cost;
   const deficit = Math.max(0, reward.cost - coins);
   const pct = Math.min(100, Math.round((coins / reward.cost) * 100));
 
   return (
-    <View style={styles.container}>
+    <View style={styles.root}>
+      {/* Dark gradient background */}
       <LinearGradient
-        colors={[`${cat.color}22`, 'transparent']}
+        colors={['rgba(36,42,88,0.85)', 'rgba(20,24,60,0.95)']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
 
-      <View style={styles.header}>
-        <View style={styles.eyebrowRow}>
-          <Ionicons name="bookmark" size={12} color={cat.color} />
-          <Text style={[styles.eyebrow, { color: cat.color }]}>Tracking</Text>
-        </View>
-        <Pressable
-          onPress={onUntrack}
-          style={({ pressed }) => [styles.untrackBtn, pressed && { opacity: 0.6 }]}
-          hitSlop={10}
-          accessibilityLabel="Stop tracking this reward"
-        >
-          <Ionicons name="close" size={16} color={tokens.text.mid} />
-        </Pressable>
+      {/* Faint engraved Topo Iris in the top-right corner */}
+      <View style={styles.glyphWrap} pointerEvents="none">
+        <PercevaGlyph size={180} bare palette="gilded" idSuffix={`tracked-${reward.id}`} />
       </View>
 
-      <View style={styles.body}>
-        <View style={[styles.iconWrap, { backgroundColor: cat.bg }]}>
-          <Ionicons name={reward.icon as never} size={28} color={cat.color} />
-        </View>
-        <View style={styles.titleCol}>
-          <Text style={styles.title} numberOfLines={2}>
-            {reward.title}
-          </Text>
-          {reward.description ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
-              {reward.description}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.progressRow}>
-        <ProgressBar
-          value={Math.min(coins, reward.cost)}
-          max={reward.cost}
-          color={affordable ? tokens.semantic.coin : cat.color}
-          height={8}
-        />
-        <View style={styles.progressLabels}>
-          <View style={styles.coinsLabel}>
-            <CoinIcon size={12} />
-            <Text style={styles.progressText}>
-              {coins.toLocaleString()} / {reward.cost.toLocaleString()}
+      <Pressable
+        onPress={onChange}
+        style={({ pressed }) => [
+          styles.content,
+          pressed && { opacity: 0.95 },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Change tracked reward"
+      >
+        {/* Header: SUA META eyebrow + untrack X */}
+        <View style={styles.header}>
+          <View style={styles.eyebrowRow}>
+            <Ionicons name="bookmark" size={12} color="#FFE3A6" />
+            <Text style={styles.eyebrow}>
+              {t('rewards.vault.tracked.eyebrow')}
             </Text>
           </View>
-          <Text
+          <Pressable
+            onPress={onUntrack}
+            style={({ pressed }) => [styles.untrackBtn, pressed && { opacity: 0.6 }]}
+            hitSlop={10}
+            accessibilityLabel="Stop tracking this reward"
+          >
+            <Ionicons name="close" size={11} color={tokens.text.mid} />
+          </Pressable>
+        </View>
+
+        {/* Body: icon tile + title/description */}
+        <View style={styles.body}>
+          <View
             style={[
-              styles.statusText,
-              { color: affordable ? tokens.semantic.coin : tokens.text.mid },
+              styles.iconTile,
+              {
+                borderColor: `${cat.color}50`,
+                backgroundColor: `${cat.color}26`,
+              },
             ]}
           >
-            {affordable
-              ? 'Yours to claim'
-              : `${deficit.toLocaleString()} to go · ${pct}%`}
-          </Text>
+            <Ionicons
+              name={reward.icon as never}
+              size={28}
+              color={cat.color}
+            />
+          </View>
+          <View style={styles.titleCol}>
+            <Text style={styles.title} numberOfLines={2}>
+              {reward.title}
+            </Text>
+            {reward.description ? (
+              <Text style={styles.subtitle} numberOfLines={2}>
+                {reward.description}
+              </Text>
+            ) : null}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.actionsRow}>
-        <Pressable
-          onPress={onChange}
-          style={({ pressed }) => [styles.secondaryBtn, pressed && { opacity: 0.7 }]}
-          hitSlop={4}
-        >
-          <Ionicons name="swap-horizontal" size={14} color={tokens.text.base} />
-          <Text style={styles.secondaryBtnText}>Change</Text>
-        </Pressable>
+        {/* Progress bar — dark track with gold gradient fill + glow */}
+        <View style={styles.progress}>
+          <View style={styles.progressTrack}>
+            <LinearGradient
+              colors={['#FFE3A6', '#FFC83D', '#C8881C']}
+              locations={[0, 0.6, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={[styles.progressFill, { width: `${pct}%` }]}
+            />
+          </View>
+          <View style={styles.progressLabels}>
+            <View style={styles.coinsLabel}>
+              <CoinIcon size={13} />
+              <Text style={styles.coinsText}>
+                {coins.toLocaleString()}
+                <Text style={styles.coinsDim}>
+                  {' / '}
+                  {reward.cost.toLocaleString()}
+                </Text>
+              </Text>
+            </View>
+            <Text style={styles.deficitText}>
+              {t('rewards.vault.tracked.remaining', {
+                deficit: deficit.toLocaleString(),
+                pct,
+              })}
+            </Text>
+          </View>
+        </View>
 
+        {/* Affordable CTA — shown only when affordable */}
         {affordable && onBuy ? (
           <Pressable
             onPress={onBuy}
             disabled={isBuying}
-            style={({ pressed }) => [pressed && { opacity: 0.85 }]}
-            hitSlop={4}
+            style={({ pressed }) => [
+              styles.cta,
+              pressed && { opacity: 0.85 },
+              isBuying && { opacity: 0.6 },
+            ]}
+            hitSlop={6}
           >
             <LinearGradient
-              colors={tokens.gradient.coinBtn}
-              locations={tokens.gradient.coinBtnLocations}
+              colors={['#FFE890', '#FFC83D', '#C8881C']}
+              locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
-              style={[styles.primaryBtn, isBuying && { opacity: 0.7 }]}
-            >
-              <Text style={styles.primaryBtnText}>
-                {isBuying ? 'BUYING…' : 'BUY NOW'}
-              </Text>
-            </LinearGradient>
+              style={StyleSheet.absoluteFill}
+            />
+            <Text style={styles.ctaText}>
+              {(isBuying
+                ? `${t('rewards.vault.cta.buy')}…`
+                : t('rewards.vault.cta.buy')
+              ).toUpperCase()}
+            </Text>
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
+  root: {
+    position: 'relative',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
-    padding: tokens.space[4],
-    gap: tokens.space[3],
+    borderColor: 'rgba(255, 200, 61, 0.35)',
     overflow: 'hidden',
+  },
+  glyphWrap: {
+    position: 'absolute',
+    right: -30,
+    top: -10,
+    width: 180,
+    height: 180,
+    opacity: 0.07,
+  },
+  content: {
+    padding: 16,
+    gap: 14,
   },
   header: {
     flexDirection: 'row',
@@ -162,45 +219,68 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   eyebrow: {
-    ...tokens.type.eyebrow,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: '#FFE3A6',
   },
   untrackBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   body: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.space[3],
+    gap: 14,
   },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: tokens.radius.md,
+  iconTile: {
+    width: 60,
+    height: 60,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   titleCol: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
   },
   title: {
-    ...tokens.type.h3,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 17,
+    lineHeight: 21,
     color: tokens.text.hi,
   },
   subtitle: {
-    ...tokens.type.caption,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 12,
     color: tokens.text.mid,
   },
-  progressRow: {
-    gap: 6,
+  progress: {
+    gap: 8,
+  },
+  progressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    shadowColor: '#FFC83D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
   },
   progressLabels: {
     flexDirection: 'row',
@@ -210,55 +290,38 @@ const styles = StyleSheet.create({
   coinsLabel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
-  progressText: {
-    ...tokens.type.caption,
-    color: tokens.text.base,
-    fontFamily: 'Manrope_700Bold',
-  },
-  statusText: {
-    ...tokens.type.caption,
-    fontFamily: 'Manrope_700Bold',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: tokens.space[2],
-    marginTop: 2,
-  },
-  secondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-  },
-  secondaryBtnText: {
-    ...tokens.type.caption,
-    color: tokens.text.base,
-    fontFamily: 'Manrope_700Bold',
-    letterSpacing: 0.3,
-  },
-  primaryBtn: {
-    paddingHorizontal: tokens.space[5],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.pill,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 235, 180, 0.4)',
-    minHeight: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBtnText: {
+  coinsText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 12,
+    color: '#FFE3A6',
+  },
+  coinsDim: {
+    color: tokens.text.dim,
+    fontFamily: 'Manrope_700Bold',
+  },
+  deficitText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.text.mid,
+  },
+  cta: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,224,138,0.55)',
+    overflow: 'hidden',
+  },
+  ctaText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 0.7,
     color: '#3D2A00',
-    letterSpacing: 0.6,
   },
 });

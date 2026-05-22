@@ -34,8 +34,8 @@ const pt: Translations = {
 
   auth: {
     brand: {
-      title: 'RPG Tasks',
-      tagline: 'Vire sua vida em um RPG',
+      title: 'Perceva',
+      tagline: 'Perceba o caminho que você está trilhando',
     },
     fields: {
       email: 'Email',
@@ -107,19 +107,19 @@ const pt: Translations = {
   },
 
   onboarding: {
-    brand: 'RPG · Tasks',
+    brand: 'Perceva',
     skip: 'Pular',
     continue: 'Continuar',
     start: 'Começar a jornada',
     slide1: {
-      eyebrow: 'BEM-VINDO, HERÓI',
-      title: 'Vire sua vida em um RPG.',
-      body: 'Tarefas reais. XP real. Recompensas reais. A jornada do seu jeito.',
+      eyebrow: 'BEM-VINDO',
+      title: 'Perceba. Pratique. Torne-se.',
+      body: 'Suas ações de hoje constroem a pessoa que você quer ser.',
     },
     slide2: {
       eyebrow: 'O CICLO',
       title: 'Treine. Ganhe. Resgate.',
-      body: 'Conclua hábitos pra ganhar XP e moedas. Gaste as moedas em recompensas que você mesmo define.',
+      body: 'Conclua hábitos pra ganhar progresso e moedas. Gaste as moedas em recompensas que você mesmo define.',
     },
     slide3: {
       eyebrow: 'PRONTO?',
@@ -532,6 +532,42 @@ const pt: Translations = {
       subtitle: 'Toque pra adicionar à sua loja.',
       added: 'Adicionada',
     },
+    vault: {
+      eyebrow: 'REWARDS',
+      heroTitle: 'Sua colheita',
+      heroEyebrow: 'SUA COLHEITA',
+      heroStatusIdle: 'Continue treinando pra abrir cofres maiores',
+      heroStatusTrackable: 'Faltam {{deficit}} para {{title}}',
+      heroStatusReady: '{{title}} é seu!',
+      tabs: {
+        shop: 'Loja',
+        bank: 'Banco · {{count}}',
+        used: 'Histórico',
+      },
+      sections: {
+        available: 'Disponíveis agora',
+        almost: 'Quase lá',
+        big: 'Grandes metas',
+      },
+      itemsCount: { one: '{{count}} item', other: '{{count}} itens' },
+      tracked: {
+        eyebrow: 'SUA META',
+        progress: '{{coins}} / {{cost}}',
+        remaining: 'faltam {{deficit}} · {{pct}}%',
+      },
+      status: {
+        ready: 'Pronto',
+        almost: 'Quase',
+        goal: 'Meta',
+      },
+      cta: {
+        buy: 'Comprar',
+        track: 'Mirar',
+        use: 'Usar',
+      },
+      remaining: 'faltam {{deficit}}',
+      earnedTime: 'conquistado {{when}}',
+    },
   },
 
   character: {
@@ -847,7 +883,7 @@ const pt: Translations = {
       couldNotCheck: 'Não foi possível verificar',
       unknownError: 'Erro desconhecido',
     },
-    footer: 'RPG Tasks · v{{version}}',
+    footer: 'Perceva · v{{version}}',
     footerUpdate: 'update {{id}}',
     version: 'Versão {{version}}',
   },

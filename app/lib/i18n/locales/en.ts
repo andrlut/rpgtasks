@@ -44,8 +44,8 @@ const en = {
 
   auth: {
     brand: {
-      title: 'RPG Tasks',
-      tagline: 'Turn your life into an RPG',
+      title: 'Perceva',
+      tagline: 'Perceive the path you are walking',
     },
     fields: {
       email: 'Email',
@@ -117,19 +117,19 @@ const en = {
   },
 
   onboarding: {
-    brand: 'RPG · Tasks',
+    brand: 'Perceva',
     skip: 'Skip',
     continue: 'Continue',
     start: 'Start your journey',
     slide1: {
-      eyebrow: 'WELCOME, HERO',
-      title: 'Turn your life into an RPG.',
-      body: 'Real tasks. Real XP. Real rewards. The grind, but make it yours.',
+      eyebrow: 'WELCOME',
+      title: 'Perceive. Practice. Become.',
+      body: 'The actions you take today build the person you want to become.',
     },
     slide2: {
       eyebrow: 'THE LOOP',
       title: 'Train. Earn. Redeem.',
-      body: 'Complete habits to gain XP and coins. Spend coins on rewards you set yourself.',
+      body: 'Complete habits to gain progress and coins. Spend coins on rewards you set yourself.',
     },
     slide3: {
       eyebrow: 'READY?',
@@ -542,6 +542,42 @@ const en = {
       subtitle: 'Tap to add to your shop.',
       added: 'Added',
     },
+    vault: {
+      eyebrow: 'REWARDS',
+      heroTitle: 'Your harvest',
+      heroEyebrow: 'YOUR HARVEST',
+      heroStatusIdle: 'Keep training to unlock bigger vaults',
+      heroStatusTrackable: '{{deficit}} to go for {{title}}',
+      heroStatusReady: '{{title}} is yours!',
+      tabs: {
+        shop: 'Shop',
+        bank: 'Bank · {{count}}',
+        used: 'History',
+      },
+      sections: {
+        available: 'Available now',
+        almost: 'Almost there',
+        big: 'Big goals',
+      },
+      itemsCount: { one: '{{count}} item', other: '{{count}} items' },
+      tracked: {
+        eyebrow: 'YOUR GOAL',
+        progress: '{{coins}} / {{cost}}',
+        remaining: '{{deficit}} to go · {{pct}}%',
+      },
+      status: {
+        ready: 'Ready',
+        almost: 'Almost',
+        goal: 'Goal',
+      },
+      cta: {
+        buy: 'Buy',
+        track: 'Track',
+        use: 'Use',
+      },
+      remaining: '{{deficit}} to go',
+      earnedTime: 'earned {{when}}',
+    },
   },
 
   character: {
@@ -853,7 +889,7 @@ const en = {
       couldNotCheck: 'Could not check',
       unknownError: 'Unknown error',
     },
-    footer: 'RPG Tasks · v{{version}}',
+    footer: 'Perceva · v{{version}}',
     footerUpdate: 'update {{id}}',
     version: 'Version {{version}}',
   },

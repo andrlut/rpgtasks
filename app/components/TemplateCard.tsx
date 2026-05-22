@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { RewardTemplate } from '@/lib/db/types';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
@@ -7,7 +8,19 @@ import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
 import { CoinIcon } from './CoinIcon';
+import { PercevaGlyph } from './PercevaGlyph';
 
+/**
+ * Inspiration / template row in the Vault Rewards screen.
+ *
+ * Mirrors the affordable shop-card chrome (gold rim + warm gradient bg +
+ * engraved Topo Iris glyph behind a gold "+" CTA aligned over the glyph
+ * center) so the suggestion strip feels native to the Vault, not a
+ * lighter afterthought.
+ *
+ * Layout is horizontal: category icon tile + body (eyebrow + title +
+ * description + mini coin cost) + "+" pill on the right.
+ */
 interface Props {
   template: RewardTemplate;
   onAdd: () => void;
@@ -19,20 +32,52 @@ export function TemplateCard({ template, onAdd, isAdding }: Props) {
   const cat = REWARD_CATEGORY_META[template.category];
   const title = pick(template.title, template.title_pt);
   const description = pickNullable(template.description, template.description_pt);
+
   return (
     <Pressable
       onPress={onAdd}
       disabled={isAdding}
-      style={({ pressed }) => [
-        styles.container,
-        (pressed || isAdding) && styles.containerPressed,
-      ]}
+      style={({ pressed }) => [styles.root, (pressed || isAdding) && { opacity: 0.92 }]}
     >
-      <View style={[styles.iconWrap, { backgroundColor: cat.bg }]}>
-        <Ionicons name={template.icon as never} size={20} color={cat.color} />
+      {/* Dark gradient surface */}
+      <LinearGradient
+        colors={['rgba(50,38,18,0.55)', 'rgba(20,24,60,0.85)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      {/* Faint engraved glyph aligned vertically with the + pill on the
+          right edge of the card. */}
+      <View style={styles.glyphWrap} pointerEvents="none">
+        <PercevaGlyph
+          size={110}
+          bare
+          palette="gilded"
+          idSuffix={`tmpl-${template.id}`}
+        />
       </View>
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text style={styles.title} numberOfLines={1}>
+
+      {/* Category icon tile */}
+      <View
+        style={[
+          styles.iconTile,
+          {
+            borderColor: `${cat.color}50`,
+            backgroundColor: `${cat.color}26`,
+          },
+        ]}
+      >
+        <Ionicons name={template.icon as never} size={22} color={cat.color} />
+      </View>
+
+      {/* Body */}
+      <View style={styles.body}>
+        <Text style={[styles.eyebrow, { color: cat.color }]} numberOfLines={1}>
+          {cat.label.toUpperCase()}
+        </Text>
+        <Text style={styles.title} numberOfLines={2}>
           {title}
         </Text>
         {description ? (
@@ -41,56 +86,87 @@ export function TemplateCard({ template, onAdd, isAdding }: Props) {
           </Text>
         ) : null}
         <View style={styles.costRow}>
-          <CoinIcon size={12} />
+          <CoinIcon size={11} />
           <Text style={styles.cost}>{template.cost.toLocaleString()}</Text>
         </View>
       </View>
-      <View
-        style={[
-          styles.addButton,
-          {
-            borderColor: cat.color,
-            shadowColor: cat.color,
-          },
-        ]}
-      >
-        <Ionicons name="add" size={20} color={cat.color} />
+
+      {/* + CTA — gold gradient pill, same DNA as COMPRAR */}
+      <View style={styles.ctaWrap}>
+        <LinearGradient
+          colors={['#FFE890', '#FFC83D', '#C8881C']}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.cta}
+        >
+          {isAdding ? (
+            <ActivityIndicator size="small" color="#3D2A00" />
+          ) : (
+            <Ionicons name="add" size={20} color="#3D2A00" />
+          )}
+        </LinearGradient>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    padding: tokens.space[4],
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: tokens.border.base,
-    borderStyle: 'dashed',
-    opacity: 0.85,
+    borderColor: 'rgba(255,200,61,0.35)',
+    overflow: 'hidden',
   },
-  containerPressed: {
-    opacity: 1,
-    transform: [{ scale: 0.98 }],
+  glyphWrap: {
+    position: 'absolute',
+    right: -20,
+    top: '50%',
+    width: 110,
+    height: 110,
+    // The Topo Iris's pupil sits at the exact bounding-box center, but
+    // the path diagonal's top-right endpoint pulls the visual mass
+    // upward. Nudging the box ~10px down lines the iris up with the
+    // vertically-centered "+" pill on the right.
+    marginTop: -45,
+    opacity: 0.09,
   },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: tokens.radius.md,
+  iconTile: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  body: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  eyebrow: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 1.4,
+    marginBottom: 2,
   },
   title: {
-    ...tokens.type.body,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 14,
+    lineHeight: 18,
     color: tokens.text.hi,
-    fontFamily: 'Manrope_700Bold',
   },
   subtitle: {
-    ...tokens.type.caption,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    lineHeight: 14,
     color: tokens.text.mid,
   },
   costRow: {
@@ -100,20 +176,21 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cost: {
-    ...tokens.type.caption,
-    color: tokens.semantic.coin,
-    fontFamily: 'Manrope_700Bold',
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    color: '#FFE3A6',
   },
-  addButton: {
+  ctaWrap: {
+    flexShrink: 0,
+    borderRadius: 999,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,224,138,0.55)',
+  },
+  cta: {
     width: 36,
     height: 36,
-    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 3,
   },
 });

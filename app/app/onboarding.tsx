@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PercevaGlyph } from '@/components/PercevaGlyph';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { useT } from '@/lib/i18n';
 import { useOnboardingStore } from '@/lib/onboarding';
@@ -19,7 +20,9 @@ import { tokens } from '@/theme';
 
 interface SlideArt {
   key: 'slide1' | 'slide2' | 'slide3';
-  icon: keyof typeof Ionicons.glyphMap;
+  /** Either an Ionicon name OR the Perceva brand glyph (slide 1 only,
+   *  so the very first screen lands on identity). */
+  art: { kind: 'icon'; name: keyof typeof Ionicons.glyphMap } | { kind: 'perceva' };
   iconColor: string;
   iconBg: string;
 }
@@ -27,19 +30,19 @@ interface SlideArt {
 const SLIDE_ART: SlideArt[] = [
   {
     key: 'slide1',
-    icon: 'shield',
+    art: { kind: 'perceva' },
     iconColor: tokens.brand.violet2,
     iconBg: 'rgba(123, 92, 255, 0.18)',
   },
   {
     key: 'slide2',
-    icon: 'flash',
+    art: { kind: 'icon', name: 'flash' },
     iconColor: tokens.semantic.xp,
     iconBg: 'rgba(61, 214, 140, 0.18)',
   },
   {
     key: 'slide3',
-    icon: 'rocket',
+    art: { kind: 'icon', name: 'rocket' },
     iconColor: tokens.semantic.coin,
     iconBg: 'rgba(255, 200, 61, 0.18)',
   },
@@ -74,9 +77,7 @@ export default function OnboardingScreen() {
       <ScreenBackground>
 
       <View style={styles.topBar}>
-        <Text style={styles.brand}>
-          RPG<Text style={styles.brandDot}> · </Text>Tasks
-        </Text>
+        <Text style={styles.brand}>{t('onboarding.brand')}</Text>
         {!isLast && (
           <Pressable onPress={finish} hitSlop={8}>
             <Text style={styles.skip}>{t('onboarding.skip')}</Text>
@@ -112,7 +113,16 @@ export default function OnboardingScreen() {
               },
             ]}
           >
-            <Ionicons name={slide.icon} size={56} color={slide.iconColor} />
+            {slide.art.kind === 'perceva' ? (
+              <PercevaGlyph
+                size={96}
+                bare
+                palette="primary"
+                idSuffix="onboarding"
+              />
+            ) : (
+              <Ionicons name={slide.art.name} size={56} color={slide.iconColor} />
+            )}
           </View>
         </Animated.View>
 
@@ -188,9 +198,6 @@ const styles = StyleSheet.create({
   brand: {
     ...tokens.type.h3,
     color: tokens.text.hi,
-  },
-  brandDot: {
-    color: tokens.brand.violet2,
   },
   skip: {
     ...tokens.type.body,

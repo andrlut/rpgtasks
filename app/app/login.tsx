@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { PercevaGlyph } from '@/components/PercevaGlyph';
 import { AUTH_REDIRECT_URL } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +70,12 @@ export default function LoginScreen() {
     >
       <View style={styles.inner}>
         <View style={styles.brand}>
+          {/* Perceva mark above the wordmark — gilded glyph tile so the
+              identity reads as "the app's logo" before the user even
+              reads the name. */}
+          <View style={styles.brandGlyph}>
+            <PercevaGlyph size={96} bare={false} palette="gilded" idSuffix="login" />
+          </View>
           <Text style={styles.brandTitle}>{t('auth.brand.title')}</Text>
           <Text style={styles.brandTagline}>{t('auth.brand.tagline')}</Text>
         </View>
@@ -160,6 +167,9 @@ const styles = StyleSheet.create({
   brand: {
     alignItems: 'center',
     marginBottom: tokens.space[9],
+  },
+  brandGlyph: {
+    marginBottom: tokens.space[4],
   },
   brandTitle: {
     ...tokens.type.display,

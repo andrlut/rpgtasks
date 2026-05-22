@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "dev": "expo start"
+    "dev": "expo start",
+    "icons": "node scripts/export-perceva-icons.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/abril-fatface": "^0.4.1",
