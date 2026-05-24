@@ -80,6 +80,17 @@ export function SubPanel({
     const template = pickerTemplate;
     setPickerTemplate(null);
     if (!template) return;
+
+    // Customize routes to task-form with the template pre-filled. The
+    // resulting save creates a truly-custom task (no template_id link).
+    if (choice.kind === 'customize') {
+      router.push({
+        pathname: '/task-form',
+        params: { from_template: template.id },
+      });
+      return;
+    }
+
     const overrides = adoptChoiceToOverrides(choice);
     startFromTemplate.mutate(
       { templateId: template.id, ...overrides },

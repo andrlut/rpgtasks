@@ -272,6 +272,8 @@ const en = {
     weekly3x: 'Weekly · 3x per week',
     weekly1x: 'Weekly · 1x per week',
     oneShot: 'One-shot · just once',
+    customize: 'Customize',
+    customizeHint: 'edit everything before creating',
   },
 
   reward: {

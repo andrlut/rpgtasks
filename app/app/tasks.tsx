@@ -177,6 +177,18 @@ export default function TasksHubScreen() {
     const template = pickerTemplate;
     setPickerTemplate(null);
     if (!template) return;
+
+    // "Customize" is not an adoption — it routes the user to task-form
+    // with the template pre-filled, and on save the new task is created
+    // as truly custom (template_id IS NULL).
+    if (choice.kind === 'customize') {
+      router.push({
+        pathname: '/task-form',
+        params: { from_template: template.id },
+      });
+      return;
+    }
+
     const overrides = adoptChoiceToOverrides(choice);
     setAdoptingId(template.id);
     startFromTemplate.mutate(

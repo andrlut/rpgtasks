@@ -262,6 +262,8 @@ const pt: Translations = {
     weekly3x: 'Semanal · 3x por semana',
     weekly1x: 'Semanal · 1x por semana',
     oneShot: 'Pontual · uma vez só',
+    customize: 'Customizar',
+    customizeHint: 'editar tudo antes de criar',
   },
 
   reward: {

@@ -10,7 +10,8 @@ export type AdoptPeriodicityChoice =
   | { kind: 'daily' }
   | { kind: 'weekly_3x' }
   | { kind: 'weekly_1x' }
-  | { kind: 'one_shot' };
+  | { kind: 'one_shot' }
+  | { kind: 'customize' };
 
 interface Props {
   visible: boolean;
@@ -33,6 +34,7 @@ const OPTIONS: Option[] = [
   { choice: { kind: 'weekly_3x' }, labelKey: 'adoptSheet.weekly3x' },
   { choice: { kind: 'weekly_1x' }, labelKey: 'adoptSheet.weekly1x' },
   { choice: { kind: 'one_shot' }, labelKey: 'adoptSheet.oneShot' },
+  { choice: { kind: 'customize' }, labelKey: 'adoptSheet.customize', hintKey: 'adoptSheet.customizeHint' },
 ];
 
 /**
@@ -100,7 +102,9 @@ export function AdoptPeriodicitySheet({
 
 /** Translate a sheet choice into the override params expected by the
  *  start_task_from_template RPC. Exported so call sites can wire the
- *  mutation directly. */
+ *  mutation directly. The 'customize' choice is NOT an adoption — it
+ *  signals the caller to navigate to task-form with the template's
+ *  fields pre-filled instead. */
 export function adoptChoiceToOverrides(choice: AdoptPeriodicityChoice): {
   taskTypeOverride?: 'daily' | 'weekly' | 'one_shot';
   recurrenceOverride?: Record<string, unknown> | null;
@@ -108,6 +112,7 @@ export function adoptChoiceToOverrides(choice: AdoptPeriodicityChoice): {
 } {
   switch (choice.kind) {
     case 'template_default':
+    case 'customize':
       return {};
     case 'daily':
       return {
