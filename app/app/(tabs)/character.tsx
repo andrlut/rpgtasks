@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -117,6 +117,7 @@ export default function CharacterScreen() {
   });
   const [infoOpen, setInfoOpen] = useState<null | 'title'>(null);
   const bottomClearance = useBottomNavClearance();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const strongest = useMemo(
     () => pickStrongestDim(character.data?.dimensions ?? []),
@@ -181,6 +182,7 @@ export default function CharacterScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -297,7 +299,10 @@ export default function CharacterScreen() {
               <AutoconhecimentoView />
             )}
             {activePillar === 'praticada' && currentSub === 'dedicacao' && (
-              <DedicacaoPanel dimensions={dimensions} />
+              <DedicacaoPanel
+                dimensions={dimensions}
+                scrollViewRef={scrollViewRef}
+              />
             )}
             {activePillar === 'praticada' && currentSub === 'momentum' && (
               <MomentumView momentum={momentum.data?.attributes} />
