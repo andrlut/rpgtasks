@@ -55,12 +55,37 @@ interface BucketMeta {
   labelKey: string;
   descKey: string;
   iconName: keyof typeof Ionicons.glyphMap;
+  /** Accent color used for the left bar, icon tile, title text and count. */
+  accent: string;
+  /** Translucent fill behind the icon tile and accent bar (RGBA). */
+  accentBg: string;
 }
 
 const BUCKETS: BucketMeta[] = [
-  { id: 'daily', labelKey: 'tasksHub.buckets.daily', descKey: 'tasksHub.buckets.dailyDesc', iconName: 'sunny' },
-  { id: 'weekly', labelKey: 'tasksHub.buckets.weekly', descKey: 'tasksHub.buckets.weeklyDesc', iconName: 'calendar' },
-  { id: 'one_time', labelKey: 'tasksHub.buckets.oneTime', descKey: 'tasksHub.buckets.oneTimeDesc', iconName: 'flag' },
+  {
+    id: 'daily',
+    labelKey: 'tasksHub.buckets.daily',
+    descKey: 'tasksHub.buckets.dailyDesc',
+    iconName: 'sunny',
+    accent: tokens.brand.violet2,
+    accentBg: 'rgba(157,127,255,0.18)',
+  },
+  {
+    id: 'weekly',
+    labelKey: 'tasksHub.buckets.weekly',
+    descKey: 'tasksHub.buckets.weeklyDesc',
+    iconName: 'calendar',
+    accent: '#4DD0FF',
+    accentBg: 'rgba(77,208,255,0.18)',
+  },
+  {
+    id: 'one_time',
+    labelKey: 'tasksHub.buckets.oneTime',
+    descKey: 'tasksHub.buckets.oneTimeDesc',
+    iconName: 'flag',
+    accent: tokens.semantic.coin,
+    accentBg: 'rgba(255,200,61,0.18)',
+  },
 ];
 
 /**
@@ -473,25 +498,53 @@ function BucketSection({
   onTaskPress,
   t,
 }: BucketSectionProps) {
+  // Per-bucket accent: a left accent bar (full-height), a tinted tile
+  // behind the icon, the title in accent color, and a count chip that
+  // picks up the same tint. The bucket card itself keeps the standard
+  // surface — only the header carries the accent so groups read as
+  // distinct without screaming.
   return (
-    <View style={styles.groupCard}>
+    <View
+      style={[
+        styles.groupCard,
+        { borderColor: `${meta.accent}33` },
+      ]}
+    >
+      <View style={[styles.bucketAccentBar, { backgroundColor: meta.accent }]} />
       <Pressable
         onPress={onToggle}
         style={({ pressed }) => [
           styles.groupHeader,
+          styles.bucketHeader,
           pressed && { opacity: 0.7 },
         ]}
       >
-        <View style={styles.groupIcon}>
-          <Ionicons name={meta.iconName} size={18} color={tokens.brand.violet2} />
+        <View
+          style={[
+            styles.bucketIcon,
+            { backgroundColor: meta.accentBg, borderColor: `${meta.accent}55` },
+          ]}
+        >
+          <Ionicons name={meta.iconName} size={20} color={meta.accent} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.groupTitle}>{t(meta.labelKey)}</Text>
-          {!collapsed && (
-            <Text style={styles.groupSub}>{t(meta.descKey)}</Text>
-          )}
+        <View style={styles.bucketTitleCol}>
+          <Text style={[styles.bucketEyebrow, { color: meta.accent }]}>
+            {t(meta.labelKey).toUpperCase()}
+          </Text>
+          <Text style={styles.bucketDesc} numberOfLines={1}>
+            {t(meta.descKey)}
+          </Text>
         </View>
-        <Text style={styles.groupCount}>{tasks.length}</Text>
+        <View
+          style={[
+            styles.bucketCountChip,
+            { backgroundColor: meta.accentBg, borderColor: `${meta.accent}55` },
+          ]}
+        >
+          <Text style={[styles.bucketCountText, { color: meta.accent }]}>
+            {tasks.length}
+          </Text>
+        </View>
         <Ionicons
           name={collapsed ? 'chevron-down' : 'chevron-up'}
           size={16}
@@ -915,6 +968,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.border.base,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  bucketAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: tokens.radius.lg,
+    borderBottomLeftRadius: tokens.radius.lg,
   },
   groupHeader: {
     flexDirection: 'row',
@@ -923,6 +986,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[3],
   },
+  bucketHeader: {
+    paddingLeft: tokens.space[4] + 8,
+    paddingVertical: tokens.space[4],
+  },
   groupIcon: {
     width: 34,
     height: 34,
@@ -930,6 +997,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(123,92,255,0.18)',
+  },
+  bucketIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: tokens.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  bucketTitleCol: {
+    flex: 1,
+    gap: 2,
+  },
+  bucketEyebrow: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 18,
+    letterSpacing: 0.6,
+  },
+  bucketDesc: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    color: tokens.text.dim,
+    letterSpacing: 0.2,
+  },
+  bucketCountChip: {
+    minWidth: 30,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bucketCountText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    letterSpacing: 0.3,
   },
   groupTitle: {
     fontFamily: 'Manrope_800ExtraBold',

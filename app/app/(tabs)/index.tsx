@@ -292,6 +292,30 @@ export default function HomeScreen() {
     [data?.todayActivity.completed],
   );
 
+  // Weekly/monthly completions for the current week — feeds the
+  // "Feito na semana" drawer on the Weekly tab. Without this, the drawer
+  // was always using todayActivity which doesn't include earlier-in-week
+  // weekly completions (e.g. tennis on Tuesday).
+  const completedThisWeekItems = useMemo<CompletedItem[]>(
+    () =>
+      (data?.weekActivity.completed ?? []).map((c) => ({
+        task: c.task,
+        completionId: c.latestCompletionId,
+      })),
+    [data?.weekActivity.completed],
+  );
+
+  // Every one-shot that has at least one completion — feeds the
+  // "Completed" drawer on the One-shot tab.
+  const completedOneShotItems = useMemo<CompletedItem[]>(
+    () =>
+      (data?.oneShotActivity.completed ?? []).map((c) => ({
+        task: c.task,
+        completionId: c.latestCompletionId,
+      })),
+    [data?.oneShotActivity.completed],
+  );
+
   // Tasks skipped today (regardless of bucket). Feeds the "Skipped today"
   // collapsible rendered in every tab. Rows are tappable to unskip.
   const skippedTodayItems = useMemo<CompletedItem[]>(
@@ -346,8 +370,6 @@ export default function HomeScreen() {
             xpNeededForLevel={lp.xpNeededForLevel}
             coins={character.data?.character.coins ?? 0}
             dateLabel={formatCompactDate()}
-            onHistoryPress={() => router.push('/history')}
-            onManagePress={() => router.push('/tasks')}
             trackedReward={trackedReward}
             onTrackedRewardPress={() => router.push('/(tabs)/rewards')}
           />
@@ -355,6 +377,8 @@ export default function HomeScreen() {
           <TodayRing
             done={completedTodayItems.length}
             total={completedTodayItems.length + lists.daily.length}
+            onHistoryPress={() => router.push('/history')}
+            onManagePress={() => router.push('/tasks')}
           />
 
           <ActiveQuestsCard />
@@ -403,7 +427,13 @@ export default function HomeScreen() {
                 )}
 
                 <CompletedBucket
-                  items={completedTodayItems}
+                  items={
+                    activeTab === 'weekly'
+                      ? completedThisWeekItems
+                      : activeTab === 'oneshot'
+                        ? completedOneShotItems
+                        : completedTodayItems
+                  }
                   title={completedBucketTitle}
                   onUndo={handleUndo}
                 />

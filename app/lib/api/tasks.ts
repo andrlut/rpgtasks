@@ -169,6 +169,11 @@ export interface TodayActivity {
   skipped: TaskWithSubs[];
 }
 
+export interface PeriodActivity {
+  /** Tasks completed at least once in the period, with latest completion id. */
+  completed: { task: TaskWithSubs; latestCompletionId: string; count: number }[];
+}
+
 export interface HomeBuckets {
   today: TaskWithSubs[];
   thisWeek: TaskWithSubs[];
@@ -176,6 +181,12 @@ export interface HomeBuckets {
   oneTime: TaskWithSubs[];
   /** Roll-up of "what happened today" — feeds the drawer at the bottom. */
   todayActivity: TodayActivity;
+  /** Weekly/monthly tasks completed at least once this week. Feeds the
+   *  "Done this week" drawer on the Weekly tab. */
+  weekActivity: PeriodActivity;
+  /** One-shot tasks ever completed. Feeds the "Completed" drawer on the
+   *  One-shot tab. */
+  oneShotActivity: PeriodActivity;
 }
 
 function startOfThisWeek(weekStart: WeekStart): Date {
@@ -321,12 +332,26 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
 
   const { data: completionsWeek, error: weekErr } = await supabase
     .from('task_completion')
-    .select('task_id')
-    .gte('completed_at', weekStart.toISOString());
+    .select('id, task_id, completed_at')
+    .gte('completed_at', weekStart.toISOString())
+    .order('completed_at', { ascending: false });
   if (weekErr) throw weekErr;
   const doneWeek = new Map<string, number>();
+  /** Per-task: latest completion id this week + count. Drives the
+   *  "Done this week" drawer on the Weekly tab. */
+  const weekCompletionData = new Map<
+    string,
+    { latestId: string; count: number }
+  >();
   (completionsWeek ?? []).forEach((c) => {
     doneWeek.set(c.task_id, (doneWeek.get(c.task_id) ?? 0) + 1);
+    const cur = weekCompletionData.get(c.task_id);
+    if (cur) {
+      cur.count += 1;
+    } else {
+      // First row = most recent (desc order)
+      weekCompletionData.set(c.task_id, { latestId: c.id, count: 1 });
+    }
   });
 
   const { data: completionsMonth, error: monthErr } = await supabase
@@ -344,13 +369,22 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
     .filter((t) => t.recurrence.type === 'one_shot')
     .map((t) => t.id);
   let everCompletedOneShots = new Set<string>();
+  /** Latest completion id per one-shot task — feeds the "Completed"
+   *  drawer on the One-shot tab so the user can undo a one-off. */
+  const oneShotCompletionData = new Map<string, { latestId: string }>();
   if (oneShotIds.length > 0) {
     const { data: anyComp, error: anyErr } = await supabase
       .from('task_completion')
-      .select('task_id')
-      .in('task_id', oneShotIds);
+      .select('id, task_id, completed_at')
+      .in('task_id', oneShotIds)
+      .order('completed_at', { ascending: false });
     if (anyErr) throw anyErr;
-    everCompletedOneShots = new Set((anyComp ?? []).map((r) => r.task_id));
+    (anyComp ?? []).forEach((c) => {
+      everCompletedOneShots.add(c.task_id);
+      if (!oneShotCompletionData.has(c.task_id)) {
+        oneShotCompletionData.set(c.task_id, { latestId: c.id });
+      }
+    });
   }
 
   // Today's explicit skips — used to hide tasks the user opted out of.
@@ -393,6 +427,8 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
     thisMonth: [],
     oneTime: [],
     todayActivity: { completed: [], skipped: [] },
+    weekActivity: { completed: [] },
+    oneShotActivity: { completed: [] },
   };
 
   // Build today activity drawer data first — relies on allTasks for hydration.
@@ -411,6 +447,35 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
   for (const skippedId of skippedToday) {
     const task = tasksById.get(skippedId);
     if (task) buckets.todayActivity.skipped.push(task);
+  }
+
+  // weekActivity: every weekly/monthly task with at least one completion
+  // this week. Same shape as todayActivity.completed so the existing
+  // CompletedBucket UI just works on the Weekly tab.
+  for (const [taskId, info] of weekCompletionData.entries()) {
+    const task = tasksById.get(taskId);
+    if (!task) continue;
+    if (task.recurrence.type !== 'weekly' && task.recurrence.type !== 'monthly') {
+      continue;
+    }
+    buckets.weekActivity.completed.push({
+      task,
+      latestCompletionId: info.latestId,
+      count: info.count,
+    });
+  }
+
+  // oneShotActivity: every one-shot ever completed — feeds the
+  // "Completed" drawer on the One-shot tab. Order matches the desc
+  // sort from the fetch.
+  for (const [taskId, info] of oneShotCompletionData.entries()) {
+    const task = tasksById.get(taskId);
+    if (!task) continue;
+    buckets.oneShotActivity.completed.push({
+      task,
+      latestCompletionId: info.latestId,
+      count: 1,
+    });
   }
 
   for (const t of allTasks) {
@@ -599,6 +664,8 @@ export function useCompleteTask() {
           thisMonth: removeFrom(prevBuckets.thisMonth),
           oneTime: removeFrom(prevBuckets.oneTime),
           todayActivity: prevBuckets.todayActivity,
+          weekActivity: prevBuckets.weekActivity,
+          oneShotActivity: prevBuckets.oneShotActivity,
         });
       }
 
