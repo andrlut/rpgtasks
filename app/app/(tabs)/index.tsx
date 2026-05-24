@@ -48,7 +48,7 @@ interface FloatItem {
   coins: number;
 }
 
-type BucketTab = 'today' | 'week' | 'recurring' | 'oneshot';
+type BucketTab = 'daily' | 'weekly' | 'oneshot' | 'all';
 
 interface TabMeta {
   id: BucketTab;
@@ -60,25 +60,18 @@ interface TabMeta {
 
 const TAB_META: TabMeta[] = [
   {
-    id: 'today',
-    labelKey: 'home.bucketTabs.today',
-    emptyKey: 'home.bucketTabs.emptyToday',
+    id: 'daily',
+    labelKey: 'home.bucketTabs.daily',
+    emptyKey: 'home.bucketTabs.emptyDaily',
     iconName: 'sunny-outline',
     accent: tokens.brand.violet2,
   },
   {
-    id: 'week',
-    labelKey: 'home.bucketTabs.week',
-    emptyKey: 'home.bucketTabs.emptyWeek',
+    id: 'weekly',
+    labelKey: 'home.bucketTabs.weekly',
+    emptyKey: 'home.bucketTabs.emptyWeekly',
     iconName: 'calendar-outline',
     accent: '#4DD0FF',
-  },
-  {
-    id: 'recurring',
-    labelKey: 'home.bucketTabs.recurring',
-    emptyKey: 'home.bucketTabs.emptyRecurring',
-    iconName: 'repeat',
-    accent: tokens.semantic.xp,
   },
   {
     id: 'oneshot',
@@ -86,6 +79,13 @@ const TAB_META: TabMeta[] = [
     emptyKey: 'home.bucketTabs.emptyOneshot',
     iconName: 'flag-outline',
     accent: tokens.semantic.coin,
+  },
+  {
+    id: 'all',
+    labelKey: 'home.bucketTabs.all',
+    emptyKey: 'home.bucketTabs.emptyAll',
+    iconName: 'apps-outline',
+    accent: tokens.semantic.xp,
   },
 ];
 
@@ -114,7 +114,7 @@ export default function HomeScreen() {
   const unskipTask = useUnskipTaskToday();
   const undoCompletion = useUndoCompletion();
 
-  const [activeTab, setActiveTab] = useState<BucketTab>('today');
+  const [activeTab, setActiveTab] = useState<BucketTab>('daily');
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
@@ -241,65 +241,65 @@ export default function HomeScreen() {
 
   const data = buckets.data;
 
-  // ── Bucket lists (mutually exclusive) ─────────────────────────────────
-  // Strict precedence: today > week > recurring. A task only appears in
-  // one bucket — the one closest to "act on this now".
+  // ── Type-flavored lists ───────────────────────────────────────────────
+  // Tabs now split by recurrence type, not time window. Each tab shows
+  // active tasks of that type that aren't completed/skipped today (so the
+  // user sees "what's left for me to do" per cadence). The All tab unions
+  // everything.
   //
-  // - today:     `useHomeBuckets.today` (pending daily + scheduled-today
-  //              weekly/monthly that aren't done yet + last-day escalations)
-  // - week:      `useHomeBuckets.thisWeek` MINUS today's items AND minus
-  //              anything completed OR skipped today (covered-for-today
-  //              shouldn't pop back into this-week as if still pending).
-  //              Monthly tasks land here only when they hit the last week
-  //              of the month — otherwise they stay in Recurring.
-  // - recurring: non-one_shot active tasks NOT in today or week, and
-  //              NOT completed/skipped today (caught-up cadences)
-  // - oneshot:   pending one-shots
+  // - daily:   recurrence.type === 'daily', pending today
+  // - weekly:  recurrence.type in ('weekly','monthly'), pending this period
+  // - oneshot: recurrence.type === 'one_shot', never completed
+  // - all:     dedup'd union of the three
   const lists = useMemo<Record<BucketTab, TaskWithSubs[]>>(() => {
     if (!data) {
-      return { today: [], week: [], recurring: [], oneshot: [] };
+      return { daily: [], weekly: [], oneshot: [], all: [] };
     }
-
-    const todayIds = new Set(data.today.map((t) => t.id));
     const completedTodayIds = new Set(
       data.todayActivity.completed.map((c) => c.task.id),
     );
     const skippedTodayIds = new Set(
       data.todayActivity.skipped.map((t) => t.id),
     );
+    const filterActedToday = (t: TaskWithSubs) =>
+      !completedTodayIds.has(t.id) && !skippedTodayIds.has(t.id);
 
-    // Week list: hide today's items and any task already acted on today.
-    const week: TaskWithSubs[] = [];
-    const seen = new Set<string>();
-    const pushWeek = (t: TaskWithSubs) => {
-      if (seen.has(t.id)) return;
-      if (todayIds.has(t.id)) return;
-      if (completedTodayIds.has(t.id)) return;
-      if (skippedTodayIds.has(t.id)) return;
-      seen.add(t.id);
-      week.push(t);
+    // Daily: from buckets.today, filter to daily recurrence type only
+    const daily = data.today
+      .filter((t) => t.recurrence.type === 'daily')
+      .filter(filterActedToday);
+
+    // Weekly: buckets.thisWeek (already excludes today's done) + any
+    // weekly/monthly that's in today (scheduled-today) — deduped.
+    const weeklySeen = new Set<string>();
+    const weekly: TaskWithSubs[] = [];
+    const pushWeekly = (t: TaskWithSubs) => {
+      if (weeklySeen.has(t.id)) return;
+      if (t.recurrence.type !== 'weekly' && t.recurrence.type !== 'monthly') return;
+      if (!filterActedToday(t)) return;
+      weeklySeen.add(t.id);
+      weekly.push(t);
     };
-    data.thisWeek.forEach(pushWeek);
-    const weekIds = new Set(week.map((t) => t.id));
+    data.today.forEach(pushWeekly);
+    data.thisWeek.forEach(pushWeekly);
 
-    // Recurring = non-one_shot active tasks not surfaced above and not
-    // acted-on today.
-    const recurring = (allActiveTasks.data ?? []).filter(
-      (t) =>
-        t.recurrence.type !== 'one_shot' &&
-        !todayIds.has(t.id) &&
-        !weekIds.has(t.id) &&
-        !completedTodayIds.has(t.id) &&
-        !skippedTodayIds.has(t.id),
-    );
+    const oneshot = data.oneTime.filter(filterActedToday);
 
-    return {
-      today: data.today,
-      week,
-      recurring,
-      oneshot: data.oneTime,
+    // All: union, deduped, type-sorted so daily comes first, weekly next,
+    // one-shot last. Matches the mental order of the dedicated tabs.
+    const allSeen = new Set<string>();
+    const all: TaskWithSubs[] = [];
+    const pushAll = (t: TaskWithSubs) => {
+      if (allSeen.has(t.id)) return;
+      allSeen.add(t.id);
+      all.push(t);
     };
-  }, [data, allActiveTasks.data]);
+    daily.forEach(pushAll);
+    weekly.forEach(pushAll);
+    oneshot.forEach(pushAll);
+
+    return { daily, weekly, oneshot, all };
+  }, [data]);
 
   // Tasks completed today (regardless of bucket). Used by the "Done today"
   // collapsible — rendered in every tab. Rows are tappable to undo, so we
@@ -321,14 +321,13 @@ export default function HomeScreen() {
     [data?.todayActivity.skipped],
   );
 
-  // Counts shown in the tab chips. For today/week/oneshot it's pending; for
-  // recurring it's the total number of cadences (active rate is the value).
+  // Counts shown in the tab chips — pending count per type.
   const counts = useMemo<Record<BucketTab, number>>(
     () => ({
-      today: lists.today.length,
-      week: lists.week.length,
-      recurring: lists.recurring.length,
+      daily: lists.daily.length,
+      weekly: lists.weekly.length,
       oneshot: lists.oneshot.length,
+      all: lists.all.length,
     }),
     [lists],
   );
@@ -339,13 +338,13 @@ export default function HomeScreen() {
   const activeList = lists[activeTab];
 
   const completedBucketTitle =
-    activeTab === 'today'
-      ? t('home.completedBucket.today')
-      : activeTab === 'week'
-        ? t('home.completedBucket.week')
-        : activeTab === 'recurring'
-          ? t('home.completedBucket.recurring')
-          : t('home.completedBucket.oneshot');
+    activeTab === 'daily'
+      ? t('home.completedBucket.daily')
+      : activeTab === 'weekly'
+        ? t('home.completedBucket.weekly')
+        : activeTab === 'oneshot'
+          ? t('home.completedBucket.oneshot')
+          : t('home.completedBucket.all');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -379,7 +378,7 @@ export default function HomeScreen() {
 
           <TodayRing
             done={completedTodayItems.length}
-            total={completedTodayItems.length + lists.today.length}
+            total={completedTodayItems.length + lists.daily.length}
           />
 
           <ActiveQuestsCard />
@@ -407,11 +406,8 @@ export default function HomeScreen() {
                   <Text style={styles.tabEmpty}>{t(activeMeta.emptyKey)}</Text>
                 ) : (
                   <>
-                    {activeTab === 'today' && (
+                    {activeTab === 'daily' && (
                       <Text style={styles.sectionLabel}>{t('home.bucketTabs.nextUp')}</Text>
-                    )}
-                    {activeTab === 'recurring' && (
-                      <Text style={styles.sectionLabel}>{t('home.bucketTabs.recurringLead')}</Text>
                     )}
                     {activeTab === 'oneshot' && (
                       <Text style={styles.sectionLabel}>{t('home.bucketTabs.oneshotLead')}</Text>
