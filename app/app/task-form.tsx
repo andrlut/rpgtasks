@@ -21,6 +21,7 @@ import {
   useArchiveTask,
   useCreateTask,
   useTask,
+  useTaskTemplates,
   useUpdateTask,
   type TaskFormInput,
 } from '@/lib/api/tasks';
@@ -40,16 +41,32 @@ function legacyTypeFor(r: Recurrence): 'one_shot' | 'daily' | 'weekly' {
 
 export default function TaskFormScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; from_template?: string }>();
   const isEdit = !!params.id;
+  const fromTemplateId = params.from_template;
 
   const existing = useTask(params.id);
+  const templates = useTaskTemplates();
+  /** When the user picks "Customize" on the AdoptPeriodicitySheet, this
+   *  screen opens with `from_template=X` so we pre-fill the form fields
+   *  with the template's content. The resulting save goes through the
+   *  regular createTask path — so the new task is `template_id IS NULL`
+   *  (truly custom). That also means it counts as a custom slot under
+   *  any future free-tier limit, which is the right thing. */
+  const templateSource = useMemo(
+    () =>
+      fromTemplateId
+        ? (templates.data ?? []).find((t) => t.id === fromTemplateId) ?? null
+        : null,
+    [fromTemplateId, templates.data],
+  );
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [recurrence, setRecurrence] = useState<Recurrence>({ type: 'daily' });
   const [targetCount, setTargetCount] = useState<number>(1);
   const [subs, setSubs] = useState<TaskSub[]>([]);
+  const [prefillApplied, setPrefillApplied] = useState(false);
   // Keep scroll content reachable while the keyboard is up. `endCoordinates`
   // doesn't always include the keyboard's tool/suggestion bar, so we add a
   // generous buffer below.
@@ -65,6 +82,21 @@ export default function TaskFormScreen() {
       setSubs(existing.data.subs);
     }
   }, [existing.data]);
+
+  // Prefill from template when entering via "Customize" on the adopt sheet.
+  // One-shot: we apply once, then stop reacting so user edits don't get
+  // clobbered if templates query refetches.
+  useEffect(() => {
+    if (isEdit) return;
+    if (prefillApplied) return;
+    if (!templateSource) return;
+    setTitle(templateSource.title);
+    setDescription(templateSource.description ?? '');
+    setRecurrence(templateSource.recurrence);
+    setTargetCount(templateSource.target_count ?? 1);
+    setSubs(templateSource.subs);
+    setPrefillApplied(true);
+  }, [isEdit, prefillApplied, templateSource]);
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask(params.id ?? '');
