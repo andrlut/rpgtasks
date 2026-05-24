@@ -37,9 +37,36 @@ Project ref:    Expo cloud project (definido em eas.json)
 - `git status` limpo (sem mudanças não commitadas)
 - `eas` CLI instalado (`eas --version`)
 
-## Processo (4 passos)
+## Processo (5 passos)
 
-### Passo 1 — Verificar segurança da mudança
+### Passo 1 — Verificar que está no commit certo (CRÍTICO)
+
+**Não confie em "estou no main worktree" — confie em rev-parse.** Já aconteceu de a skill rodar de outro worktree (por causa de `node_modules` faltando no principal), e o bundle saiu defasado em relação à `origin/main`.
+
+```powershell
+git fetch origin
+$localHead  = git rev-parse HEAD
+$remoteMain = git rev-parse origin/main
+$cwd        = (Get-Location).Path
+```
+
+Validações obrigatórias antes de continuar:
+
+| Check | Esperado | Se falhar |
+|---|---|---|
+| `$localHead -eq $remoteMain` | ✅ Igual | ❌ **ABORTAR** — bundle viria defasado. Pedir `git pull --rebase` no worktree (ou trocar pro worktree certo). |
+| Branch atual `== main` (ou contém merge de `origin/main` no topo) | ✅ | ⚠️ Aceitar SÓ se HEAD == origin/main; senão abortar. |
+| `app/node_modules/expo` existe nesse worktree | ✅ Existe | ❌ **ABORTAR** — `eas update` vai falhar com "expo package not found". Pedir `pnpm install` ou trocar pra worktree que tenha. |
+
+Mostrar ao user qual worktree e qual commit vai ser usado pro publish:
+
+```
+📍 Publicando de: <cwd>
+   Commit:        <short-sha> "<message>"
+   vs origin/main: <em-dia | defasado>
+```
+
+### Passo 2 — Verificar segurança da mudança
 
 Olhar os últimos commits e arquivos mudados:
 
@@ -65,7 +92,7 @@ Se algum flag aparecer, **abortar** com mensagem:
 Use `eas build --profile preview` em vez de OTA update.
 ```
 
-### Passo 2 — Confirmar com user
+### Passo 3 — Confirmar com user
 
 Mesmo após auto-check passar, mostrar ao user o que vai ser pushado:
 
@@ -78,7 +105,7 @@ Vou rodar `eas update --channel preview` agora. Confirma?
 
 Aguardar confirmação se modo interactive; pular se invocado explicitamente como `/ota-update --auto`.
 
-### Passo 3 — Publicar update
+### Passo 4 — Publicar update
 
 ```powershell
 cd app
@@ -87,7 +114,7 @@ eas update --channel preview --message "<auto-derivado do último commit>" --non
 
 Capturar output. Extrair `updateGroupId` (ou equivalente) e `updateUrl`.
 
-### Passo 4 — Reporte
+### Passo 5 — Reporte
 
 ```
 📡 OTA update publicado!
@@ -110,6 +137,7 @@ Capturar output. Extrair `updateGroupId` (ou equivalente) e `updateUrl`.
 - **Não substituir rebuild quando há mudança nativa**: tentativa silenciosa de OTA com mudança nativa = update publica mas APK ignora (incompatibilidade SDK).
 - **Channel `preview` é o testing channel** — produção real seria channel `production` (não setado ainda). Pra esse repo, todos os usuários estão em `preview`.
 - **Rollback é via republish do grupo anterior**, não delete — Expo não suporta delete de update grupo.
+- **Bundle defasado é o erro mais sutil** (PR #167 saga): nunca confiar em "estou no main worktree" sem verificar `git rev-parse HEAD == origin/main`. Worktrees podem ser ramificados, ter merges parciais, ou estar fast-forward-faltando. O Passo 1 existe pra isso.
 
 ## Quando algo der errado
 
@@ -117,6 +145,8 @@ Capturar output. Extrair `updateGroupId` (ou equivalente) e `updateUrl`.
 |---|---|---|
 | `eas: command not found` | EAS CLI não instalado | `npm i -g eas-cli` |
 | Auth error | `EXPO_TOKEN` expirado | Renovar token em https://expo.dev/accounts/.../settings/access-tokens |
+| `expo package not found` no `eas update` | Worktree sem `pnpm install` | `cd <repo> && pnpm install`, ou trocar pra worktree que tenha `app/node_modules/expo` |
+| Bundle publicado com commit mais antigo que origin/main | Worktree defasado (Passo 1 não foi executado direito) | Republicar do worktree correto; Expo serve só o update mais recente do channel |
 | Update publica mas APK não pega | App não tinha `expo-updates` no momento do build | Rebuilds com EAS são necessários |
 | Update quebra app no startup | JS bundle incompatível | Rollback via republish do grupo anterior |
 | `eas update` retorna erro de version | runtimeVersion mudou entre APK e update | Rebuild necessário |
