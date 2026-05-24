@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -30,12 +29,19 @@ interface Props {
 /**
  * Two-row header for the Tasks screen — V3 layout.
  *
- *   Row 1: date · NAME (eyebrow, flex)   LV pill   XP bar (flex)
- *   Row 2: coin chip   ── reward row (icon + name + bar + %)
+ *   ┌─────────────┬───────────────────────────┬──────────┐
+ *   │ SUN, MAY 24 │ XP bar ────────────────── │ LV 3     │
+ *   │ DECO        │ 🎯 reward ─────────────── │ 535 coin │
+ *   └─────────────┴───────────────────────────┴──────────┘
  *
- * History / Manage shortcuts moved out to live next to the TodayRing —
- * see `app/components/TodayRing.tsx`. Bigger tap targets there, freer
- * space here for the level + XP up top.
+ * Three columns, two rows. Left column stacks date + name (uppercase
+ * eyebrow style). Middle column flexes and holds the two progress
+ * bars — both start at the same X so they line up vertically. Right
+ * column holds the LV + coin pills, sharing a `statPill` shape so
+ * they read as a tidy column.
+ *
+ * History / Manage shortcuts live next to the TodayRing — see
+ * `app/components/TodayRing.tsx`.
  */
 export function CompactHeader({
   displayName,
@@ -55,16 +61,16 @@ export function CompactHeader({
 
   return (
     <View style={styles.wrap}>
-      {/* Row 1: date · NAME + LV pill + XP bar */}
-      <View style={styles.eyebrowRow}>
-        <Text style={styles.eyebrow} numberOfLines={1}>
-          {dateLabel} · {displayName.toUpperCase()}
+      {/* Row 1: date · XP bar · LV pill */}
+      <View style={styles.row}>
+        <Text style={styles.leftLabel} numberOfLines={1}>
+          {dateLabel}
         </Text>
 
-        <View style={styles.xpCol}>
-          <View style={styles.xpLabels}>
-            <Text style={styles.xpLabelLeft}>XP</Text>
-            <Text style={styles.xpLabelRight}>
+        <View style={styles.barCol}>
+          <View style={styles.barLabels}>
+            <Text style={styles.barLabelLeft}>XP</Text>
+            <Text style={styles.barLabelRight}>
               {xpInLevel} / {xpNeededForLevel}
             </Text>
           </View>
@@ -78,57 +84,51 @@ export function CompactHeader({
           </View>
         </View>
 
-        {/* LV pill anchors to the right of its row, mirroring the coin
-            chip's position on the wallet row below. Same min-width so
-            the two read as a vertical pair. */}
         <View style={styles.statPill}>
           <Text style={styles.lvLabel}>LV</Text>
           <Text style={styles.lvValue}>{level}</Text>
         </View>
       </View>
 
-      {/* Row 2: tracked reward (optional bar) + coin chip on the right */}
-      <View style={styles.walletRow}>
+      {/* Row 2: name · reward bar (optional) · coin pill */}
+      <View style={styles.row}>
+        <Text style={styles.leftLabel} numberOfLines={1}>
+          {displayName.toUpperCase()}
+        </Text>
+
         {trackedReward ? (
           <Pressable
             onPress={onTrackedRewardPress}
             disabled={!onTrackedRewardPress}
             style={({ pressed }) => [
-              styles.rewardRow,
+              styles.barCol,
               pressed && styles.rewardRowPressed,
             ]}
             accessibilityRole="button"
             accessibilityLabel={`Tracked reward: ${trackedReward.name}`}
           >
-            <View style={styles.rewardIcon}>
-              <Ionicons
-                name={trackedReward.icon as never}
-                size={12}
-                color={tokens.semantic.coin}
-              />
+            <View style={styles.barLabels}>
+              <Text style={[styles.barLabelLeft, { color: tokens.text.mid }]} numberOfLines={1}>
+                🎯 {trackedReward.name}
+              </Text>
+              <Text style={[styles.barLabelRight, { color: tokens.semantic.coin }]}>
+                {Math.round(rewardPct)}%
+              </Text>
             </View>
-            <View style={styles.rewardCol}>
-              <View style={styles.rewardLabels}>
-                <Text style={styles.rewardName} numberOfLines={1}>
-                  🎯 {trackedReward.name}
-                </Text>
-                <Text style={styles.rewardPct}>{Math.round(rewardPct)}%</Text>
-              </View>
-              <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.barFill,
-                    styles.rewardBarFill,
-                    { width: `${rewardPct}%` },
-                  ]}
-                />
-              </View>
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  styles.rewardBarFill,
+                  { width: `${rewardPct}%` },
+                ]}
+              />
             </View>
           </Pressable>
         ) : (
           // No reward to track — keep the row balanced so the coin
-          // chip still anchors to the right edge.
-          <View style={styles.rewardRow} />
+          // pill still anchors to the right edge.
+          <View style={styles.barCol} />
         )}
 
         <View style={[styles.statPill, styles.coinPill]}>
@@ -140,6 +140,8 @@ export function CompactHeader({
   );
 }
 
+const LEFT_LABEL_WIDTH = 76;
+
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: tokens.space[4],
@@ -147,21 +149,60 @@ const styles = StyleSheet.create({
     paddingBottom: tokens.space[3],
     gap: 10,
   },
-  eyebrowRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
-  eyebrow: {
+  // Fixed-width label column on the left — same width on both rows so
+  // the bars to its right start at the same X.
+  leftLabel: {
+    width: LEFT_LABEL_WIDTH,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 1.4,
+    color: tokens.text.dim,
+  },
+  barCol: {
+    flex: 1,
+    minWidth: 90,
+  },
+  barLabels: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 3,
+    gap: 8,
+  },
+  barLabelLeft: {
+    flex: 1,
     fontFamily: 'Manrope_700Bold',
     fontSize: 10,
-    letterSpacing: 1.6,
-    color: tokens.text.dim,
-    flexShrink: 1,
+    color: tokens.text.mid,
   },
-  // Shared shape for the LV pill (eyebrow row, right) and coin chip
-  // (wallet row, right). Same min-width and padding so they stack as a
-  // visual column on the right edge of the header.
+  barLabelRight: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 10,
+    color: tokens.brand.violet2,
+  },
+  barTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: tokens.bg.surface,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  rewardBarFill: {
+    backgroundColor: tokens.semantic.coin,
+  },
+  rewardRowPressed: {
+    opacity: 0.7,
+  },
+  // Shared shape for the LV pill (row 1) and coin chip (row 2). Same
+  // min-width and padding so they stack as a tidy column on the right.
   statPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -190,85 +231,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: tokens.brand.violet2,
   },
-  xpCol: {
-    flex: 1,
-    minWidth: 90,
-  },
-  xpLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-  },
-  xpLabelLeft: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.mid,
-  },
-  xpLabelRight: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    color: tokens.brand.violet2,
-  },
-  barTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: tokens.bg.surface,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  walletRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
   coinChipText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 12,
     color: tokens.semantic.coin,
-  },
-  rewardRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rewardRowPressed: {
-    opacity: 0.7,
-  },
-  rewardIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 200, 61, 0.14)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rewardCol: {
-    flex: 1,
-  },
-  rewardLabels: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-    gap: 8,
-  },
-  rewardName: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.mid,
-    flex: 1,
-  },
-  rewardPct: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    color: tokens.semantic.coin,
-  },
-  rewardBarFill: {
-    backgroundColor: tokens.semantic.coin,
   },
 });
