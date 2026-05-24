@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
+import { PercevaGlyph } from '@/components/PercevaGlyph';
 import type { DimensionId } from '@/lib/db/types';
 import { tokens } from '@/theme';
 import { DIMENSION_META } from '@/theme/dimensions';
@@ -22,7 +23,7 @@ interface Props {
   onSlicePress?: (dim: DimensionId) => void;
 }
 
-const STROKE_W = 22;
+const STROKE_W = 14;
 const GAP_DEG = 2;
 
 function polar(cx: number, cy: number, r: number, angleDeg: number) {
@@ -55,12 +56,14 @@ export function XpDonut({
   slices,
   totalXp,
   prevTotalXp,
-  size = 220,
+  size = 168,
   onSlicePress,
 }: Props) {
   const cx = size / 2;
   const cy = size / 2;
   const r = (size - STROKE_W) / 2;
+  // Glyph sits inside the donut hole — keep clear of the ring stroke.
+  const glyphSize = Math.round(size * 0.62);
 
   const nonZero = useMemo(() => slices.filter((s) => s.xp > 0), [slices]);
 
@@ -90,6 +93,17 @@ export function XpDonut({
 
   return (
     <View style={{ width: size, height: size }}>
+      {/* Engraved Perceva mark inside the hole — same visual vocabulary
+          as Vault cards; keeps the screen on-brand without competing
+          with the data. */}
+      <View style={styles.glyphWrap} pointerEvents="none">
+        <PercevaGlyph
+          size={glyphSize}
+          bare
+          palette="gilded"
+          idSuffix="donut"
+        />
+      </View>
       <Svg width={size} height={size}>
         {/* Background ring — always present so the empty state still reads as a donut. */}
         <Circle
@@ -174,28 +188,34 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
+    gap: 1,
+  },
+  glyphWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.1,
   },
   totalXp: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 28,
+    fontSize: 22,
     color: tokens.text.hi,
-    lineHeight: 30,
+    lineHeight: 24,
   },
   xpLabel: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
+    fontSize: 9,
     color: tokens.text.dim,
-    letterSpacing: 1.2,
-    marginTop: -2,
+    letterSpacing: 1.4,
+    marginTop: -1,
   },
   deltaRow: {
-    marginTop: 4,
+    marginTop: 3,
     paddingHorizontal: 6,
   },
   deltaText: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 0.3,
   },
 });

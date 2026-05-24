@@ -19,6 +19,7 @@ import { ProgressBar } from '@/components/ProgressBar';
 import {
   computeWindow,
   useDedicacaoWindow,
+  type SubWindow,
   type WindowSpec,
 } from '@/lib/api/dedicacao';
 import type { CharacterDimension, DimensionId } from '@/lib/db/types';
@@ -27,7 +28,12 @@ import { useMetaLookup } from '@/lib/i18n/meta';
 import { useLoadedSettings } from '@/lib/settings';
 import { levelProgress } from '@/lib/xp';
 import { tokens } from '@/theme';
-import { DIMENSION_META, DIMENSION_ORDER } from '@/theme/dimensions';
+import {
+  DIMENSION_META,
+  DIMENSION_ORDER,
+  SUB_META,
+  SUBS_BY_DIM,
+} from '@/theme/dimensions';
 
 interface Props {
   dimensions: CharacterDimension[];
@@ -89,11 +95,16 @@ function formatWindowLabel(
  * Sub-pillar **Dedicação** (Praticada). Windowed XP view: period selector
  * up top (Semana / Mês / Trimestre / Total + ◀ ▶ to scrub past periods),
  * a donut summarizing per-dim XP share for the window, and per-dim cards
- * with a cumulative sparkline of XP across the window.
+ * with a cumulative sparkline of XP across the window. Cards expand to
+ * reveal a per-sub breakdown for the window.
+ *
+ * All sparklines share a single y-axis ceiling (the leading dim's final
+ * cumulative XP), so a sub-leading dim renders short and flat next to
+ * the leader's full-height climb — visually honest comparison.
  *
  * Tapping a donut slice scrolls + briefly highlights the matching dim
- * card. Level and total XP stay all-time — only the window XP and
- * sparkline change with the selector.
+ * card. Level and total XP stay all-time — only window XP, sparkline,
+ * and sub breakdown change with the selector.
  */
 export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
   const router = useRouter();
@@ -107,6 +118,7 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     offset: 0,
   });
   const [highlightDim, setHighlightDim] = useState<DimensionId | null>(null);
+  const [expanded, setExpanded] = useState<Set<DimensionId>>(new Set());
 
   const windowQuery = useDedicacaoWindow(spec, settings.weekStart);
 
@@ -116,8 +128,6 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     return m;
   }, [dimensions]);
 
-  // Compute the window even while data is loading so the period label
-  // ("Maio 2026", "12 – 18 mai", ...) stays present.
   const computed = useMemo(
     () => computeWindow(spec, settings.weekStart),
     [spec, settings.weekStart],
@@ -139,13 +149,40 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
   );
 
   const perDimWindow = useMemo(() => {
-    const m = new Map<DimensionId, { window: number; cumulative: number[] }>();
-    for (const d of DIMENSION_ORDER) m.set(d, { window: 0, cumulative: [] });
+    const m = new Map<
+      DimensionId,
+      { window: number; cumulative: number[]; perSub: SubWindow[] }
+    >();
+    for (const d of DIMENSION_ORDER) {
+      m.set(d, {
+        window: 0,
+        cumulative: [],
+        perSub: SUBS_BY_DIM[d].map((subId) => ({ subId, windowXp: 0 })),
+      });
+    }
     for (const row of windowQuery.data?.perDim ?? []) {
-      m.set(row.dimId, { window: row.windowXp, cumulative: row.cumulative });
+      m.set(row.dimId, {
+        window: row.windowXp,
+        cumulative: row.cumulative,
+        perSub: row.perSub,
+      });
     }
     return m;
   }, [windowQuery.data]);
+
+  // Global ceiling for sparklines — peak final-cumulative across all dims.
+  // Lets a small-investment dim render visibly short while the leader fills
+  // the box, which is the comparison the user actually wants.
+  const sparkGlobalMax = useMemo(() => {
+    let max = 0;
+    for (const win of perDimWindow.values()) {
+      const last = win.cumulative.length
+        ? win.cumulative[win.cumulative.length - 1]
+        : 0;
+      if (last > max) max = last;
+    }
+    return max;
+  }, [perDimWindow]);
 
   const labels = locale === 'pt' ? CHIP_LABELS_PT : CHIP_LABELS_EN;
   const isAll = spec.granularity === 'all';
@@ -185,7 +222,16 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     );
   };
 
-  const donutSize = Math.max(200, Math.min((screenWidth || 360) - 64, 260));
+  const toggleExpand = (dim: DimensionId) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(dim)) next.delete(dim);
+      else next.add(dim);
+      return next;
+    });
+  };
+
+  const donutSize = Math.max(160, Math.min((screenWidth || 360) - 120, 192));
   const sparkWidth = Math.max(160, (screenWidth || 360) - 80);
 
   return (
@@ -231,7 +277,9 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
           const win = perDimWindow.get(id);
           const winXp = win?.window ?? 0;
           const cumulative = win?.cumulative ?? [];
+          const perSub = win?.perSub ?? [];
           const isHighlighted = highlightDim === id;
+          const isExpanded = expanded.has(id);
 
           return (
             <Pressable
@@ -239,17 +287,17 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
               ref={(node) => {
                 cardRefs.current[id] = node;
               }}
-              onPress={() =>
-                router.push({ pathname: '/dimension/[id]', params: { id } })
-              }
+              onPress={() => toggleExpand(id)}
               style={({ pressed }) => [
                 styles.attribute,
                 isHighlighted && {
                   borderColor: `${meta.color}AA`,
                   backgroundColor: meta.bg,
                 },
-                pressed && { opacity: 0.7 },
+                pressed && { opacity: 0.85 },
               ]}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isExpanded }}
             >
               <View style={styles.attributeTop}>
                 <View style={styles.attributeNameRow}>
@@ -277,6 +325,12 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                   </Text>
                   <Text style={styles.levelValue}>{lp.level}</Text>
                 </View>
+                <Ionicons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={tokens.text.dim}
+                  style={styles.chevron}
+                />
               </View>
 
               <ProgressBar
@@ -306,8 +360,10 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                   <Sparkline
                     cumulative={cumulative}
                     color={meta.color}
+                    globalMax={sparkGlobalMax}
                     height={32}
                     width={sparkWidth}
+                    idSuffix={id}
                   />
                 </>
               ) : (
@@ -316,6 +372,69 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                     ? '— sem XP nesta janela'
                     : '— no XP this window'}
                 </Text>
+              )}
+
+              {isExpanded && (
+                <View style={styles.expandWrap}>
+                  <View style={styles.divider} />
+                  {perSub.map((sub) => {
+                    const subMeta = SUB_META[sub.subId];
+                    const subLabel = metaLookup.sub(sub.subId).label;
+                    const share =
+                      winXp > 0 ? Math.round((sub.windowXp / winXp) * 100) : 0;
+                    return (
+                      <View key={sub.subId} style={styles.subRow}>
+                        <Ionicons
+                          name={subMeta.iconName as never}
+                          size={14}
+                          color={`${meta.color}DD`}
+                        />
+                        <Text style={styles.subLabel} numberOfLines={1}>
+                          {subLabel}
+                        </Text>
+                        <View style={styles.subBarTrack}>
+                          <View
+                            style={[
+                              styles.subBarFill,
+                              {
+                                width: `${share}%`,
+                                backgroundColor: meta.color,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <Text style={styles.subShare}>{share}%</Text>
+                        <Text style={[styles.subXp, { color: meta.color }]}>
+                          +{sub.windowXp.toLocaleString()}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  <Pressable
+                    onPress={() =>
+                      router.push({
+                        pathname: '/dimension/[id]',
+                        params: { id },
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.detailLink,
+                      pressed && { opacity: 0.7 },
+                    ]}
+                    hitSlop={4}
+                  >
+                    <Text style={[styles.detailLinkText, { color: meta.color }]}>
+                      {locale === 'pt'
+                        ? `Ver ${metaLookup.dim(id).label}`
+                        : `Open ${metaLookup.dim(id).label}`}
+                    </Text>
+                    <Ionicons
+                      name="arrow-forward"
+                      size={12}
+                      color={meta.color}
+                    />
+                  </Pressable>
+                </View>
               )}
             </Pressable>
           );
@@ -354,8 +473,7 @@ const styles = StyleSheet.create({
   attributeTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: tokens.space[3],
+    gap: tokens.space[2],
   },
   attributeNameRow: {
     flexDirection: 'row',
@@ -403,6 +521,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: tokens.text.hi,
   },
+  chevron: {
+    marginLeft: 2,
+  },
   toNext: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 10,
@@ -432,5 +553,62 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  expandWrap: {
+    gap: tokens.space[2],
+    marginTop: 2,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: tokens.border.divider,
+  },
+  subRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+  },
+  subLabel: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 12,
+    color: tokens.text.base,
+    flexShrink: 1,
+    minWidth: 70,
+  },
+  subBarTrack: {
+    flex: 1,
+    height: 5,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+  },
+  subBarFill: {
+    height: '100%',
+    borderRadius: tokens.radius.pill,
+  },
+  subShare: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 10,
+    color: tokens.text.dim,
+    minWidth: 30,
+    textAlign: 'right',
+  },
+  subXp: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    letterSpacing: 0.3,
+    minWidth: 48,
+    textAlign: 'right',
+  },
+  detailLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 2,
+  },
+  detailLinkText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.3,
   },
 });

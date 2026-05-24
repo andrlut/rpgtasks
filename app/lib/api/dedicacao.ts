@@ -23,12 +23,19 @@ export interface WindowSpec {
   offset: number;
 }
 
+export interface SubWindow {
+  subId: SubId;
+  windowXp: number;
+}
+
 export interface DimWindow {
   dimId: DimensionId;
   windowXp: number;
   prevWindowXp: number;
   /** Cumulative XP at the end of each bucket (always non-decreasing). */
   cumulative: number[];
+  /** Window XP per sub, in SUBS_BY_DIM order. Drives the expand-card breakdown. */
+  perSub: SubWindow[];
 }
 
 export interface WindowComputation {
@@ -273,12 +280,14 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
         DimensionId,
         { window: number; prev: number; perBucket: number[] }
       >();
+      const perSubAgg = new Map<SubId, number>();
       for (const dim of DIMENSION_ORDER) {
         perDimAgg.set(dim, {
           window: 0,
           prev: 0,
           perBucket: Array(comp.bucketStarts.length).fill(0),
         });
+        for (const sub of SUBS_BY_DIM[dim]) perSubAgg.set(sub, 0);
       }
 
       let totalXp = 0;
@@ -312,6 +321,8 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
             agg.window += xp;
             totalXp += xp;
             if (bucketIdx >= 0) agg.perBucket[bucketIdx] += xp;
+            const subId = tcs.sub_id as SubId;
+            perSubAgg.set(subId, (perSubAgg.get(subId) ?? 0) + xp);
           } else if (inPrev) {
             agg.prev += xp;
             prevTotalXp += xp;
@@ -327,7 +338,17 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
           running += v;
           cumulative.push(running);
         }
-        return { dimId, windowXp: agg.window, prevWindowXp: agg.prev, cumulative };
+        const perSub: SubWindow[] = SUBS_BY_DIM[dimId].map((subId) => ({
+          subId,
+          windowXp: perSubAgg.get(subId) ?? 0,
+        }));
+        return {
+          dimId,
+          windowXp: agg.window,
+          prevWindowXp: agg.prev,
+          cumulative,
+          perSub,
+        };
       });
 
       return {
