@@ -116,9 +116,16 @@ export function TaskCard({
     onSkip?.();
   };
 
+  // Coexisting with a vertical ScrollView is the tricky bit here.
+  // - `activeOffsetX([-22, 22])` waits for a *clearly* horizontal pull
+  //   before the gesture engages.
+  // - `failOffsetY([-6, 6])` hands the touch back to the ScrollView at
+  //   the slightest vertical motion, so swiping up/down from on top of
+  //   a card still scrolls.
+  // Tuning these tighter would block scroll; looser would steal taps.
   const pan = Gesture.Pan()
-    .activeOffsetX([-15, 15])
-    .failOffsetY([-12, 12])
+    .activeOffsetX([-22, 22])
+    .failOffsetY([-6, 6])
     .onUpdate((e) => {
       // Right swipe is always allowed (complete). Left swipe only when
       // a skip handler is wired up — otherwise resist past 0.
