@@ -535,6 +535,48 @@ const en = {
     },
   },
 
+  tasksHub: {
+    title: 'My Tasks',
+    newTask: 'New task',
+    filters: {
+      allocated: 'Allocated',
+      mine: 'Mine',
+      suggested: 'Suggested',
+    },
+    search: {
+      open: 'Search',
+      close: 'Close search',
+      placeholderMine: 'Search your tasks…',
+      placeholderCatalog: 'Search catalog…',
+    },
+    buckets: {
+      daily: 'Daily',
+      dailyDesc: 'Routines you do every day',
+      weekly: 'Weekly',
+      weeklyDesc: 'Specific days or monthly cadence',
+      oneTime: 'One-time',
+      oneTimeDesc: 'Done once',
+    },
+    customChip: 'CUSTOM',
+    adopt: {
+      adopt: 'Adopt',
+      added: 'Added',
+    },
+    bucketEmpty: 'No tasks in this bucket.',
+    empty: {
+      noMatchesTitle: 'No matches',
+      noMatchesBody: 'Nothing matches "{{query}}".',
+      noMatchesCatalog: 'Nothing in the catalog matches "{{query}}".',
+      noTasksTitle: 'No tasks yet',
+      noTasksBody: 'Add your first task or browse the Suggested tab.',
+      cta: 'New task',
+    },
+    errors: {
+      couldNotAdoptTitle: 'Could not adopt',
+      unknown: 'Unknown error.',
+    },
+  },
+
   rewards: {
     title: 'Rewards',
     new: 'New reward',

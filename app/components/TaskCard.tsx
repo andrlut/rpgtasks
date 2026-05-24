@@ -104,19 +104,27 @@ export function TaskCard({
         delayLongPress={350}
         disabled={!onEdit && !onLongPress}
       >
-        <Text style={styles.title} numberOfLines={2}>
-          {task.title}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title} numberOfLines={2}>
+            {task.title}
+          </Text>
+          <Text style={styles.xpBadge}>+{reward.total.xp} XP</Text>
+        </View>
 
         <View style={styles.metaRow}>
           {subIds.length > 0 && <SubStack subIds={subIds} max={3} size={28} />}
           <SubColoredPips subs={task.subs} />
-          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
-          {showRecurrenceNote && (
-            <Text style={styles.recurrenceNote} numberOfLines={1}>
-              {describeRecurrence(task.recurrence, task.target_count)}
-            </Text>
-          )}
+          <View style={styles.targetGroup}>
+            {showRecurrenceNote && (
+              <Text style={styles.recurrenceNote} numberOfLines={1}>
+                {describeRecurrence(task.recurrence, task.target_count)}
+              </Text>
+            )}
+            <View style={styles.coinBadge}>
+              <Ionicons name="ellipse" size={9} color={tokens.semantic.coin} />
+              <Text style={styles.coinBadgeText}>+{reward.total.coins}</Text>
+            </View>
+          </View>
         </View>
       </Pressable>
 
@@ -193,11 +201,23 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: tokens.space[2],
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
+    flex: 1,
     fontFamily: 'Manrope_700Bold',
     fontSize: 14,
     lineHeight: 18,
     color: tokens.text.hi,
+  },
+  xpBadge: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.semantic.xp,
+    letterSpacing: 0.2,
   },
   metaRow: {
     flexDirection: 'row',
@@ -205,10 +225,21 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  rewardValue: {
+  targetGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  coinBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  coinBadgeText: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 14,
-    color: tokens.semantic.xp,
+    fontSize: 12,
+    color: tokens.semantic.coin,
     letterSpacing: 0.2,
   },
   pipsRow: {

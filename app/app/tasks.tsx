@@ -23,6 +23,7 @@ import {
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { useT } from '@/lib/i18n';
 import {
   useActiveTasks,
   useStartTaskFromTemplate,
@@ -51,15 +52,15 @@ type Bucket = 'daily' | 'weekly' | 'one_time';
 
 interface BucketMeta {
   id: Bucket;
-  label: string;
-  sublabel: string;
+  labelKey: string;
+  descKey: string;
   iconName: keyof typeof Ionicons.glyphMap;
 }
 
 const BUCKETS: BucketMeta[] = [
-  { id: 'daily', label: 'Daily', sublabel: 'Routines you do every day', iconName: 'sunny' },
-  { id: 'weekly', label: 'Weekly', sublabel: 'Specific days or monthly cadence', iconName: 'calendar' },
-  { id: 'one_time', label: 'One-time', sublabel: 'Done once', iconName: 'flag' },
+  { id: 'daily', labelKey: 'tasksHub.buckets.daily', descKey: 'tasksHub.buckets.dailyDesc', iconName: 'sunny' },
+  { id: 'weekly', labelKey: 'tasksHub.buckets.weekly', descKey: 'tasksHub.buckets.weeklyDesc', iconName: 'calendar' },
+  { id: 'one_time', labelKey: 'tasksHub.buckets.oneTime', descKey: 'tasksHub.buckets.oneTimeDesc', iconName: 'flag' },
 ];
 
 /**
@@ -75,12 +76,14 @@ function bucketFor(rec: Recurrence): Bucket {
 
 export default function TasksHubScreen() {
   const router = useRouter();
+  const { t } = useT();
   const tasks = useActiveTasks();
   const templates = useTaskTemplates();
   const startFromTemplate = useStartTaskFromTemplate();
 
   const [tab, setTab] = useState<Tab>('allocated');
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<Bucket, boolean>>({
     daily: false,
     weekly: false,
@@ -90,23 +93,35 @@ export default function TasksHubScreen() {
     {} as Record<SubId, boolean>,
   );
   const [adoptingId, setAdoptingId] = useState<string | null>(null);
-  /** Template currently sitting in the periodicity picker sheet. Tap on a
-   *  template row opens the sheet; sheet confirm fires the actual adopt. */
+  /** Template currently sitting in the periodicity picker sheet. */
   const [pickerTemplate, setPickerTemplate] = useState<TaskTemplateWithSubs | null>(null);
 
+  // ── Counts (drive both filter pills and group counts) ─────────────────
+  const totalTasks = tasks.data?.length ?? 0;
+  const customCount = (tasks.data ?? []).filter((t) => !t.template_id).length;
+
+  const adoptedTemplateIds = useMemo(() => {
+    const set = new Set<string>();
+    (tasks.data ?? []).forEach((t) => {
+      if (t.template_id) set.add(t.template_id);
+    });
+    return set;
+  }, [tasks.data]);
+
+  const suggestedCount = useMemo(
+    () =>
+      (templates.data ?? []).filter((t) => !adoptedTemplateIds.has(t.id)).length,
+    [templates.data, adoptedTemplateIds],
+  );
+
   // ── Filter tasks by tab semantic, then bucket ─────────────────────────
-  // - allocated: all active user tasks (adoption or custom — what's "alive"
-  //              in the user's routine right now)
-  // - mine:      only custom tasks (template_id IS NULL), regardless of
-  //              adoption count. Helps the user find "what I made from
-  //              scratch" without the catalog clutter.
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = (tasks.data ?? []).filter((t) =>
       q.length === 0 ? true : t.title.toLowerCase().includes(q),
     );
     if (tab === 'mine') return base.filter((t) => !t.template_id);
-    return base; // allocated tab shows everything active
+    return base;
   }, [tasks.data, query, tab]);
 
   const tasksByBucket = useMemo(() => {
@@ -121,19 +136,7 @@ export default function TasksHubScreen() {
     return map;
   }, [filteredTasks]);
 
-  const totalTasks = tasks.data?.length ?? 0;
-  const customCount = (tasks.data ?? []).filter((t) => !t.template_id).length;
-  const adoptedCount = totalTasks - customCount;
-
   // ── Suggested: filter + group by sub ───────────────────────────────────
-  const adoptedTemplateIds = useMemo(() => {
-    const set = new Set<string>();
-    (tasks.data ?? []).forEach((t) => {
-      if (t.template_id) set.add(t.template_id);
-    });
-    return set;
-  }, [tasks.data]);
-
   const filteredTemplates = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (templates.data ?? []).filter((t) =>
@@ -161,9 +164,13 @@ export default function TasksHubScreen() {
   const toggleSub = (s: SubId) =>
     setCollapsedSubs((prev) => ({ ...prev, [s]: !prev[s] }));
 
-  /** Open the periodicity picker sheet for a template (looked up by id from
-   *  the loaded templates list). The sheet's confirm fires the actual adoption
-   *  with the chosen overrides. */
+  const toggleSearch = () => {
+    setSearchOpen((open) => {
+      if (open) setQuery('');
+      return !open;
+    });
+  };
+
   const handleAdopt = (templateId: string) => {
     if (adoptingId || startFromTemplate.isPending) return;
     if (adoptedTemplateIds.has(templateId)) return;
@@ -178,9 +185,6 @@ export default function TasksHubScreen() {
     setPickerTemplate(null);
     if (!template) return;
 
-    // "Customize" is not an adoption — it routes the user to task-form
-    // with the template pre-filled, and on save the new task is created
-    // as truly custom (template_id IS NULL).
     if (choice.kind === 'customize') {
       router.push({
         pathname: '/task-form',
@@ -197,7 +201,10 @@ export default function TasksHubScreen() {
         onSettled: () => setAdoptingId(null),
         onError: (err) => {
           const e = err as { message?: string };
-          Alert.alert('Could not adopt', e.message ?? 'Unknown error.');
+          Alert.alert(
+            t('tasksHub.errors.couldNotAdoptTitle'),
+            e.message ?? t('tasksHub.errors.unknown'),
+          );
         },
       },
     );
@@ -208,7 +215,13 @@ export default function TasksHubScreen() {
   };
   const isRefreshing = tasks.isRefetching || templates.isRefetching;
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // Counts shown inside the SegmentedControl pills
+  const filterCounts: Record<Tab, number> = {
+    allocated: totalTasks,
+    mine: customCount,
+    suggested: suggestedCount,
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -222,15 +235,35 @@ export default function TasksHubScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Text style={styles.title}>My Tasks</Text>
-          <Pressable
-            onPress={() => router.push('/task-form')}
-            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
-            hitSlop={8}
-            accessibilityLabel="New task"
-          >
-            <Ionicons name="add" size={22} color={tokens.brand.violet2} />
-          </Pressable>
+          <Text style={styles.title}>{t('tasksHub.title')}</Text>
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={toggleSearch}
+              style={({ pressed }) => [
+                styles.iconButton,
+                searchOpen && styles.iconButtonActive,
+                pressed && { opacity: 0.6 },
+              ]}
+              hitSlop={8}
+              accessibilityLabel={
+                searchOpen ? t('tasksHub.search.close') : t('tasksHub.search.open')
+              }
+            >
+              <Ionicons
+                name={searchOpen ? 'close' : 'search'}
+                size={20}
+                color={searchOpen ? tokens.brand.violet2 : tokens.text.hi}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/task-form')}
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+              hitSlop={8}
+              accessibilityLabel={t('tasksHub.newTask')}
+            >
+              <Ionicons name="add" size={22} color={tokens.brand.violet2} />
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView
@@ -246,85 +279,86 @@ export default function TasksHubScreen() {
             />
           }
         >
-          {/* Stats strip */}
-          <View style={styles.statsStrip}>
-            <View style={styles.statBlock}>
-              <Text style={styles.statValue}>{totalTasks}</Text>
-              <Text style={styles.statLabel}>Active</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBlock}>
-              <Text style={[styles.statValue, { color: tokens.brand.violet2 }]}>
-                {customCount}
-              </Text>
-              <Text style={styles.statLabel}>Custom</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statBlock}>
-              <Text style={[styles.statValue, { color: tokens.semantic.coin }]}>
-                {adoptedCount}
-              </Text>
-              <Text style={styles.statLabel}>From catalog</Text>
-            </View>
-          </View>
-
-          {/* Tab toggle — 3 filters */}
+          {/* Tab toggle with counts — replaces the stats strip + tab redundancy */}
           <View style={styles.tabsWrap}>
             <SegmentedControl<Tab>
               options={[
-                { value: 'allocated', label: 'Alocadas' },
-                { value: 'mine', label: 'Minhas' },
-                { value: 'suggested', label: 'Sugeridas' },
+                {
+                  value: 'allocated',
+                  label: t('tasksHub.filters.allocated'),
+                  count: filterCounts.allocated,
+                },
+                {
+                  value: 'mine',
+                  label: t('tasksHub.filters.mine'),
+                  count: filterCounts.mine,
+                },
+                {
+                  value: 'suggested',
+                  label: t('tasksHub.filters.suggested'),
+                  count: filterCounts.suggested,
+                },
               ]}
               value={tab}
               onChange={setTab}
             />
           </View>
 
-          {/* Search */}
-          <View style={styles.searchWrap}>
-            <Ionicons name="search" size={16} color={tokens.text.dim} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={tab === 'mine' ? 'Search your tasks…' : 'Search catalog…'}
-              placeholderTextColor={tokens.text.faint}
-              style={styles.searchInput}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Ionicons name="close-circle" size={16} color={tokens.text.dim} />
-              </Pressable>
-            )}
-          </View>
+          {/* Collapsible inline search (only when the magnifier is active) */}
+          {searchOpen && (
+            <View style={styles.searchWrap}>
+              <Ionicons name="search" size={16} color={tokens.text.dim} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={
+                  tab === 'mine'
+                    ? t('tasksHub.search.placeholderMine')
+                    : t('tasksHub.search.placeholderCatalog')
+                }
+                placeholderTextColor={tokens.text.faint}
+                style={styles.searchInput}
+                autoCorrect={false}
+                autoCapitalize="none"
+                autoFocus
+              />
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={16} color={tokens.text.dim} />
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {/* Body */}
-          {tab === 'suggested' ? (
-            <SuggestedBody
-              templatesBySub={templatesBySub}
-              loading={templates.isLoading}
-              query={query}
-              adoptedTemplateIds={adoptedTemplateIds}
-              collapsedSubs={collapsedSubs}
-              onToggleSub={toggleSub}
-              onAdopt={handleAdopt}
-              adoptingId={adoptingId}
-            />
-          ) : (
-            <MineBody
-              tasks={tasksByBucket}
-              loading={tasks.isLoading}
-              query={query}
-              collapsed={collapsed}
-              onToggle={toggleBucket}
-              onTaskPress={(id) =>
-                router.push({ pathname: '/task-form', params: { id } })
-              }
-              onCreate={() => router.push('/task-form')}
-            />
-          )}
+          <View style={styles.bodyWrap}>
+            {tab === 'suggested' ? (
+              <SuggestedBody
+                templatesBySub={templatesBySub}
+                loading={templates.isLoading}
+                query={query}
+                adoptedTemplateIds={adoptedTemplateIds}
+                collapsedSubs={collapsedSubs}
+                onToggleSub={toggleSub}
+                onAdopt={handleAdopt}
+                adoptingId={adoptingId}
+                t={t}
+              />
+            ) : (
+              <MineBody
+                tasks={tasksByBucket}
+                loading={tasks.isLoading}
+                query={query}
+                collapsed={collapsed}
+                onToggle={toggleBucket}
+                onTaskPress={(id) =>
+                  router.push({ pathname: '/task-form', params: { id } })
+                }
+                onCreate={() => router.push('/task-form')}
+                t={t}
+              />
+            )}
+          </View>
         </ScrollView>
       </ScreenBackground>
 
@@ -351,6 +385,7 @@ interface MineBodyProps {
   onToggle: (b: Bucket) => void;
   onTaskPress: (id: string) => void;
   onCreate: () => void;
+  t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
 function MineBody({
@@ -361,6 +396,7 @@ function MineBody({
   onToggle,
   onTaskPress,
   onCreate,
+  t,
 }: MineBodyProps) {
   if (loading) {
     return (
@@ -380,12 +416,12 @@ function MineBody({
           color={tokens.text.dim}
         />
         <Text style={styles.emptyTitle}>
-          {query ? 'No matches' : 'No tasks yet'}
+          {query ? t('tasksHub.empty.noMatchesTitle') : t('tasksHub.empty.noTasksTitle')}
         </Text>
         <Text style={styles.emptySub}>
           {query
-            ? `Nothing matches "${query}"`
-            : 'Add your first task or browse the Suggested tab.'}
+            ? t('tasksHub.empty.noMatchesBody', { query })
+            : t('tasksHub.empty.noTasksBody')}
         </Text>
         {!query && (
           <Pressable
@@ -396,7 +432,7 @@ function MineBody({
             ]}
           >
             <Ionicons name="add" size={18} color={tokens.text.hi} />
-            <Text style={styles.emptyCtaText}>New task</Text>
+            <Text style={styles.emptyCtaText}>{t('tasksHub.empty.cta')}</Text>
           </Pressable>
         )}
       </View>
@@ -413,6 +449,7 @@ function MineBody({
           collapsed={collapsed[b.id]}
           onToggle={() => onToggle(b.id)}
           onTaskPress={onTaskPress}
+          t={t}
         />
       ))}
     </View>
@@ -425,6 +462,7 @@ interface BucketSectionProps {
   collapsed: boolean;
   onToggle: () => void;
   onTaskPress: (id: string) => void;
+  t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
 function BucketSection({
@@ -433,6 +471,7 @@ function BucketSection({
   collapsed,
   onToggle,
   onTaskPress,
+  t,
 }: BucketSectionProps) {
   return (
     <View style={styles.groupCard}>
@@ -444,12 +483,12 @@ function BucketSection({
         ]}
       >
         <View style={styles.groupIcon}>
-          <Ionicons name={meta.iconName} size={14} color={tokens.brand.violet2} />
+          <Ionicons name={meta.iconName} size={18} color={tokens.brand.violet2} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.groupTitle}>{meta.label}</Text>
+          <Text style={styles.groupTitle}>{t(meta.labelKey)}</Text>
           {!collapsed && (
-            <Text style={styles.groupSub}>{meta.sublabel}</Text>
+            <Text style={styles.groupSub}>{t(meta.descKey)}</Text>
           )}
         </View>
         <Text style={styles.groupCount}>{tasks.length}</Text>
@@ -463,7 +502,7 @@ function BucketSection({
       {!collapsed && (
         <View style={styles.groupBody}>
           {tasks.length === 0 ? (
-            <Text style={styles.bucketEmpty}>No tasks in this bucket.</Text>
+            <Text style={styles.bucketEmpty}>{t('tasksHub.bucketEmpty')}</Text>
           ) : (
             tasks.map((t, i) => (
               <TaskRow
@@ -487,6 +526,7 @@ interface TaskRowProps {
 }
 
 function TaskRow({ task, divider, onPress }: TaskRowProps) {
+  const { t } = useT();
   const meta = useMetaLookup();
   const isCustom = !task.template_id;
   const primarySubMeta = meta.sub(task.primary_sub_id);
@@ -521,9 +561,12 @@ function TaskRow({ task, divider, onPress }: TaskRowProps) {
           <Text style={styles.taskTitle} numberOfLines={1}>
             {task.title}
           </Text>
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           {isCustom && (
             <View style={styles.customChip}>
-              <Text style={styles.customChipText}>CUSTOM</Text>
+              <Text style={styles.customChipText}>
+                {t('tasksHub.customChip')}
+              </Text>
             </View>
           )}
         </View>
@@ -538,10 +581,13 @@ function TaskRow({ task, divider, onPress }: TaskRowProps) {
               ))}
             </View>
           )}
-          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           <Text style={styles.taskRecurrence} numberOfLines={1}>
             {describeRecurrence(task.recurrence, task.target_count)}
           </Text>
+          <View style={styles.coinChip}>
+            <Ionicons name="ellipse" size={8} color={tokens.semantic.coin} />
+            <Text style={styles.coinChipText}>+{reward.total.coins}</Text>
+          </View>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color={tokens.text.dim} />
@@ -562,6 +608,7 @@ interface SuggestedBodyProps {
   onToggleSub: (s: SubId) => void;
   onAdopt: (templateId: string) => void;
   adoptingId: string | null;
+  t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
 /** Subs in display order, grouped under their dim. */
@@ -578,6 +625,7 @@ function SuggestedBody({
   onToggleSub,
   onAdopt,
   adoptingId,
+  t,
 }: SuggestedBodyProps) {
   const meta = useMetaLookup();
   if (loading) {
@@ -594,9 +642,9 @@ function SuggestedBody({
     return (
       <View style={styles.emptyBox}>
         <Ionicons name="search" size={32} color={tokens.text.dim} />
-        <Text style={styles.emptyTitle}>No matches</Text>
+        <Text style={styles.emptyTitle}>{t('tasksHub.empty.noMatchesTitle')}</Text>
         <Text style={styles.emptySub}>
-          Nothing in the catalog matches &quot;{query}&quot;.
+          {t('tasksHub.empty.noMatchesCatalog', { query })}
         </Text>
       </View>
     );
@@ -624,12 +672,14 @@ function SuggestedBody({
               <View style={[styles.groupIcon, { backgroundColor: dimMeta.bg }]}>
                 <Ionicons
                   name={subMeta.iconName as never}
-                  size={14}
+                  size={18}
                   color={dimMeta.color}
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.groupTitle}>{subMeta.label}</Text>
+                <Text style={[styles.groupTitle, { color: dimMeta.color }]}>
+                  {subMeta.label}
+                </Text>
                 <Text style={styles.groupSub}>
                   {dimMeta.label.toUpperCase()}
                 </Text>
@@ -644,16 +694,17 @@ function SuggestedBody({
 
             {!isCollapsed && (
               <View style={styles.groupBody}>
-                {templates.map((t, i) => (
+                {templates.map((tmpl, i) => (
                   <TemplateRow
-                    key={t.id}
-                    template={t}
+                    key={tmpl.id}
+                    template={tmpl}
                     divider={i > 0}
                     dimColor={dimMeta.color}
                     dimId={subMeta.dimensionId}
-                    isAdopted={adoptedTemplateIds.has(t.id)}
-                    isAdopting={adoptingId === t.id}
-                    onAdopt={() => onAdopt(t.id)}
+                    isAdopted={adoptedTemplateIds.has(tmpl.id)}
+                    isAdopting={adoptingId === tmpl.id}
+                    onAdopt={() => onAdopt(tmpl.id)}
+                    t={t}
                   />
                 ))}
               </View>
@@ -673,6 +724,7 @@ interface TemplateRowProps {
   isAdopted: boolean;
   isAdopting: boolean;
   onAdopt: () => void;
+  t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
 function TemplateRow({
@@ -683,6 +735,7 @@ function TemplateRow({
   isAdopted,
   isAdopting,
   onAdopt,
+  t,
 }: TemplateRowProps) {
   const reward = rewardForTaskSubs(template.subs);
   const pips: string[] = [];
@@ -698,6 +751,7 @@ function TemplateRow({
           <Text style={styles.taskTitle} numberOfLines={2}>
             {template.title}
           </Text>
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
         </View>
         {template.description && (
           <Text style={styles.templateDesc} numberOfLines={2}>
@@ -715,10 +769,13 @@ function TemplateRow({
               ))}
             </View>
           )}
-          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           <Text style={styles.taskRecurrence} numberOfLines={1}>
             {describeRecurrence(template.recurrence, template.target_count)}
           </Text>
+          <View style={styles.coinChip}>
+            <Ionicons name="ellipse" size={8} color={tokens.semantic.coin} />
+            <Text style={styles.coinChipText}>+{reward.total.coins}</Text>
+          </View>
           <DimensionChip id={dimId} size="sm" pressable={false} />
         </View>
       </View>
@@ -738,12 +795,16 @@ function TemplateRow({
         ) : isAdopted ? (
           <>
             <Ionicons name="checkmark" size={14} color={tokens.text.dim} />
-            <Text style={styles.adoptBtnTextDone}>Added</Text>
+            <Text style={styles.adoptBtnTextDone}>
+              {t('tasksHub.adopt.added')}
+            </Text>
           </>
         ) : (
           <>
             <Ionicons name="add" size={14} color={dimColor} />
-            <Text style={[styles.adoptBtnText, { color: dimColor }]}>Adopt</Text>
+            <Text style={[styles.adoptBtnText, { color: dimColor }]}>
+              {t('tasksHub.adopt.adopt')}
+            </Text>
           </>
         )}
       </Pressable>
@@ -764,6 +825,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[4],
     paddingVertical: tokens.space[2],
   },
+  topActions: {
+    flexDirection: 'row',
+    gap: tokens.space[2],
+  },
   iconButton: {
     width: 40,
     height: 40,
@@ -771,6 +836,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.bg.surface,
+  },
+  iconButtonActive: {
+    backgroundColor: 'rgba(123,92,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(123,92,255,0.4)',
   },
   title: {
     ...tokens.type.h3,
@@ -780,43 +850,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[4],
     paddingBottom: tokens.space[10],
   },
-  statsStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    paddingVertical: tokens.space[3],
-    paddingHorizontal: tokens.space[3],
-    marginTop: tokens.space[2],
-  },
-  statBlock: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 2,
-  },
-  statValue: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 22,
-    lineHeight: 24,
-    color: tokens.text.hi,
-  },
-  statLabel: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 9,
-    color: tokens.text.mid,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: tokens.border.divider,
-  },
   tabsWrap: {
-    marginTop: tokens.space[3],
+    marginTop: tokens.space[2],
   },
   searchWrap: {
     flexDirection: 'row',
@@ -827,15 +862,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.border.base,
     paddingHorizontal: tokens.space[3],
-    height: 44,
+    height: 40,
     marginTop: tokens.space[3],
-    marginBottom: tokens.space[4],
   },
   searchInput: {
     flex: 1,
     color: tokens.text.hi,
     fontFamily: 'Manrope_500Medium',
     fontSize: 14,
+  },
+  bodyWrap: {
+    marginTop: tokens.space[4],
   },
   loadingBox: {
     paddingVertical: tokens.space[8],
@@ -887,29 +924,29 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.space[3],
   },
   groupIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: tokens.radius.sm,
+    width: 34,
+    height: 34,
+    borderRadius: tokens.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(123,92,255,0.18)',
   },
   groupTitle: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 13,
+    fontSize: 17,
     color: tokens.text.hi,
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
   },
   groupSub: {
     fontFamily: 'Manrope_500Medium',
-    fontSize: 10,
+    fontSize: 11,
     color: tokens.text.dim,
     marginTop: 2,
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   groupCount: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 11,
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
     color: tokens.text.dim,
   },
   groupBody: {
@@ -950,7 +987,7 @@ const styles = StyleSheet.create({
   taskTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     flexWrap: 'wrap',
   },
   taskTitle: {
@@ -996,8 +1033,19 @@ const styles = StyleSheet.create({
   },
   rewardValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
+    fontSize: 13,
     color: tokens.semantic.xp,
+    letterSpacing: 0.2,
+  },
+  coinChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  coinChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    color: tokens.semantic.coin,
     letterSpacing: 0.2,
   },
   templateRow: {

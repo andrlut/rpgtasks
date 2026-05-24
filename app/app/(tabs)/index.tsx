@@ -48,7 +48,7 @@ interface FloatItem {
   coins: number;
 }
 
-type BucketTab = 'daily' | 'weekly' | 'oneshot' | 'all';
+type BucketTab = 'daily' | 'weekly' | 'oneshot';
 
 interface TabMeta {
   id: BucketTab;
@@ -79,13 +79,6 @@ const TAB_META: TabMeta[] = [
     emptyKey: 'home.bucketTabs.emptyOneshot',
     iconName: 'flag-outline',
     accent: tokens.semantic.coin,
-  },
-  {
-    id: 'all',
-    labelKey: 'home.bucketTabs.all',
-    emptyKey: 'home.bucketTabs.emptyAll',
-    iconName: 'apps-outline',
-    accent: tokens.semantic.xp,
   },
 ];
 
@@ -250,10 +243,9 @@ export default function HomeScreen() {
   // - daily:   recurrence.type === 'daily', pending today
   // - weekly:  recurrence.type in ('weekly','monthly'), pending this period
   // - oneshot: recurrence.type === 'one_shot', never completed
-  // - all:     dedup'd union of the three
   const lists = useMemo<Record<BucketTab, TaskWithSubs[]>>(() => {
     if (!data) {
-      return { daily: [], weekly: [], oneshot: [], all: [] };
+      return { daily: [], weekly: [], oneshot: [] };
     }
     const completedTodayIds = new Set(
       data.todayActivity.completed.map((c) => c.task.id),
@@ -285,20 +277,7 @@ export default function HomeScreen() {
 
     const oneshot = data.oneTime.filter(filterActedToday);
 
-    // All: union, deduped, type-sorted so daily comes first, weekly next,
-    // one-shot last. Matches the mental order of the dedicated tabs.
-    const allSeen = new Set<string>();
-    const all: TaskWithSubs[] = [];
-    const pushAll = (t: TaskWithSubs) => {
-      if (allSeen.has(t.id)) return;
-      allSeen.add(t.id);
-      all.push(t);
-    };
-    daily.forEach(pushAll);
-    weekly.forEach(pushAll);
-    oneshot.forEach(pushAll);
-
-    return { daily, weekly, oneshot, all };
+    return { daily, weekly, oneshot };
   }, [data]);
 
   // Tasks completed today (regardless of bucket). Used by the "Done today"
@@ -327,7 +306,6 @@ export default function HomeScreen() {
       daily: lists.daily.length,
       weekly: lists.weekly.length,
       oneshot: lists.oneshot.length,
-      all: lists.all.length,
     }),
     [lists],
   );
@@ -342,9 +320,7 @@ export default function HomeScreen() {
       ? t('home.completedBucket.daily')
       : activeTab === 'weekly'
         ? t('home.completedBucket.weekly')
-        : activeTab === 'oneshot'
-          ? t('home.completedBucket.oneshot')
-          : t('home.completedBucket.all');
+        : t('home.completedBucket.oneshot');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

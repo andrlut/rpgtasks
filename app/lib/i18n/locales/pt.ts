@@ -525,6 +525,48 @@ const pt: Translations = {
     },
   },
 
+  tasksHub: {
+    title: 'Minhas tarefas',
+    newTask: 'Nova tarefa',
+    filters: {
+      allocated: 'Alocadas',
+      mine: 'Minhas',
+      suggested: 'Sugeridas',
+    },
+    search: {
+      open: 'Buscar',
+      close: 'Fechar busca',
+      placeholderMine: 'Buscar nas suas tarefas…',
+      placeholderCatalog: 'Buscar no catálogo…',
+    },
+    buckets: {
+      daily: 'Daily',
+      dailyDesc: 'Rotinas que você faz todo dia',
+      weekly: 'Weekly',
+      weeklyDesc: 'Dias específicos ou cadência mensal',
+      oneTime: 'Pontual',
+      oneTimeDesc: 'Pra fazer uma vez só',
+    },
+    customChip: 'CUSTOM',
+    adopt: {
+      adopt: 'Adotar',
+      added: 'Adicionada',
+    },
+    bucketEmpty: 'Nenhuma tarefa nesse grupo.',
+    empty: {
+      noMatchesTitle: 'Nada encontrado',
+      noMatchesBody: 'Nada corresponde a "{{query}}".',
+      noMatchesCatalog: 'Nada no catálogo corresponde a "{{query}}".',
+      noTasksTitle: 'Sem tarefas ainda',
+      noTasksBody: 'Adicione sua primeira tarefa ou navegue pela aba Sugeridas.',
+      cta: 'Nova tarefa',
+    },
+    errors: {
+      couldNotAdoptTitle: 'Não foi possível adotar',
+      unknown: 'Erro desconhecido.',
+    },
+  },
+
   rewards: {
     title: 'Recompensas',
     new: 'Nova recompensa',
