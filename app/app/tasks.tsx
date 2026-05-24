@@ -37,13 +37,16 @@ import type {
 } from '@/lib/db/types';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { describeRecurrence } from '@/lib/recurrence';
+import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 import {
+  DIMENSION_META,
   DIMENSION_ORDER,
   SUBS_BY_DIM,
+  SUB_META,
 } from '@/theme/dimensions';
 
-type Tab = 'mine' | 'suggested';
+type Tab = 'allocated' | 'mine' | 'suggested';
 type Bucket = 'daily' | 'weekly' | 'one_time';
 
 interface BucketMeta {
@@ -76,7 +79,7 @@ export default function TasksHubScreen() {
   const templates = useTaskTemplates();
   const startFromTemplate = useStartTaskFromTemplate();
 
-  const [tab, setTab] = useState<Tab>('mine');
+  const [tab, setTab] = useState<Tab>('allocated');
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Record<Bucket, boolean>>({
     daily: false,
@@ -91,13 +94,20 @@ export default function TasksHubScreen() {
    *  template row opens the sheet; sheet confirm fires the actual adopt. */
   const [pickerTemplate, setPickerTemplate] = useState<TaskTemplateWithSubs | null>(null);
 
-  // ── My Tasks: filter + bucket ──────────────────────────────────────────
+  // ── Filter tasks by tab semantic, then bucket ─────────────────────────
+  // - allocated: all active user tasks (adoption or custom — what's "alive"
+  //              in the user's routine right now)
+  // - mine:      only custom tasks (template_id IS NULL), regardless of
+  //              adoption count. Helps the user find "what I made from
+  //              scratch" without the catalog clutter.
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (tasks.data ?? []).filter((t) =>
+    const base = (tasks.data ?? []).filter((t) =>
       q.length === 0 ? true : t.title.toLowerCase().includes(q),
     );
-  }, [tasks.data, query]);
+    if (tab === 'mine') return base.filter((t) => !t.template_id);
+    return base; // allocated tab shows everything active
+  }, [tasks.data, query, tab]);
 
   const tasksByBucket = useMemo(() => {
     const map: Record<Bucket, TaskWithSubs[]> = {
@@ -246,12 +256,13 @@ export default function TasksHubScreen() {
             </View>
           </View>
 
-          {/* Tab toggle */}
+          {/* Tab toggle — 3 filters */}
           <View style={styles.tabsWrap}>
             <SegmentedControl<Tab>
               options={[
-                { value: 'mine', label: 'Mine' },
-                { value: 'suggested', label: 'Suggested' },
+                { value: 'allocated', label: 'Alocadas' },
+                { value: 'mine', label: 'Minhas' },
+                { value: 'suggested', label: 'Sugeridas' },
               ]}
               value={tab}
               onChange={setTab}
@@ -278,7 +289,18 @@ export default function TasksHubScreen() {
           </View>
 
           {/* Body */}
-          {tab === 'mine' ? (
+          {tab === 'suggested' ? (
+            <SuggestedBody
+              templatesBySub={templatesBySub}
+              loading={templates.isLoading}
+              query={query}
+              adoptedTemplateIds={adoptedTemplateIds}
+              collapsedSubs={collapsedSubs}
+              onToggleSub={toggleSub}
+              onAdopt={handleAdopt}
+              adoptingId={adoptingId}
+            />
+          ) : (
             <MineBody
               tasks={tasksByBucket}
               loading={tasks.isLoading}
@@ -289,17 +311,6 @@ export default function TasksHubScreen() {
                 router.push({ pathname: '/task-form', params: { id } })
               }
               onCreate={() => router.push('/task-form')}
-            />
-          ) : (
-            <SuggestedBody
-              templatesBySub={templatesBySub}
-              loading={templates.isLoading}
-              query={query}
-              adoptedTemplateIds={adoptedTemplateIds}
-              collapsedSubs={collapsedSubs}
-              onToggleSub={toggleSub}
-              onAdopt={handleAdopt}
-              adoptingId={adoptingId}
             />
           )}
         </ScrollView>
@@ -468,6 +479,13 @@ function TaskRow({ task, divider, onPress }: TaskRowProps) {
   const isCustom = !task.template_id;
   const primarySubMeta = meta.sub(task.primary_sub_id);
   const dimMeta = meta.dim(task.primary_dimension_id);
+  const reward = rewardForTaskSubs(task.subs);
+  const pips: string[] = [];
+  for (const s of task.subs) {
+    const sm = SUB_META[s.sub_id];
+    const color = sm ? DIMENSION_META[sm.dimensionId].color : tokens.brand.violet2;
+    for (let i = 0; i < s.stars; i++) pips.push(color);
+  }
   return (
     <Pressable
       onPress={onPress}
@@ -498,7 +516,17 @@ function TaskRow({ task, divider, onPress }: TaskRowProps) {
           )}
         </View>
         <View style={styles.taskMetaRow}>
-          <Text style={styles.starsLabel}>{task.total_stars}★</Text>
+          {pips.length > 0 && (
+            <View style={styles.pipsRow}>
+              {pips.map((color, i) => (
+                <View
+                  key={i}
+                  style={[styles.pip, { backgroundColor: color }]}
+                />
+              ))}
+            </View>
+          )}
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           <Text style={styles.taskRecurrence} numberOfLines={1}>
             {describeRecurrence(task.recurrence, task.target_count)}
           </Text>
@@ -644,6 +672,13 @@ function TemplateRow({
   isAdopting,
   onAdopt,
 }: TemplateRowProps) {
+  const reward = rewardForTaskSubs(template.subs);
+  const pips: string[] = [];
+  for (const s of template.subs) {
+    const sm = SUB_META[s.sub_id];
+    const color = sm ? DIMENSION_META[sm.dimensionId].color : tokens.brand.violet2;
+    for (let i = 0; i < s.stars; i++) pips.push(color);
+  }
   return (
     <View style={[styles.templateRow, divider && styles.taskRowDivider]}>
       <View style={styles.templateBody}>
@@ -658,7 +693,17 @@ function TemplateRow({
           </Text>
         )}
         <View style={styles.taskMetaRow}>
-          <Text style={styles.starsLabel}>{template.total_stars}★</Text>
+          {pips.length > 0 && (
+            <View style={styles.pipsRow}>
+              {pips.map((color, i) => (
+                <View
+                  key={i}
+                  style={[styles.pip, { backgroundColor: color }]}
+                />
+              ))}
+            </View>
+          )}
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           <Text style={styles.taskRecurrence} numberOfLines={1}>
             {describeRecurrence(template.recurrence, template.target_count)}
           </Text>
@@ -928,10 +973,20 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     flexShrink: 1,
   },
-  starsLabel: {
+  pipsRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  pip: {
+    width: 5,
+    height: 5,
+    borderRadius: 1,
+  },
+  rewardValue: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 11,
-    color: tokens.semantic.coin,
+    color: tokens.semantic.xp,
+    letterSpacing: 0.2,
   },
   templateRow: {
     flexDirection: 'row',
