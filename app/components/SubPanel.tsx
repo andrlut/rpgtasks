@@ -3,6 +3,11 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  AdoptPeriodicitySheet,
+  adoptChoiceToOverrides,
+  type AdoptPeriodicityChoice,
+} from '@/components/AdoptPeriodicitySheet';
 import { Sparkline } from '@/components/Sparkline';
 import { SubAnchorCard, SubAnchorCardLabels } from '@/components/SubAnchorCard';
 import type {
@@ -55,6 +60,7 @@ export function SubPanel({
   const startFromTemplate = useStartTaskFromTemplate();
   const [adopted, setAdopted] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState(false);
+  const [pickerTemplate, setPickerTemplate] = useState<TaskTemplateWithSubs | null>(null);
 
   const subMeta = metaLookup.sub(subId);
   const dimMeta = metaLookup.dim(subMeta.dimensionId);
@@ -65,9 +71,23 @@ export function SubPanel({
 
   const handleAdopt = (templateId: string) => {
     if (adopted.has(templateId) || startFromTemplate.isPending) return;
-    startFromTemplate.mutate(templateId, {
-      onSuccess: () => setAdopted((prev) => new Set(prev).add(templateId)),
-    });
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) return;
+    setPickerTemplate(template);
+  };
+
+  const handleAdoptConfirm = (choice: AdoptPeriodicityChoice) => {
+    const template = pickerTemplate;
+    setPickerTemplate(null);
+    if (!template) return;
+    const overrides = adoptChoiceToOverrides(choice);
+    startFromTemplate.mutate(
+      { templateId: template.id, ...overrides },
+      {
+        onSuccess: () =>
+          setAdopted((prev) => new Set(prev).add(template.id)),
+      },
+    );
   };
 
   return (
@@ -287,6 +307,14 @@ export function SubPanel({
           })}
         </View>
       )}
+
+      <AdoptPeriodicitySheet
+        visible={pickerTemplate !== null}
+        templateTitle={pickerTemplate?.title ?? ''}
+        templateDefaultType={pickerTemplate?.task_type}
+        onCancel={() => setPickerTemplate(null)}
+        onConfirm={handleAdoptConfirm}
+      />
     </View>
   );
 }

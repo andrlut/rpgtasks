@@ -884,12 +884,32 @@ export function useCompleteTemplate() {
  * new task id. Invalidates task lists + character (so any quest progress
  * counters that depend on task list refresh).
  */
+export interface StartTaskFromTemplateInput {
+  templateId: string;
+  /** Optional: override the template's default task_type. */
+  taskTypeOverride?: 'daily' | 'weekly' | 'monthly' | 'one_shot';
+  /** Optional: explicit recurrence object override (e.g. {type:'weekly', days:[1,3,5]}). */
+  recurrenceOverride?: Record<string, unknown> | null;
+  /** Optional: override per-period target count (e.g. 3 for "3x/week"). */
+  targetCountOverride?: number;
+}
+
 export function useStartTaskFromTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (templateId: string): Promise<string> => {
+    mutationFn: async (
+      input: string | StartTaskFromTemplateInput,
+    ): Promise<string> => {
+      // Back-compat: callers that still pass a bare templateId string keep
+      // working. New callers pass the object form with optional overrides.
+      const payload: StartTaskFromTemplateInput =
+        typeof input === 'string' ? { templateId: input } : input;
+
       const { data, error } = await supabase.rpc('start_task_from_template', {
-        p_template_id: templateId,
+        p_template_id: payload.templateId,
+        p_task_type_override: payload.taskTypeOverride ?? null,
+        p_recurrence_override: payload.recurrenceOverride ?? null,
+        p_target_count_override: payload.targetCountOverride ?? null,
       });
       if (error) throw error;
       return data as string;

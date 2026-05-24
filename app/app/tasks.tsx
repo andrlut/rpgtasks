@@ -15,6 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  AdoptPeriodicitySheet,
+  adoptChoiceToOverrides,
+  type AdoptPeriodicityChoice,
+} from '@/components/AdoptPeriodicitySheet';
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -82,6 +87,9 @@ export default function TasksHubScreen() {
     {} as Record<SubId, boolean>,
   );
   const [adoptingId, setAdoptingId] = useState<string | null>(null);
+  /** Template currently sitting in the periodicity picker sheet. Tap on a
+   *  template row opens the sheet; sheet confirm fires the actual adopt. */
+  const [pickerTemplate, setPickerTemplate] = useState<TaskTemplateWithSubs | null>(null);
 
   // ── My Tasks: filter + bucket ──────────────────────────────────────────
   const filteredTasks = useMemo(() => {
@@ -143,18 +151,34 @@ export default function TasksHubScreen() {
   const toggleSub = (s: SubId) =>
     setCollapsedSubs((prev) => ({ ...prev, [s]: !prev[s] }));
 
+  /** Open the periodicity picker sheet for a template (looked up by id from
+   *  the loaded templates list). The sheet's confirm fires the actual adoption
+   *  with the chosen overrides. */
   const handleAdopt = (templateId: string) => {
     if (adoptingId || startFromTemplate.isPending) return;
     if (adoptedTemplateIds.has(templateId)) return;
+    const template = (templates.data ?? []).find((t) => t.id === templateId);
+    if (!template) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setAdoptingId(templateId);
-    startFromTemplate.mutate(templateId, {
-      onSettled: () => setAdoptingId(null),
-      onError: (err) => {
-        const e = err as { message?: string };
-        Alert.alert('Could not adopt', e.message ?? 'Unknown error.');
+    setPickerTemplate(template);
+  };
+
+  const handleAdoptConfirm = (choice: AdoptPeriodicityChoice) => {
+    const template = pickerTemplate;
+    setPickerTemplate(null);
+    if (!template) return;
+    const overrides = adoptChoiceToOverrides(choice);
+    setAdoptingId(template.id);
+    startFromTemplate.mutate(
+      { templateId: template.id, ...overrides },
+      {
+        onSettled: () => setAdoptingId(null),
+        onError: (err) => {
+          const e = err as { message?: string };
+          Alert.alert('Could not adopt', e.message ?? 'Unknown error.');
+        },
       },
-    });
+    );
   };
 
   const handleRefresh = async () => {
@@ -280,6 +304,14 @@ export default function TasksHubScreen() {
           )}
         </ScrollView>
       </ScreenBackground>
+
+      <AdoptPeriodicitySheet
+        visible={pickerTemplate !== null}
+        templateTitle={pickerTemplate?.title ?? ''}
+        templateDefaultType={pickerTemplate?.task_type}
+        onCancel={() => setPickerTemplate(null)}
+        onConfirm={handleAdoptConfirm}
+      />
     </SafeAreaView>
   );
 }

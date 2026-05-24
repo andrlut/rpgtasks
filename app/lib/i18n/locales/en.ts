@@ -263,6 +263,17 @@ const en = {
     lead: 'Deeper inventories measuring personality, values and attachment style. Do not affect the Assessment hex.',
   },
 
+  adoptSheet: {
+    eyebrow: 'Adopt',
+    body: 'How do you want to do this task in your routine?',
+    templateDefault: 'System default',
+    templateDefaultHint: 'recommended',
+    daily: 'Daily · once a day',
+    weekly3x: 'Weekly · 3x per week',
+    weekly1x: 'Weekly · 1x per week',
+    oneShot: 'One-shot · just once',
+  },
+
   reward: {
     common: {
       ok: 'OK',

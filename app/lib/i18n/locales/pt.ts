@@ -253,6 +253,17 @@ const pt: Translations = {
     lead: 'Inventários mais profundos que medem personalidade, valores e estilo de apego. Não afetam o hex de Avaliação.',
   },
 
+  adoptSheet: {
+    eyebrow: 'Adotar',
+    body: 'Como você quer fazer essa task na sua rotina?',
+    templateDefault: 'Padrão do sistema',
+    templateDefaultHint: 'recomendado',
+    daily: 'Diário · 1x por dia',
+    weekly3x: 'Semanal · 3x por semana',
+    weekly1x: 'Semanal · 1x por semana',
+    oneShot: 'Pontual · uma vez só',
+  },
+
   reward: {
     common: {
       ok: 'OK',
