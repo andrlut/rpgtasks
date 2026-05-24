@@ -9,11 +9,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { TaskWithSubs } from '@/lib/db/types';
+import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
-import { DIMENSION_META } from '@/theme/dimensions';
+import { DIMENSION_META, SUB_META } from '@/theme/dimensions';
 
 import { SubStack } from './SubStack';
 
@@ -33,16 +33,15 @@ interface Props {
  *
  *   ┌────────────────────────────────────────────────┐
  *   │ ▎ Title                              ┌─────┐  │
- *   │   [sub stack]  +45                    │ ✓   │  │
+ *   │   [sub stack]  ▪▪▪▪  +45              │ ✓   │  │
  *   │                                       └─────┘  │
  *   └────────────────────────────────────────────────┘
  *
  * Vertical accent bar on the left tinted by the primary sub's dim color.
- * The number on the meta row is the task's total reward (XP and coins
- * grant the same amount today, so we show a single value without unit).
- * Multi-sub tasks naturally show big numbers (5/15/40 per star), which is
- * a clearer signal than star pips that maxed out at "more than 5" for
- * users with multiple sub allocations.
+ * Pips below the title are colored by sub — a 2★+1★+1★ task draws 2 of
+ * sub-1's color, 1 of sub-2's, 1 of sub-3's (no cap; user liked the
+ * visual). The number next to them is the task's total reward in XP
+ * (coins == xp by current convention, so we collapse to one value).
  *
  * Single primary action: violet rounded check on the right. Tap = quick
  * complete with defaults, long-press = open the per-sub adjust popup.
@@ -111,6 +110,7 @@ export function TaskCard({
 
         <View style={styles.metaRow}>
           {subIds.length > 0 && <SubStack subIds={subIds} max={3} size={28} />}
+          <SubColoredPips subs={task.subs} />
           <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           {showRecurrenceNote && (
             <Text style={styles.recurrenceNote} numberOfLines={1}>
@@ -140,6 +140,27 @@ export function TaskCard({
           <Ionicons name="checkmark" size={22} color="#fff" />
         </Pressable>
       </Animated.View>
+    </View>
+  );
+}
+
+/** Pips colored per-sub: a 2★+1★+1★ task draws 2 of sub-1's color,
+ *  1 of sub-2's, 1 of sub-3's. Total pips = sum of stars across subs. */
+function SubColoredPips({ subs }: { subs: TaskSub[] }) {
+  const pips: string[] = [];
+  for (const s of subs) {
+    const sub = SUB_META[s.sub_id];
+    const color = sub ? DIMENSION_META[sub.dimensionId].color : tokens.brand.violet2;
+    for (let i = 0; i < s.stars; i++) {
+      pips.push(color);
+    }
+  }
+  if (pips.length === 0) return null;
+  return (
+    <View style={styles.pipsRow}>
+      {pips.map((color, i) => (
+        <View key={i} style={[styles.pip, { backgroundColor: color }]} />
+      ))}
     </View>
   );
 }
@@ -189,6 +210,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: tokens.semantic.xp,
     letterSpacing: 0.2,
+  },
+  pipsRow: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  pip: {
+    width: 6,
+    height: 6,
+    borderRadius: 1,
   },
   recurrenceNote: {
     ...tokens.type.caption,
