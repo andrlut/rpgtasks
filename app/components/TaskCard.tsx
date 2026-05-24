@@ -9,13 +9,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
+import type { TaskWithSubs } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
-import { DIMENSION_META, SUB_META } from '@/theme/dimensions';
+import { DIMENSION_META } from '@/theme/dimensions';
 
-import { CoinIcon } from './CoinIcon';
 import { SubStack } from './SubStack';
 
 interface Props {
@@ -30,18 +29,20 @@ interface Props {
 }
 
 /**
- * Compact task card following the Tasks v3 visual:
+ * Compact task card.
  *
  *   ┌────────────────────────────────────────────────┐
  *   │ ▎ Title                              ┌─────┐  │
- *   │   [sub stack]  [colored pips]        │ ✓   │  │
- *   │                +XP  +coins           │     │  │
+ *   │   [sub stack]  +45                    │ ✓   │  │
  *   │                                       └─────┘  │
  *   └────────────────────────────────────────────────┘
  *
  * Vertical accent bar on the left tinted by the primary sub's dim color.
- * Pips below the sub stack are colored by which sub each one belongs to,
- * so a 2★+1★+1★ task reads as two orange pips, one cyan, one violet.
+ * The number on the meta row is the task's total reward (XP and coins
+ * grant the same amount today, so we show a single value without unit).
+ * Multi-sub tasks naturally show big numbers (5/15/40 per star), which is
+ * a clearer signal than star pips that maxed out at "more than 5" for
+ * users with multiple sub allocations.
  *
  * Single primary action: violet rounded check on the right. Tap = quick
  * complete with defaults, long-press = open the per-sub adjust popup.
@@ -110,22 +111,7 @@ export function TaskCard({
 
         <View style={styles.metaRow}>
           {subIds.length > 0 && <SubStack subIds={subIds} max={3} size={28} />}
-          <SubColoredPips subs={task.subs} />
-        </View>
-
-        <View style={styles.rewardRow}>
-          <View style={styles.rewardItem}>
-            <Ionicons name="flag" size={11} color={tokens.semantic.xp} />
-            <Text style={[styles.rewardText, { color: tokens.semantic.xp }]}>
-              +{reward.total.xp}
-            </Text>
-          </View>
-          <View style={styles.rewardItem}>
-            <CoinIcon size={11} />
-            <Text style={[styles.rewardText, { color: tokens.semantic.coin }]}>
-              +{reward.total.coins}
-            </Text>
-          </View>
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           {showRecurrenceNote && (
             <Text style={styles.recurrenceNote} numberOfLines={1}>
               {describeRecurrence(task.recurrence, task.target_count)}
@@ -154,31 +140,6 @@ export function TaskCard({
           <Ionicons name="checkmark" size={22} color="#fff" />
         </Pressable>
       </Animated.View>
-    </View>
-  );
-}
-
-/** Pips colored per-sub: a 2★+1★+1★ task draws 2 of sub-1's color,
- *  1 of sub-2's, 1 of sub-3's. Total pips = sum of stars — no cap, no
- *  empty filler. A 9★ task shows 9 pips, a 1★ task shows 1. */
-function SubColoredPips({ subs }: { subs: TaskSub[] }) {
-  const pips: string[] = [];
-  for (const s of subs) {
-    const sub = SUB_META[s.sub_id];
-    const color = sub ? DIMENSION_META[sub.dimensionId].color : tokens.brand.violet2;
-    for (let i = 0; i < s.stars; i++) {
-      pips.push(color);
-    }
-  }
-  if (pips.length === 0) return null;
-  return (
-    <View style={styles.pipsRow}>
-      {pips.map((color, i) => (
-        <View
-          key={i}
-          style={[styles.pip, { backgroundColor: color }]}
-        />
-      ))}
     </View>
   );
 }
@@ -223,29 +184,11 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
   },
-  pipsRow: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  pip: {
-    width: 6,
-    height: 6,
-    borderRadius: 1,
-  },
-  rewardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  rewardItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  rewardText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 11,
+  rewardValue: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 14,
+    color: tokens.semantic.xp,
+    letterSpacing: 0.2,
   },
   recurrenceNote: {
     ...tokens.type.caption,
