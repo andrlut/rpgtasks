@@ -61,11 +61,6 @@ export function CompactHeader({
           {dateLabel} · {displayName.toUpperCase()}
         </Text>
 
-        <View style={styles.lvPill}>
-          <Text style={styles.lvLabel}>LV</Text>
-          <Text style={styles.lvValue}>{level}</Text>
-        </View>
-
         <View style={styles.xpCol}>
           <View style={styles.xpLabels}>
             <Text style={styles.xpLabelLeft}>XP</Text>
@@ -82,16 +77,19 @@ export function CompactHeader({
             />
           </View>
         </View>
+
+        {/* LV pill anchors to the right of its row, mirroring the coin
+            chip's position on the wallet row below. Same min-width so
+            the two read as a vertical pair. */}
+        <View style={styles.statPill}>
+          <Text style={styles.lvLabel}>LV</Text>
+          <Text style={styles.lvValue}>{level}</Text>
+        </View>
       </View>
 
-      {/* Row 2: coin chip + tracked reward (optional bar) */}
+      {/* Row 2: tracked reward (optional bar) + coin chip on the right */}
       <View style={styles.walletRow}>
-        <View style={styles.coinChip}>
-          <CoinIcon size={12} />
-          <Text style={styles.coinChipText}>{coins}</Text>
-        </View>
-
-        {trackedReward && (
+        {trackedReward ? (
           <Pressable
             onPress={onTrackedRewardPress}
             disabled={!onTrackedRewardPress}
@@ -127,7 +125,16 @@ export function CompactHeader({
               </View>
             </View>
           </Pressable>
+        ) : (
+          // No reward to track — keep the row balanced so the coin
+          // chip still anchors to the right edge.
+          <View style={styles.rewardRow} />
         )}
+
+        <View style={[styles.statPill, styles.coinPill]}>
+          <CoinIcon size={12} />
+          <Text style={styles.coinChipText}>{coins}</Text>
+        </View>
       </View>
     </View>
   );
@@ -152,16 +159,25 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
     flexShrink: 1,
   },
-  lvPill: {
+  // Shared shape for the LV pill (eyebrow row, right) and coin chip
+  // (wallet row, right). Same min-width and padding so they stack as a
+  // visual column on the right edge of the header.
+  statPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: tokens.radius.sm,
+    justifyContent: 'center',
+    gap: 5,
+    minWidth: 64,
+    height: 24,
+    paddingHorizontal: 9,
+    borderRadius: 999,
     backgroundColor: tokens.bg.surface,
     borderWidth: 1,
     borderColor: tokens.border.base,
+  },
+  coinPill: {
+    backgroundColor: 'rgba(255, 200, 61, 0.14)',
+    borderColor: 'rgba(255, 200, 61, 0.2)',
   },
   lvLabel: {
     fontFamily: 'Manrope_800ExtraBold',
@@ -171,7 +187,7 @@ const styles = StyleSheet.create({
   },
   lvValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
+    fontSize: 12,
     color: tokens.brand.violet2,
   },
   xpCol: {
@@ -208,17 +224,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  coinChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 200, 61, 0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 200, 61, 0.2)',
   },
   coinChipText: {
     fontFamily: 'Manrope_800ExtraBold',
