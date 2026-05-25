@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import {
+  type GestureResponderEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import { PercevaGlyph } from '@/components/PercevaGlyph';
@@ -25,6 +31,10 @@ interface Props {
 
 const STROKE_W = 14;
 const GAP_DEG = 2;
+// Extra hit radius on either side of the ring stroke — fingers are fat,
+// and a 14px stroke is hostile to a literal hit test.
+const HIT_RADIUS_INNER = 18;
+const HIT_RADIUS_OUTER = 12;
 
 function polar(cx: number, cy: number, r: number, angleDeg: number) {
   const a = ((angleDeg - 90) * Math.PI) / 180;
@@ -48,9 +58,13 @@ function arcPath(
  * Donut chart showing per-dimension XP share for a window. Center renders
  * the total XP and an optional ▲/▼ delta vs the prior window.
  *
+ * Tap handling: a single outer Pressable covers the SVG and maps the touch
+ * to a slice via angle math (atan2 from center). `onPress` on SVG Path was
+ * inconsistent — RN-svg's hit testing on stroked-only paths drops events
+ * near the inner edge — so we don't rely on it.
+ *
  * Empty window: faint full-circle ring + "0 XP" center.
- * Single-dim window (all XP in one dim): renders that dim's full ring with
- * no gap.
+ * Single-dim window (all XP in one dim): full ring with no gap.
  */
 export function XpDonut({
   slices,
@@ -62,12 +76,10 @@ export function XpDonut({
   const cx = size / 2;
   const cy = size / 2;
   const r = (size - STROKE_W) / 2;
-  // Glyph sits inside the donut hole — keep clear of the ring stroke.
   const glyphSize = Math.round(size * 0.62);
 
   const nonZero = useMemo(() => slices.filter((s) => s.xp > 0), [slices]);
 
-  // Lay out arc ranges. Each non-zero dim gets (share * 360) - gap degrees.
   const arcs = useMemo(() => {
     if (totalXp <= 0 || nonZero.length === 0) return [];
     const totalGap = nonZero.length > 1 ? GAP_DEG * nonZero.length : 0;
@@ -91,11 +103,35 @@ export function XpDonut({
     return { kind: 'pct' as const, pct, positive: diff >= 0 };
   }, [totalXp, prevTotalXp]);
 
+  const handleTap = (event: GestureResponderEvent) => {
+    if (!onSlicePress || arcs.length === 0) return;
+    const { locationX, locationY } = event.nativeEvent;
+    const dx = locationX - cx;
+    const dy = locationY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // Accept taps within a generous annulus around the stroke.
+    const innerEdge = r - STROKE_W / 2 - HIT_RADIUS_INNER;
+    const outerEdge = r + STROKE_W / 2 + HIT_RADIUS_OUTER;
+    if (dist < innerEdge || dist > outerEdge) return;
+    let angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    if (angle < 0) angle += 360;
+    for (const arc of arcs) {
+      if (angle >= arc.start && angle <= arc.end) {
+        onSlicePress(arc.dimId);
+        return;
+      }
+    }
+  };
+
   return (
-    <View style={{ width: size, height: size }}>
+    <Pressable
+      onPress={handleTap}
+      style={{ width: size, height: size }}
+      accessibilityRole="button"
+      accessibilityLabel="XP distribution by dimension"
+    >
       {/* Engraved Perceva mark inside the hole — same visual vocabulary
-          as Vault cards; keeps the screen on-brand without competing
-          with the data. */}
+          as Vault cards. */}
       <View style={styles.glyphWrap} pointerEvents="none">
         <PercevaGlyph
           size={glyphSize}
@@ -104,8 +140,7 @@ export function XpDonut({
           idSuffix="donut"
         />
       </View>
-      <Svg width={size} height={size}>
-        {/* Background ring — always present so the empty state still reads as a donut. */}
+      <Svg width={size} height={size} pointerEvents="none">
         <Circle
           cx={cx}
           cy={cy}
@@ -117,8 +152,6 @@ export function XpDonut({
         <G>
           {arcs.map((arc) => {
             const color = DIMENSION_META[arc.dimId].color;
-            // Single-dim window: end-start ≈ 360; arcPath collapses at 360,
-            // so render as a full circle instead.
             if (arc.end - arc.start >= 359.5) {
               return (
                 <Circle
@@ -129,9 +162,6 @@ export function XpDonut({
                   stroke={color}
                   strokeWidth={STROKE_W}
                   fill="none"
-                  onPress={
-                    onSlicePress ? () => onSlicePress(arc.dimId) : undefined
-                  }
                 />
               );
             }
@@ -143,9 +173,6 @@ export function XpDonut({
                 strokeWidth={STROKE_W}
                 strokeLinecap="butt"
                 fill="none"
-                onPress={
-                  onSlicePress ? () => onSlicePress(arc.dimId) : undefined
-                }
               />
             );
           })}
@@ -179,7 +206,7 @@ export function XpDonut({
           </View>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -198,24 +225,25 @@ const styles = StyleSheet.create({
   },
   totalXp: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 22,
+    fontSize: 38,
     color: tokens.text.hi,
-    lineHeight: 24,
+    lineHeight: 40,
+    letterSpacing: -0.5,
   },
   xpLabel: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 9,
+    fontSize: 10,
     color: tokens.text.dim,
     letterSpacing: 1.4,
-    marginTop: -1,
+    marginTop: 0,
   },
   deltaRow: {
-    marginTop: 3,
+    marginTop: 4,
     paddingHorizontal: 6,
   },
   deltaText: {
     fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 0.3,
   },
 });
