@@ -573,3 +573,59 @@ export function useUseReward() {
     },
   });
 }
+
+/**
+ * Sell a banked redemption back for a full coin refund. The redemption
+ * row is deleted; consumed (used_at != null) ones are rejected by the
+ * RPC. Optimistically removes the row from the bank cache and bumps
+ * coins; rolls back the cache on error.
+ */
+export function useSellReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      redemptionId: string;
+      refund: number;
+    }): Promise<{ refund: number }> => {
+      const { data, error } = await supabase.rpc('sell_reward', {
+        p_redemption_id: params.redemptionId,
+      });
+      if (error) throw error;
+      return data as { refund: number };
+    },
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey: rewardKeys.bank() });
+      await queryClient.cancelQueries({ queryKey: characterKeys.me() });
+      const prevBank = queryClient.getQueryData<RedemptionEntry[]>(
+        rewardKeys.bank(),
+      );
+      const prevChar = queryClient.getQueryData<CharacterWithProfile>(
+        characterKeys.me(),
+      );
+      if (prevBank) {
+        queryClient.setQueryData<RedemptionEntry[]>(
+          rewardKeys.bank(),
+          prevBank.filter((b) => b.id !== params.redemptionId),
+        );
+      }
+      if (prevChar) {
+        queryClient.setQueryData<CharacterWithProfile>(characterKeys.me(), {
+          ...prevChar,
+          character: {
+            ...prevChar.character,
+            coins: prevChar.character.coins + params.refund,
+          },
+        });
+      }
+      return { prevBank, prevChar };
+    },
+    onError: (_err, _params, ctx) => {
+      if (ctx?.prevBank) queryClient.setQueryData(rewardKeys.bank(), ctx.prevBank);
+      if (ctx?.prevChar) queryClient.setQueryData(characterKeys.me(), ctx.prevChar);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.bank() });
+      queryClient.invalidateQueries({ queryKey: characterKeys.me() });
+    },
+  });
+}

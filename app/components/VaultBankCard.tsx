@@ -36,9 +36,18 @@ interface Props {
   earnedTime: string;
   busy?: boolean;
   onUse: () => void;
+  /** Long-press opens the bank action sheet (Usar / Vender). */
+  onLongPress?: () => void;
 }
 
-export function VaultBankCard({ entry, cta, earnedTime, busy, onUse }: Props) {
+export function VaultBankCard({
+  entry,
+  cta,
+  earnedTime,
+  busy,
+  onUse,
+  onLongPress,
+}: Props) {
   const { t } = useT();
   const cat = entry.reward_category
     ? REWARD_CATEGORY_META[entry.reward_category]
@@ -46,7 +55,21 @@ export function VaultBankCard({ entry, cta, earnedTime, busy, onUse }: Props) {
   const accent = cat?.color ?? tokens.text.mid;
 
   return (
-    <View style={styles.root}>
+    <Pressable
+      style={styles.root}
+      onLongPress={onLongPress}
+      // No onPress — tap on the row body is intentionally inert so the
+      // user doesn't fire any action by accident while reading. Long
+      // press opens the action sheet (Usar / Vender). Inner USE button
+      // (its own Pressable below) keeps working independently.
+      delayLongPress={400}
+      disabled={!onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={entry.reward_title}
+      accessibilityHint={
+        onLongPress ? 'Long press to use or sell.' : undefined
+      }
+    >
       {/* Dark gradient surface — warm top fades into cool bottom, same
           treatment used by affordable shop cards. */}
       <LinearGradient
@@ -128,7 +151,7 @@ export function VaultBankCard({ entry, cta, earnedTime, busy, onUse }: Props) {
           )}
         </LinearGradient>
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 

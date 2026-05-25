@@ -658,6 +658,19 @@ const pt: Translations = {
       cancel: 'Cancelar',
       deficit: 'Faltam {{deficit}} moedas',
     },
+    bankActionSheet: {
+      use: 'Usar',
+      useSub: 'Marcar como aproveitada e mandar pro histórico',
+      sell: 'Vender',
+      sellSub: 'Devolve as moedas e remove do banco',
+    },
+    sellConfirm: {
+      eyebrow: 'VENDER PRA RECUPERAR',
+      refundLabel: 'Você recebe',
+      confirm: 'Vender',
+      cancel: 'Cancelar',
+      failTitle: 'Não consegui vender',
+    },
     actionSheet: {
       edit: 'Editar recompensa',
       editSub: 'Mudar título, custo, ícone ou categoria',
