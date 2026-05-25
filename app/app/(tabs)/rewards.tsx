@@ -23,9 +23,11 @@ import { EmptyHero } from '@/components/EmptyHero';
 import { RewardActionSheet } from '@/components/RewardActionSheet';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
+import { SellConfirmModal } from '@/components/SellConfirmModal';
 import { TemplateCard } from '@/components/TemplateCard';
 import { TrackedRewardCard } from '@/components/TrackedRewardCard';
 import { TrackPickerSheet } from '@/components/TrackPickerSheet';
+import { VaultBankActionSheet } from '@/components/VaultBankActionSheet';
 import { VaultBankCard } from '@/components/VaultBankCard';
 import { VaultHero } from '@/components/VaultHero';
 import { useCharacter } from '@/lib/api/character';
@@ -36,10 +38,12 @@ import {
   useRedeemRewardN,
   useRewardTemplates,
   useRewards,
+  useSellReward,
   useSetTrackedReward,
   useTrackedRewardId,
   useUseReward,
   useUsedRewards,
+  type RedemptionEntry,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
@@ -70,6 +74,7 @@ export default function RewardsScreen() {
   const templates = useRewardTemplates();
   const redeem = useRedeemRewardN();
   const useReward = useUseReward();
+  const sellReward = useSellReward();
   const addTemplate = useAddTemplateToShop();
   const archiveReward = useArchiveReward();
   const banked = useBankedRewards();
@@ -98,6 +103,12 @@ export default function RewardsScreen() {
   // Custom in-aesthetic confirm modal — replaces the system Alert that
   // used to pop on BUY. Single state holds the reward; null = closed.
   const [confirmingPurchase, setConfirmingPurchase] = useState<Reward | null>(null);
+  // Bank long-press action sheet payload — closes when null.
+  const [bankActionSheet, setBankActionSheet] = useState<RedemptionEntry | null>(null);
+  // Sell confirm modal payload — set when user picks "Vender" from the
+  // action sheet. Carries the redemption so the modal can show the
+  // exact refund amount.
+  const [sellingItem, setSellingItem] = useState<RedemptionEntry | null>(null);
   // Celebration modal payload — set after a successful purchase. Captures
   // the bank count BEFORE the redeem so the modal can show the before→after
   // transition even though the live query has invalidated already.
@@ -282,6 +293,25 @@ export default function RewardsScreen() {
       showInfo(t('reward.shop.useFail'), msg);
     } finally {
       setUsingId(null);
+    }
+  };
+
+  const openBankActionSheet = (entry: RedemptionEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setBankActionSheet(entry);
+  };
+
+  const handleConfirmSell = async (entry: RedemptionEntry) => {
+    setSellingItem(null);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await sellReward.mutateAsync({
+        redemptionId: entry.id,
+        refund: entry.cost_paid,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo(t('rewards.sellConfirm.failTitle'), msg);
     }
   };
 
@@ -681,6 +711,7 @@ export default function RewardsScreen() {
                       })}
                       busy={usingId === b.id}
                       onUse={() => handleUse(b)}
+                      onLongPress={() => openBankActionSheet(b)}
                     />
                   ))}
                 </View>
@@ -802,6 +833,35 @@ export default function RewardsScreen() {
         onConfirm={(qty) => {
           const r = confirmingPurchase;
           if (r) handleConfirmedPurchase(r, qty);
+        }}
+      />
+
+      <VaultBankActionSheet
+        visible={!!bankActionSheet}
+        rewardTitle={bankActionSheet?.reward_title ?? ''}
+        onCancel={() => setBankActionSheet(null)}
+        onUse={() => {
+          const b = bankActionSheet;
+          setBankActionSheet(null);
+          if (b) handleUse(b);
+        }}
+        onSell={() => {
+          const b = bankActionSheet;
+          setBankActionSheet(null);
+          if (b) setSellingItem(b);
+        }}
+      />
+
+      <SellConfirmModal
+        visible={!!sellingItem}
+        rewardTitle={sellingItem?.reward_title ?? ''}
+        rewardIcon={sellingItem?.reward_icon ?? 'gift'}
+        category={sellingItem?.reward_category ?? null}
+        refund={sellingItem?.cost_paid ?? 0}
+        onCancel={() => setSellingItem(null)}
+        onConfirm={() => {
+          const b = sellingItem;
+          if (b) handleConfirmSell(b);
         }}
       />
 

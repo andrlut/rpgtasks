@@ -668,6 +668,19 @@ const en = {
       cancel: 'Cancel',
       deficit: 'Short by {{deficit}} coins',
     },
+    bankActionSheet: {
+      use: 'Use',
+      useSub: 'Mark as enjoyed and move to history',
+      sell: 'Sell',
+      sellSub: 'Refund the coins and remove from the bank',
+    },
+    sellConfirm: {
+      eyebrow: 'SELL FOR REFUND',
+      refundLabel: 'You get back',
+      confirm: 'Sell',
+      cancel: 'Cancel',
+      failTitle: 'Could not sell',
+    },
     actionSheet: {
       edit: 'Edit reward',
       editSub: 'Change title, cost, icon or category',
