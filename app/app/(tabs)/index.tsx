@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -15,15 +14,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBottomNavClearance } from '@/components/BottomNavBar';
-import { ActiveQuestsCard } from '@/components/ActiveQuestsCard';
-import { CompactHeader } from '@/components/CompactHeader';
+import { BucketTabsV2, type BucketTabSpec } from '@/components/BucketTabsV2';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { CompletedBucket, type CompletedItem } from '@/components/CompletedBucket';
 import { ManageTasksButton } from '@/components/ManageTasksButton';
-import { ScreenBackground } from '@/components/ScreenBackground';
+import { QuestChipsStrip } from '@/components/QuestChipsStrip';
+import { RewardStatsCard, XPStatsCard } from '@/components/StatsCards';
 import { TaskActionSheet } from '@/components/TaskActionSheet';
 import { TaskCard } from '@/components/TaskCard';
-import { TodayRing } from '@/components/TodayRing';
+import { TodayAmbient } from '@/components/TodayAmbient';
+import { TodayHeader } from '@/components/TodayHeader';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { useCharacter } from '@/lib/api/character';
 import { useT } from '@/lib/i18n';
@@ -37,8 +37,9 @@ import {
   useUndoCompletion,
   useUnskipTaskToday,
 } from '@/lib/api/tasks';
+import { useQuests } from '@/lib/api/quests';
 import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
-import { formatCompactDate } from '@/lib/time';
+import { formatCompactDate, formatHeroDate } from '@/lib/time';
 import { levelProgress, rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -50,49 +51,33 @@ interface FloatItem {
 
 type BucketTab = 'daily' | 'weekly' | 'oneshot';
 
-interface TabMeta {
-  id: BucketTab;
-  labelKey: string;
-  emptyKey: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  accent: string;
-}
-
-const TAB_META: TabMeta[] = [
-  {
-    id: 'daily',
-    labelKey: 'home.bucketTabs.daily',
-    emptyKey: 'home.bucketTabs.emptyDaily',
-    iconName: 'sunny-outline',
-    accent: tokens.brand.violet2,
-  },
-  {
-    id: 'weekly',
-    labelKey: 'home.bucketTabs.weekly',
-    emptyKey: 'home.bucketTabs.emptyWeekly',
-    iconName: 'calendar-outline',
-    accent: '#4DD0FF',
-  },
-  {
-    id: 'oneshot',
-    labelKey: 'home.bucketTabs.oneshot',
-    emptyKey: 'home.bucketTabs.emptyOneshot',
-    iconName: 'flag-outline',
-    accent: tokens.semantic.coin,
-  },
-];
-
 /**
- * Tasks home — bucket-flavored layout (Variante A v2).
+ * Tasks home — V3 "Today Hub" layout.
  *
- *   - today: daily + scheduled-today weekly/monthly that aren't done yet
- *   - week:  this-week / this-month period overflow
- *   - recurring: ALL non-one_shot active tasks (cadence overview)
- *   - oneshot: pending one-shot tasks
+ *   ┌──────────────────────────────────────────────┐
+ *   │  ambient (violet halo + Topo Iris glyph)     │  absolute, z 0
+ *   │                                              │
+ *   │  SUN · MAY 24 · DECO      [📅] [⚔] [⚙]      │
+ *   │                                              │
+ *   │  Sunday, May 24                  [ring 6]    │
+ *   │                                              │
+ *   │  XP card  ──────  290/500   LV 3             │
+ *   │  Reward card  ──  🎯 ...  61%   610          │
+ *   │                                              │
+ *   │  Daily 1 | Weekly 3 ▔▔▔ | One-shot 2         │
+ *   │  [⚔ Sem açúcar 1/3] [+ Browse]               │
+ *   │                                              │
+ *   │  ┌── TaskCard list (gradient + sub tile) ─┐ │
+ *   │  │ 🧘 Meditar 10 min       [✓]            │ │
+ *   │  └────────────────────────────────────────┘ │
+ *   └──────────────────────────────────────────────┘
  *
- * Replaces the previous type-tabs (daily/weekly/one_shot/general) — same
- * underlying data (`useHomeBuckets`) plus `useActiveTasks` for the
- * recurring overview.
+ * Three principles preserved from the user's brief:
+ *   1. XP and tracked-reward bars stay visually independent — two
+ *      separate cards, not one combined stats card.
+ *   2. The summary line ("1 task to close the day") is gone — the
+ *      ring is sufficient.
+ *   3. Quest cards collapsed into discrete gold pill chips.
  */
 export default function HomeScreen() {
   const router = useRouter();
@@ -102,6 +87,7 @@ export default function HomeScreen() {
   const buckets = useHomeBuckets(settings.weekStart);
   const allActiveTasks = useActiveTasks();
   const trackedReward = useTrackedReward();
+  const quests = useQuests();
   const completeTask = useCompleteTask();
   const skipTask = useSkipTaskToday();
   const unskipTask = useUnskipTaskToday();
@@ -113,6 +99,7 @@ export default function HomeScreen() {
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
   const bottomClearance = useBottomNavClearance();
 
+  // ── Mutation handlers ─────────────────────────────────────────────────
   const fireCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
     if (completeTask.isPending) return;
 
@@ -183,9 +170,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Swipe-left on the card → direct skip without confirmation. Errors
-  // still surface as an alert; user can unskip from the "Skipped today"
-  // drawer if they swipe by mistake.
   const handleSwipeSkip = (task: TaskWithSubs) => {
     skipTask.mutate(
       { taskId: task.id },
@@ -253,14 +237,6 @@ export default function HomeScreen() {
   const data = buckets.data;
 
   // ── Type-flavored lists ───────────────────────────────────────────────
-  // Tabs now split by recurrence type, not time window. Each tab shows
-  // active tasks of that type that aren't completed/skipped today (so the
-  // user sees "what's left for me to do" per cadence). The All tab unions
-  // everything.
-  //
-  // - daily:   recurrence.type === 'daily', pending today
-  // - weekly:  recurrence.type in ('weekly','monthly'), pending this period
-  // - oneshot: recurrence.type === 'one_shot', never completed
   const lists = useMemo<Record<BucketTab, TaskWithSubs[]>>(() => {
     if (!data) {
       return { daily: [], weekly: [], oneshot: [] };
@@ -274,13 +250,10 @@ export default function HomeScreen() {
     const filterActedToday = (t: TaskWithSubs) =>
       !completedTodayIds.has(t.id) && !skippedTodayIds.has(t.id);
 
-    // Daily: from buckets.today, filter to daily recurrence type only
     const daily = data.today
       .filter((t) => t.recurrence.type === 'daily')
       .filter(filterActedToday);
 
-    // Weekly: buckets.thisWeek (already excludes today's done) + any
-    // weekly/monthly that's in today (scheduled-today) — deduped.
     const weeklySeen = new Set<string>();
     const weekly: TaskWithSubs[] = [];
     const pushWeekly = (t: TaskWithSubs) => {
@@ -298,9 +271,7 @@ export default function HomeScreen() {
     return { daily, weekly, oneshot };
   }, [data]);
 
-  // Tasks completed today (regardless of bucket). Used by the "Done today"
-  // collapsible — rendered in every tab. Rows are tappable to undo, so we
-  // keep the latestCompletionId here.
+  // ── Completion buckets per tab ────────────────────────────────────────
   const completedTodayItems = useMemo<CompletedItem[]>(
     () =>
       (data?.todayActivity.completed ?? []).map((c) => ({
@@ -310,10 +281,6 @@ export default function HomeScreen() {
     [data?.todayActivity.completed],
   );
 
-  // Weekly/monthly completions for the current week — feeds the
-  // "Feito na semana" drawer on the Weekly tab. Without this, the drawer
-  // was always using todayActivity which doesn't include earlier-in-week
-  // weekly completions (e.g. tennis on Tuesday).
   const completedThisWeekItems = useMemo<CompletedItem[]>(
     () =>
       (data?.weekActivity.completed ?? []).map((c) => ({
@@ -323,8 +290,6 @@ export default function HomeScreen() {
     [data?.weekActivity.completed],
   );
 
-  // Every one-shot that has at least one completion — feeds the
-  // "Completed" drawer on the One-shot tab.
   const completedOneShotItems = useMemo<CompletedItem[]>(
     () =>
       (data?.oneShotActivity.completed ?? []).map((c) => ({
@@ -334,29 +299,44 @@ export default function HomeScreen() {
     [data?.oneShotActivity.completed],
   );
 
-  // Tasks skipped today (regardless of bucket). Feeds the "Skipped today"
-  // collapsible rendered in every tab. Rows are tappable to unskip.
   const skippedTodayItems = useMemo<CompletedItem[]>(
     () =>
       (data?.todayActivity.skipped ?? []).map((task) => ({ task })),
     [data?.todayActivity.skipped],
   );
 
-  // Counts shown in the tab chips — pending count per type.
-  const counts = useMemo<Record<BucketTab, number>>(
-    () => ({
-      daily: lists.daily.length,
-      weekly: lists.weekly.length,
-      oneshot: lists.oneshot.length,
-    }),
-    [lists],
-  );
+  // ── Ring math + headline ──────────────────────────────────────────────
+  // ringTotal = pending daily + completed daily today (the daily contract).
+  // Tasks scheduled-for-today from weekly/monthly are excluded so the
+  // ring matches the Daily tab content the user reads under it.
+  const ringDoneDailyToday = useMemo(() => {
+    if (!data) return 0;
+    return data.todayActivity.completed.filter(
+      (c) => c.task.recurrence.type === 'daily',
+    ).length;
+  }, [data]);
+  const ringTotal = ringDoneDailyToday + lists.daily.length;
 
+  const hero = formatHeroDate();
   const charXp = character.data?.character.total_xp ?? 0;
   const lp = levelProgress(charXp);
-  const activeMeta = TAB_META.find((m) => m.id === activeTab) ?? TAB_META[0];
-  const activeList = lists[activeTab];
 
+  const activeQuestCount = (quests.data ?? []).filter(
+    (q) => q.quest.status === 'active',
+  ).length;
+
+  const tabSpecs: BucketTabSpec<BucketTab>[] = [
+    { value: 'daily', label: t('home.bucketTabs.daily'), count: lists.daily.length },
+    { value: 'weekly', label: t('home.bucketTabs.weekly'), count: lists.weekly.length },
+    { value: 'oneshot', label: t('home.bucketTabs.oneshot'), count: lists.oneshot.length },
+  ];
+
+  const activeList = lists[activeTab];
+  const activeEmptyKey: Record<BucketTab, string> = {
+    daily: 'home.bucketTabs.emptyDaily',
+    weekly: 'home.bucketTabs.emptyWeekly',
+    oneshot: 'home.bucketTabs.emptyOneshot',
+  };
   const completedBucketTitle =
     activeTab === 'daily'
       ? t('home.completedBucket.daily')
@@ -366,111 +346,112 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <ScreenBackground>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={tokens.brand.violet2}
-              colors={[tokens.brand.violet2]}
+      <TodayAmbient />
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={tokens.brand.violet2}
+            colors={[tokens.brand.violet2]}
+          />
+        }
+      >
+        <TodayHeader
+          eyebrowDate={formatCompactDate()}
+          displayName={character.data?.profile.display_name ?? t('home.defaultName')}
+          weekdayLabel={hero.weekday}
+          monthDayLabel={hero.monthDay}
+          ringDone={ringDoneDailyToday}
+          ringTotal={ringTotal}
+          hasActiveQuests={activeQuestCount > 0}
+          onHistoryPress={() => router.push('/history')}
+          onQuestsPress={() => router.push('/quests')}
+          onManagePress={() => router.push('/tasks')}
+        />
+
+        <XPStatsCard
+          level={lp.level}
+          xpInLevel={lp.xpInLevel}
+          xpNeededForLevel={lp.xpNeededForLevel}
+        />
+
+        {trackedReward && (
+          <RewardStatsCard
+            rewardName={trackedReward.name}
+            iconName={trackedReward.icon}
+            coins={trackedReward.currentCoins}
+            totalCoins={trackedReward.totalCoins}
+            onPress={() => router.push('/(tabs)/rewards')}
+          />
+        )}
+
+        {isLoading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator color={tokens.brand.violet2} />
+          </View>
+        ) : hasError ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={32} color={tokens.semantic.danger} />
+            <Text style={styles.errorText}>{t('home.error')}</Text>
+          </View>
+        ) : (
+          <>
+            <BucketTabsV2<BucketTab>
+              tabs={tabSpecs}
+              value={activeTab}
+              onChange={setActiveTab}
             />
-          }
-        >
-          <CompactHeader
-            displayName={character.data?.profile.display_name ?? t('home.defaultName')}
-            totalXp={charXp}
-            level={lp.level}
-            xpInLevel={lp.xpInLevel}
-            xpNeededForLevel={lp.xpNeededForLevel}
-            coins={character.data?.character.coins ?? 0}
-            dateLabel={formatCompactDate()}
-            trackedReward={trackedReward}
-            onTrackedRewardPress={() => router.push('/(tabs)/rewards')}
-          />
 
-          <TodayRing
-            done={completedTodayItems.length}
-            total={completedTodayItems.length + lists.daily.length}
-            onHistoryPress={() => router.push('/history')}
-            onManagePress={() => router.push('/tasks')}
-          />
+            <QuestChipsStrip />
 
-          <ActiveQuestsCard />
+            <View style={styles.taskList}>
+              {activeList.length === 0 ? (
+                <Text style={styles.tabEmpty}>{t(activeEmptyKey[activeTab])}</Text>
+              ) : (
+                activeList.map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onComplete={() => handleQuickComplete(task)}
+                    onLongPress={() => handleLongPress(task)}
+                    onSkip={() => handleSwipeSkip(task)}
+                    onEdit={() =>
+                      router.push({ pathname: '/task-form', params: { id: task.id } })
+                    }
+                  />
+                ))
+              )}
 
-          {isLoading ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator color={tokens.brand.violet2} />
-            </View>
-          ) : hasError ? (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={32} color={tokens.semantic.danger} />
-              <Text style={styles.errorText}>{t('home.error')}</Text>
-            </View>
-          ) : (
-            <View style={styles.body}>
-              <BucketTabs
-                active={activeTab}
-                counts={counts}
-                onChange={setActiveTab}
-                t={t}
+              <CompletedBucket
+                items={
+                  activeTab === 'weekly'
+                    ? completedThisWeekItems
+                    : activeTab === 'oneshot'
+                      ? completedOneShotItems
+                      : completedTodayItems
+                }
+                title={completedBucketTitle}
+                onUndo={handleUndo}
               />
-
-              <View style={styles.tabBody}>
-                {activeList.length === 0 ? (
-                  <Text style={styles.tabEmpty}>{t(activeMeta.emptyKey)}</Text>
-                ) : (
-                  <>
-                    {activeTab === 'daily' && (
-                      <Text style={styles.sectionLabel}>{t('home.bucketTabs.nextUp')}</Text>
-                    )}
-                    {activeTab === 'oneshot' && (
-                      <Text style={styles.sectionLabel}>{t('home.bucketTabs.oneshotLead')}</Text>
-                    )}
-                    {activeList.map((task) => (
-                      <TaskCard
-                        key={task.id}
-                        task={task}
-                        onComplete={() => handleQuickComplete(task)}
-                        onLongPress={() => handleLongPress(task)}
-                        onSkip={() => handleSwipeSkip(task)}
-                        onEdit={() =>
-                          router.push({ pathname: '/task-form', params: { id: task.id } })
-                        }
-                      />
-                    ))}
-                  </>
-                )}
-
-                <CompletedBucket
-                  items={
-                    activeTab === 'weekly'
-                      ? completedThisWeekItems
-                      : activeTab === 'oneshot'
-                        ? completedOneShotItems
-                        : completedTodayItems
-                  }
-                  title={completedBucketTitle}
-                  onUndo={handleUndo}
-                />
-                <CompletedBucket
-                  items={skippedTodayItems}
-                  title={t('home.skippedBucket.today')}
-                  variant="skipped"
-                  onUnskip={handleUnskip}
-                />
-              </View>
-
-              <View style={styles.manageWrap}>
-                <ManageTasksButton onPress={() => router.push('/tasks')} />
-              </View>
+              <CompletedBucket
+                items={skippedTodayItems}
+                title={t('home.skippedBucket.today')}
+                variant="skipped"
+                onUnskip={handleUnskip}
+              />
             </View>
-          )}
-        </ScrollView>
-      </ScreenBackground>
+
+            <View style={styles.manageWrap}>
+              <ManageTasksButton onPress={() => router.push('/tasks')} />
+            </View>
+          </>
+        )}
+      </ScrollView>
 
       {floats.map((f) => (
         <XPCoinFloat
@@ -500,76 +481,6 @@ export default function HomeScreen() {
   );
 }
 
-interface BucketTabsProps {
-  active: BucketTab;
-  counts: Record<BucketTab, number>;
-  onChange: (next: BucketTab) => void;
-  t: (key: string) => string;
-}
-
-function BucketTabs({ active, counts, onChange, t }: BucketTabsProps) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={tabStyles.row}
-    >
-      {TAB_META.map((meta) => {
-        const isActive = meta.id === active;
-        const count = counts[meta.id];
-        return (
-          <Pressable
-            key={meta.id}
-            onPress={() => {
-              if (!isActive) Haptics.selectionAsync().catch(() => {});
-              onChange(meta.id);
-            }}
-            style={({ pressed }) => [
-              tabStyles.tab,
-              isActive && {
-                backgroundColor: `${meta.accent}1F`,
-                borderColor: `${meta.accent}55`,
-              },
-              pressed && { opacity: 0.85 },
-            ]}
-            hitSlop={4}
-          >
-            <Ionicons
-              name={meta.iconName}
-              size={14}
-              color={isActive ? meta.accent : tokens.text.dim}
-            />
-            <Text
-              style={[
-                tabStyles.label,
-                { color: isActive ? meta.accent : tokens.text.dim },
-              ]}
-              numberOfLines={1}
-            >
-              {t(meta.labelKey)}
-            </Text>
-            <View
-              style={[
-                tabStyles.countChip,
-                isActive && { backgroundColor: `${meta.accent}33` },
-              ]}
-            >
-              <Text
-                style={[
-                  tabStyles.countText,
-                  { color: isActive ? meta.accent : tokens.text.dim },
-                ]}
-              >
-                {count}
-              </Text>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
   scroll: { flex: 1 },
@@ -589,21 +500,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: tokens.space[5],
   },
-  body: {
-    paddingHorizontal: tokens.space[3],
-    gap: tokens.space[3],
-  },
-  tabBody: {
+  taskList: {
+    paddingHorizontal: tokens.space[4],
+    paddingTop: tokens.space[2],
     gap: tokens.space[2],
-  },
-  sectionLabel: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: tokens.text.dim,
-    paddingHorizontal: 4,
-    paddingTop: 2,
   },
   tabEmpty: {
     ...tokens.type.caption,
@@ -614,46 +514,6 @@ const styles = StyleSheet.create({
   },
   manageWrap: {
     paddingTop: tokens.space[3],
-    paddingHorizontal: 4,
-  },
-});
-
-const tabStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 4,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: tokens.space[2],
-    paddingHorizontal: tokens.space[3],
-    borderRadius: tokens.radius.pill,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    backgroundColor: tokens.bg.surface2,
-    minHeight: 32,
-  },
-  label: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    letterSpacing: 0.4,
-  },
-  countChip: {
-    minWidth: 20,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 999,
-    backgroundColor: tokens.bg.glass,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 0.3,
+    paddingHorizontal: tokens.space[4],
   },
 });

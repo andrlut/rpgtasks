@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,7 +22,7 @@ import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 import { DIMENSION_META, SUB_META } from '@/theme/dimensions';
 
-import { SubStack } from './SubStack';
+import { useMetaLookup } from '@/lib/i18n/meta';
 
 interface Props {
   task: TaskWithSubs;
@@ -100,7 +101,6 @@ export function TaskCard({
     completeScale.value = withSpring(1, tokens.motion.springBouncy);
   };
 
-  const subIds = task.subs.map((s) => s.sub_id);
 
   // ── Swipe gesture ───────────────────────────────────────────────────
   // Activates only after the user has pulled ≥15px horizontally, so taps
@@ -220,14 +220,19 @@ export function TaskCard({
       )}
 
       <GestureDetector gesture={pan}>
-        <Animated.View style={[styles.container, cardAnimStyle]}>
-          {/* Vertical accent bar on the left, tinted by primary sub's dim */}
-          <View
-            style={[
-              styles.accentBar,
-              { backgroundColor: accent, opacity: 0.6 },
-            ]}
+        <Animated.View style={[styles.container, cardAnimStyle, { borderLeftColor: accent }]}>
+          {/* Gradient surface fill — sits under all content. */}
+          <LinearGradient
+            colors={tokens.gradient.taskCard}
+            locations={tokens.gradient.taskCardLocations}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.cardGradientBg}
+            pointerEvents="none"
           />
+
+          {/* Sub icon tile — colored by the task's primary dimension. */}
+          <SubIconTile task={task} />
 
           <Pressable
             style={({ pressed }) => [
@@ -244,12 +249,11 @@ export function TaskCard({
             </Text>
 
             <View style={styles.metaRow}>
-              {subIds.length > 0 && <SubStack subIds={subIds} max={3} size={28} />}
               <SubColoredPips subs={task.subs} />
               <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
               {showRecurrenceNote && (
                 <Text style={styles.recurrenceNote} numberOfLines={1}>
-                  {describeRecurrence(task.recurrence, task.target_count)}
+                  · {describeRecurrence(task.recurrence, task.target_count)}
                 </Text>
               )}
             </View>
@@ -272,11 +276,34 @@ export function TaskCard({
                 onLongPress ? 'Long-press to adjust per-sub stars' : undefined
               }
             >
-              <Ionicons name="checkmark" size={22} color="#fff" />
+              <LinearGradient
+                colors={tokens.gradient.taskCheckBtn}
+                locations={tokens.gradient.taskCheckBtnLocations}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Ionicons name="checkmark" size={20} color="#fff" />
             </Pressable>
           </Animated.View>
         </Animated.View>
       </GestureDetector>
+    </View>
+  );
+}
+
+/**
+ * Leading icon tile — dim-bg color squircle with the primary sub's
+ * Ionicon glyph. Same metaphor as the Rewards card's status badge,
+ * making the home cards feel like cousins to the reward cards.
+ */
+function SubIconTile({ task }: { task: TaskWithSubs }) {
+  const meta = useMetaLookup();
+  const sub = meta.sub(task.primary_sub_id);
+  const dim = meta.dim(task.primary_dimension_id);
+  return (
+    <View style={[styles.subTile, { backgroundColor: dim.bg }]}>
+      <Ionicons name={sub.iconName as never} size={18} color={dim.color} />
     </View>
   );
 }
@@ -348,28 +375,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    paddingVertical: tokens.space[3],
-    paddingHorizontal: tokens.space[3],
-    paddingLeft: tokens.space[4],
-    backgroundColor: tokens.bg.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingLeft: 16,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: tokens.border.base,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderLeftWidth: 3,
     overflow: 'hidden',
     position: 'relative',
   },
-  accentBar: {
-    position: 'absolute',
-    left: 0,
-    top: 8,
-    bottom: 8,
-    width: 3,
-    borderRadius: 2,
+  cardGradientBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  subTile: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bodyWrap: {
     flex: 1,
     minWidth: 0,
-    gap: tokens.space[2],
+    gap: 5,
   },
   title: {
     fontFamily: 'Manrope_700Bold',
@@ -385,7 +415,7 @@ const styles = StyleSheet.create({
   },
   rewardValue: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 14,
+    fontSize: 11,
     color: tokens.semantic.xp,
     letterSpacing: 0.2,
   },
@@ -394,18 +424,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   pip: {
-    width: 6,
-    height: 6,
-    borderRadius: 1,
+    width: 5,
+    height: 5,
+    borderRadius: 1.5,
   },
   recurrenceNote: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 10,
+    color: tokens.text.faint,
     fontStyle: 'italic',
     flexShrink: 1,
   },
   completeShadow: {
-    borderRadius: 12,
+    borderRadius: 11,
     shadowColor: tokens.brand.violet,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.45,
@@ -413,15 +444,17 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   completeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: tokens.brand.violet,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(155,130,255,0.55)',
   },
   completeButtonPressed: {
     opacity: 0.85,
-    transform: [{ scale: 0.96 }],
+    transform: [{ scale: 0.88 }],
   },
 });

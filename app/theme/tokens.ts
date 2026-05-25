@@ -41,6 +41,10 @@ export const tokens = {
     coin2: '#FFE08A',
     coinDeep: '#C8881C',
     coinGlow: 'rgba(255, 200, 61, 0.55)',
+    /** Perceva pale-gold — eyebrows, reward names, accent labels. */
+    coinLight: '#FFE3A6',
+    /** Card rim accent for gold-bordered surfaces (reward/quest chips). */
+    coinRim: 'rgba(255, 200, 61, 0.45)',
     danger: '#FF5C7A',
     warn: '#FF9F43',
   },
@@ -216,6 +220,40 @@ export const tokens = {
     coinBtnLocations: [0, 0.5, 1] as const,
     questBoard: ['rgba(155, 130, 255, 0.18)', 'rgba(77, 208, 255, 0.08)'] as const,
     questBoardLocations: [0, 1] as const,
+    /**
+     * V3 "Today hub" gradients — applied to stats cards, task cards and
+     * the activity bar. All share the same dark-violet → near-black
+     * direction so the screen reads as one continuous surface tinted by
+     * the violet halo backdrop.
+     */
+    todayHero: ['rgba(36, 42, 88, 0.85)', 'rgba(20, 24, 60, 0.95)'] as const,
+    todayHeroLocations: [0, 1] as const,
+    taskCard: ['rgba(36, 42, 88, 0.6)', 'rgba(20, 24, 60, 0.85)'] as const,
+    taskCardLocations: [0, 1] as const,
+    activityBar: ['rgba(36, 42, 88, 0.4)', 'rgba(20, 24, 60, 0.6)'] as const,
+    activityBarLocations: [0, 1] as const,
+    summaryChipViolet: [
+      'rgba(155, 130, 255, 0.28)',
+      'rgba(123, 92, 255, 0.16)',
+    ] as const,
+    summaryChipGreen: [
+      'rgba(61, 214, 140, 0.32)',
+      'rgba(61, 214, 140, 0.14)',
+    ] as const,
+    questChipGold: [
+      'rgba(255, 224, 138, 0.22)',
+      'rgba(255, 200, 61, 0.08)',
+    ] as const,
+    questChipViolet: [
+      'rgba(155, 130, 255, 0.18)',
+      'rgba(123, 92, 255, 0.06)',
+    ] as const,
+    /** Reward progress bar fill with a shimmer end → mid → start. */
+    rewardBarFill: ['#C8881C', '#FFC83D', '#FFE3A6'] as const,
+    rewardBarFillLocations: [0, 0.5, 1] as const,
+    /** Violet task check button — top-light → mid-violet → deep. */
+    taskCheckBtn: ['#9B82FF', '#7B5CFF', '#4B2FCC'] as const,
+    taskCheckBtnLocations: [0, 0.6, 1] as const,
   },
 } as const;
 

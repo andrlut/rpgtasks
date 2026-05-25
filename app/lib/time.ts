@@ -38,6 +38,26 @@ export function formatCompactDate(date: Date = new Date(), locale?: LanguageCode
   return `${dow}, ${md}`;
 }
 
+/** Big-headline date for the V3 home — split form so the caller can style
+ *  the month/day fragment distinctly.
+ *
+ *  English: { weekday: "Sunday", monthDay: "May 24" }
+ *  Portuguese: { weekday: "Domingo", monthDay: "24 mai" }
+ */
+export function formatHeroDate(
+  date: Date = new Date(),
+  locale?: LanguageCode,
+): { weekday: string; monthDay: string } {
+  const tag = bcp47(locale);
+  const weekday = date.toLocaleDateString(tag, { weekday: 'long' });
+  const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const monthDay = date.toLocaleDateString(tag, {
+    month: 'short',
+    day: 'numeric',
+  });
+  return { weekday: `${cap},`, monthDay };
+}
+
 /**
  * Friendly relative time for past timestamps.
  *
