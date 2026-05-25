@@ -18,6 +18,7 @@ import { useT } from '@/lib/i18n';
 import { CalendarMonthModal } from '@/components/CalendarMonthModal';
 import { CoinIcon } from '@/components/CoinIcon';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
+import { DayStatsCard } from '@/components/DayStatsCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SubStack } from '@/components/SubStack';
 import { MonthGrid } from '@/components/MonthGrid';
@@ -58,26 +59,6 @@ function endOfMonth(d: Date): Date {
 /** True if `a` and `b` fall in the same year + month. */
 function isSameMonth(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-}
-
-/**
- * When the visible month changes, pick a sensible selection inside the
- * new month:
- *   - If the new month is the current month → today.
- *   - Else try to preserve the previously-selected day-of-month.
- *   - Else fall back to day 1 of the new month.
- */
-function pickSelectionInMonth(month: Date, prevSelected: Date): Date {
-  const now = new Date();
-  if (
-    month.getFullYear() === now.getFullYear() &&
-    month.getMonth() === now.getMonth()
-  ) {
-    return startOfDay(now);
-  }
-  const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const target = Math.min(prevSelected.getDate(), lastDay);
-  return new Date(month.getFullYear(), month.getMonth(), target);
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -150,19 +131,18 @@ export default function HistoryScreen() {
     });
   };
 
-  // Month navigation from the grid header. Selection follows the new
-  // month — picks the same day-of-month when valid, falls back to the
-  // first day, or to today when the new month is the current one.
+  // Month navigation from the grid header. We DON'T touch `selected`
+  // here — the user explicitly asked to let them keep the previous
+  // selection while browsing months. They'll either tap a day cell or
+  // use the day chevrons to move the active selection.
   const handlePrevMonth = () => {
     const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
     setVisibleMonth(next);
-    setSelected(pickSelectionInMonth(next, selected));
   };
   const handleNextMonth = () => {
     const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
     if (next.getTime() > Date.now()) return; // never enter a future month
     setVisibleMonth(next);
-    setSelected(pickSelectionInMonth(next, selected));
   };
 
   const today = new Date();
@@ -366,24 +346,11 @@ export default function HistoryScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.dayStatsRow}>
-              <View style={styles.dayStat}>
-                <Text style={styles.dayStatValue}>{day.data?.totalXp ?? 0}</Text>
-                <Text style={styles.dayStatLabel}>XP</Text>
-              </View>
-              <View style={styles.dayStat}>
-                <Text style={styles.dayStatValue}>
-                  {day.data?.completions.length ?? 0}
-                </Text>
-                <Text style={styles.dayStatLabel}>tasks</Text>
-              </View>
-              <View style={styles.dayStat}>
-                <Text style={[styles.dayStatValue, { color: tokens.semantic.coin }]}>
-                  {day.data?.totalCoins ?? 0}
-                </Text>
-                <Text style={styles.dayStatLabel}>coins</Text>
-              </View>
-            </View>
+            <DayStatsCard
+              xp={day.data?.totalXp ?? 0}
+              completed={day.data?.completions.length ?? 0}
+              skipped={day.data?.skipped.length ?? 0}
+            />
 
             <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>Completed</Text>
@@ -624,31 +591,6 @@ const styles = StyleSheet.create({
     ...tokens.type.caption,
     color: tokens.brand.violet2,
     fontFamily: 'Manrope_700Bold',
-  },
-  dayStatsRow: {
-    flexDirection: 'row',
-    gap: tokens.space[3],
-    marginBottom: tokens.space[5],
-  },
-  dayStat: {
-    flex: 1,
-    backgroundColor: tokens.bg.surface,
-    borderRadius: tokens.radius.lg,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    paddingVertical: tokens.space[4],
-    alignItems: 'center',
-    gap: 2,
-  },
-  dayStatValue: {
-    ...tokens.type.h2,
-    color: tokens.text.hi,
-  },
-  dayStatLabel: {
-    ...tokens.type.caption,
-    color: tokens.text.mid,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   sectionTitle: {
     ...tokens.type.eyebrow,
