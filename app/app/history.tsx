@@ -20,7 +20,7 @@ import { CoinIcon } from '@/components/CoinIcon';
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SubStack } from '@/components/SubStack';
-import { XpHeatmap } from '@/components/XpHeatmap';
+import { MonthGrid } from '@/components/MonthGrid';
 import { dateKeyFromLocal, useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
@@ -28,8 +28,6 @@ import type { TaskWithSubs } from '@/lib/db/types';
 import { describeRecurrence } from '@/lib/recurrence';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
-
-const HEATMAP_WEEKS = 3;
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -41,6 +39,43 @@ function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);
   return x;
+}
+
+/** First day of `d`'s month at 00:00 local. */
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** Last day of `d`'s month at 23:59:59 local. */
+function endOfMonth(d: Date): Date {
+  const e = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  e.setHours(23, 59, 59, 999);
+  return e;
+}
+
+/** True if `a` and `b` fall in the same year + month. */
+function isSameMonth(a: Date, b: Date): boolean {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+/**
+ * When the visible month changes, pick a sensible selection inside the
+ * new month:
+ *   - If the new month is the current month → today.
+ *   - Else try to preserve the previously-selected day-of-month.
+ *   - Else fall back to day 1 of the new month.
+ */
+function pickSelectionInMonth(month: Date, prevSelected: Date): Date {
+  const now = new Date();
+  if (
+    month.getFullYear() === now.getFullYear() &&
+    month.getMonth() === now.getMonth()
+  ) {
+    return startOfDay(now);
+  }
+  const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const target = Math.min(prevSelected.getDate(), lastDay);
+  return new Date(month.getFullYear(), month.getMonth(), target);
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -68,17 +103,17 @@ export default function HistoryScreen() {
   const router = useRouter();
   const { t } = useT();
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
+  const [visibleMonth, setVisibleMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Heatmap range: anchor on `selected` so users browsing the past
-  // can still see grid context.
-  const heatmapRange = useMemo(() => {
-    const end = startOfDay(new Date());
-    const start = addDays(end, -(HEATMAP_WEEKS * 7 - 1));
-    return { from: start, to: end };
-  }, []);
+  // Heatmap range follows the visible month — the MonthGrid only needs
+  // entries for the month it renders, so we fetch a tight window.
+  const monthRange = useMemo(
+    () => ({ from: startOfMonth(visibleMonth), to: endOfMonth(visibleMonth) }),
+    [visibleMonth],
+  );
 
-  const summary = useDailySummary(heatmapRange.from, heatmapRange.to);
+  const summary = useDailySummary(monthRange.from, monthRange.to);
   const day = useDayDetail(selected);
   const completeTask = useCompleteTask();
   const undoCompletion = useUndoCompletion();
@@ -86,10 +121,48 @@ export default function HistoryScreen() {
   const isToday = isSameDay(selected, new Date());
   const canGoNext = !isToday;
 
-  const handlePrev = () => setSelected((d) => addDays(d, -1));
-  const handleNext = () => {
-    if (canGoNext) setSelected((d) => addDays(d, 1));
+  const handlePrev = () => {
+    setSelected((d) => {
+      const next = addDays(d, -1);
+      // When the day step crosses a month boundary, drag the visible
+      // month with it so the grid keeps the selected cell on-screen.
+      if (!isSameMonth(next, visibleMonth)) {
+        setVisibleMonth(startOfMonth(next));
+      }
+      return next;
+    });
   };
+  const handleNext = () => {
+    if (!canGoNext) return;
+    setSelected((d) => {
+      const next = addDays(d, 1);
+      if (!isSameMonth(next, visibleMonth)) {
+        setVisibleMonth(startOfMonth(next));
+      }
+      return next;
+    });
+  };
+
+  // Month navigation from the grid header. Selection follows the new
+  // month — picks the same day-of-month when valid, falls back to the
+  // first day, or to today when the new month is the current one.
+  const handlePrevMonth = () => {
+    const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+    setVisibleMonth(next);
+    setSelected(pickSelectionInMonth(next, selected));
+  };
+  const handleNextMonth = () => {
+    const next = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+    if (next.getTime() > Date.now()) return; // never enter a future month
+    setVisibleMonth(next);
+    setSelected(pickSelectionInMonth(next, selected));
+  };
+
+  const today = new Date();
+  const canGoNextMonth =
+    visibleMonth.getFullYear() < today.getFullYear() ||
+    (visibleMonth.getFullYear() === today.getFullYear() &&
+      visibleMonth.getMonth() < today.getMonth());
 
   const handleUndoCompletion = async (
     completionId: string,
@@ -193,11 +266,19 @@ export default function HistoryScreen() {
               <ActivityIndicator color={tokens.brand.violet2} />
             </View>
           ) : (
-            <XpHeatmap
+            <MonthGrid
               data={summary.data}
-              weeks={HEATMAP_WEEKS}
+              monthDate={visibleMonth}
               selected={selected}
-              onSelect={setSelected}
+              onSelectDay={(d) => {
+                setSelected(d);
+                if (!isSameMonth(d, visibleMonth)) {
+                  setVisibleMonth(startOfMonth(d));
+                }
+              }}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              canGoNext={canGoNextMonth}
             />
           )}
         </View>
