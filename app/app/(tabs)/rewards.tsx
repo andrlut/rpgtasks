@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddCard } from '@/components/AddCard';
+import { BankFab } from '@/components/BankFab';
 import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { BuyCelebrationModal } from '@/components/BuyCelebrationModal';
 import { CoinIcon } from '@/components/CoinIcon';
@@ -794,6 +795,20 @@ export default function RewardsScreen() {
           setView('bank');
         }}
       />
+
+      {/* Bank FAB — sits in the bottom-right corner where the thumb
+          naturally lands. Only when there's actually something to
+          retrieve AND the user isn't already viewing the Bank. */}
+      {bankCount > 0 && view !== 'bank' && (
+        <BankFab
+          count={bankCount}
+          bottomOffset={bottomClearance}
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            setView('bank');
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
