@@ -17,15 +17,17 @@ import { useT } from '@/lib/i18n';
 
 import { CalendarMonthModal } from '@/components/CalendarMonthModal';
 import { CoinIcon } from '@/components/CoinIcon';
-import { DimensionChip } from '@/components/DimensionChip';
+import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SubStack } from '@/components/SubStack';
 import { MonthGrid } from '@/components/MonthGrid';
+import { TaskActionSheet } from '@/components/TaskActionSheet';
+import { TaskCard } from '@/components/TaskCard';
+import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { dateKeyFromLocal, useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useCompleteTask, useUndoCompletion } from '@/lib/api/tasks';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
-import type { TaskWithSubs } from '@/lib/db/types';
-import { describeRecurrence } from '@/lib/recurrence';
+import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -105,6 +107,11 @@ export default function HistoryScreen() {
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
+  // Sheets + floats — mirror the home so retro-logging on a past day
+  // feels identical to logging today.
+  const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
+  const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
+  const [floats, setFloats] = useState<{ id: number; xp: number; coins: number }[]>([]);
 
   // Heatmap range follows the visible month — the MonthGrid only needs
   // entries for the month it renders, so we fetch a tight window.
@@ -185,23 +192,32 @@ export default function HistoryScreen() {
     });
   };
 
-  const handleRetroComplete = async (task: TaskWithSubs) => {
-    const reward = rewardForTaskSubs(task.subs);
-    const ok = await confirmAction(
-      'Log retroactively?',
-      `Mark "${task.title}" as done on ${formatDay(selected)}? You'll earn +${reward.total.xp} XP and +${reward.total.coins} coins.`,
-      { okText: 'Log it', cancelText: 'Cancel' },
-    );
-    if (!ok) return;
+  /**
+   * Retro-completion shared by tap (default subs) and swipe (sheet-
+   * adjusted subs). `subs` defaults to the task's own subs; pass a
+   * different array to log with custom stars.
+   *
+   * No confirm dialog anymore — tapping the card OR swiping it
+   * is itself the consent action. Errors still surface as alerts;
+   * users can undo by long-pressing a completion.
+   */
+  const fireRetroCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
+    if (completeTask.isPending) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    // Stamp at noon local time on the selected day — avoids ambiguity
-    // at day boundaries.
+
+    const reward = rewardForTaskSubs(subs);
+    const fid = Date.now();
+    setFloats((prev) => [
+      ...prev,
+      { id: fid, xp: reward.total.xp, coins: reward.total.coins },
+    ]);
+
     const stamp = new Date(selected);
-    stamp.setHours(12, 0, 0, 0);
+    stamp.setHours(12, 0, 0, 0); // noon local — sidesteps day-boundary timezone wobble.
     completeTask.mutate(
       {
         task,
-        subs: task.subs,
+        subs,
         completedAt: stamp.toISOString(),
         completedLocalDate: dateKeyFromLocal(selected),
       },
@@ -212,6 +228,31 @@ export default function HistoryScreen() {
         },
       },
     );
+  };
+
+  const handleRetroQuickComplete = (task: TaskWithSubs) => {
+    fireRetroCompletion(task, task.subs);
+  };
+
+  const handleSheetConfirm = (subs: TaskSub[]) => {
+    if (!sheetTask) return;
+    const task = sheetTask;
+    setSheetTask(null);
+    fireRetroCompletion(task, subs);
+  };
+
+  const handleActionAdjust = () => {
+    if (!actionTask) return;
+    const task = actionTask;
+    setActionTask(null);
+    setSheetTask(task);
+  };
+
+  const handleActionEdit = () => {
+    if (!actionTask) return;
+    const task = actionTask;
+    setActionTask(null);
+    router.push({ pathname: '/task-form', params: { id: task.id } });
   };
 
   return (
@@ -425,65 +466,25 @@ export default function HistoryScreen() {
                   </Text>
                   <Text style={styles.sectionMeta}>tap to log</Text>
                 </View>
-                <View style={styles.list}>
-                  {day.data.openTasks.map(({ task, completedThisDay }) => {
-                    const r = rewardForTaskSubs(task.subs);
-                    const isPartial =
-                      task.target_count > 1 && completedThisDay > 0;
-                    const showRecurrenceNote =
-                      task.recurrence.type !== 'daily' || task.target_count > 1;
-                    return (
-                      <Pressable
-                        key={task.id}
-                        onPress={() => handleRetroComplete(task)}
-                        style={({ pressed }) => [
-                          styles.openCard,
-                          pressed && styles.openCardPressed,
-                        ]}
-                      >
-                        <View style={styles.openCardCheck}>
-                          <Ionicons name="add" size={18} color={tokens.brand.violet2} />
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                          <Text style={styles.openTitle} numberOfLines={1}>
-                            {task.title}
-                          </Text>
-                          <View style={styles.completionMetaRow}>
-                            <Text style={styles.completionStars}>
-                              {task.total_stars}★
-                            </Text>
-                            {isPartial && (
-                              <Text style={styles.partialBadge}>
-                                {completedThisDay} / {task.target_count} done
-                              </Text>
-                            )}
-                          </View>
-                          {showRecurrenceNote && (
-                            <Text style={styles.recurrenceNote} numberOfLines={1}>
-                              {describeRecurrence(task.recurrence, task.target_count)}
-                            </Text>
-                          )}
-                          <View style={styles.chipsRow}>
-                            <DimensionChip
-                              id={task.primary_dimension_id}
-                              size="sm"
-                              pressable={false}
-                            />
-                          </View>
-                        </View>
-                        <View style={styles.completionRewards}>
-                          <View style={styles.rewardItem}>
-                            <Ionicons name="flash" size={11} color={tokens.semantic.xp} />
-                            <Text
-                              style={[styles.rewardText, { color: tokens.semantic.xp }]}
-                            >
-                              +{r.total.xp}
-                            </Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
+                <View style={styles.openList}>
+                  {/* Reuse the home TaskCard so retro-logging supports
+                      the same swipe / sheet / long-press flows. Tap on
+                      the violet check = quick log with default subs;
+                      swipe right = open per-sub adjust sheet; long-
+                      press = action menu (adjust / edit). Skip is
+                      omitted — pulando um dia passado não faz sentido. */}
+                  {day.data.openTasks.map(({ task }) => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onComplete={() => handleRetroQuickComplete(task)}
+                      onSwipeComplete={() => setSheetTask(task)}
+                      onLongPress={() => setActionTask(task)}
+                      onEdit={() =>
+                        router.push({ pathname: '/task-form', params: { id: task.id } })
+                      }
+                    />
+                  ))}
                 </View>
               </>
             )}
@@ -497,6 +498,35 @@ export default function HistoryScreen() {
         onClose={() => setCalendarOpen(false)}
         onSelectDay={setSelected}
         selected={selected}
+      />
+
+      {/* XP/coin float that pops out of the screen on each retro
+          completion — same component the Home uses. */}
+      {floats.map((f) => (
+        <XPCoinFloat
+          key={f.id}
+          xp={f.xp}
+          coins={f.coins}
+          onDone={() =>
+            setFloats((prev) => prev.filter((x) => x.id !== f.id))
+          }
+        />
+      ))}
+
+      <CompleteTaskSheet
+        visible={sheetTask !== null}
+        task={sheetTask}
+        onCancel={() => setSheetTask(null)}
+        onConfirm={handleSheetConfirm}
+      />
+
+      <TaskActionSheet
+        visible={actionTask !== null}
+        taskTitle={actionTask?.title ?? ''}
+        onCancel={() => setActionTask(null)}
+        onAdjustStars={handleActionAdjust}
+        onSkipToday={() => setActionTask(null)} /* skip omitted on past days */
+        onEdit={handleActionEdit}
       />
     </SafeAreaView>
   );
@@ -641,6 +671,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   list: {
+    gap: tokens.space[2],
+  },
+  // Slightly larger gap between cards so the swipe action zone has
+  // breathing room on each side.
+  openList: {
     gap: tokens.space[2],
   },
   loadingBox: {
