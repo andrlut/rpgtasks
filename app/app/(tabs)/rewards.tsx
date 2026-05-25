@@ -18,17 +18,12 @@ import { BankFab } from '@/components/BankFab';
 import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { BuyCelebrationModal } from '@/components/BuyCelebrationModal';
 import { BuyConfirmModal } from '@/components/BuyConfirmModal';
-import { CoinIcon } from '@/components/CoinIcon';
-import { EmptyHero } from '@/components/EmptyHero';
 import { RewardActionSheet } from '@/components/RewardActionSheet';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { SellConfirmModal } from '@/components/SellConfirmModal';
 import { TemplateCard } from '@/components/TemplateCard';
 import { TrackedRewardCard } from '@/components/TrackedRewardCard';
 import { TrackPickerSheet } from '@/components/TrackPickerSheet';
-import { VaultBankActionSheet } from '@/components/VaultBankActionSheet';
-import { VaultBankCard } from '@/components/VaultBankCard';
 import { VaultHero } from '@/components/VaultHero';
 import { useCharacter } from '@/lib/api/character';
 import {
@@ -38,21 +33,14 @@ import {
   useRedeemRewardN,
   useRewardTemplates,
   useRewards,
-  useSellReward,
   useSetTrackedReward,
   useTrackedRewardId,
-  useUseReward,
-  useUsedRewards,
-  type RedemptionEntry,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
-import { timeAgo } from '@/lib/time';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
-
-type RewardView = 'shop' | 'bank' | 'used';
 
 /**
  * Bucket threshold for "Almost there". A reward lands in Almost when the
@@ -73,17 +61,15 @@ export default function RewardsScreen() {
   const rewards = useRewards();
   const templates = useRewardTemplates();
   const redeem = useRedeemRewardN();
-  const useReward = useUseReward();
-  const sellReward = useSellReward();
   const addTemplate = useAddTemplateToShop();
   const archiveReward = useArchiveReward();
+  // bank query stays only to drive the FAB visibility/count; the actual
+  // bank surface lives at /rewards-bank now.
   const banked = useBankedRewards();
-  const used = useUsedRewards(50);
   const trackedId = useTrackedRewardId();
   const setTracked = useSetTrackedReward();
 
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
-  const [usingId, setUsingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
   // Additive category filter. Empty set = no filter active (everything
   // shows). Tapping a chip adds it to the filter; tapping it again
@@ -95,7 +81,6 @@ export default function RewardsScreen() {
     () => new Set(),
   );
   const filterActive = selectedCategories.size > 0;
-  const [view, setView] = useState<RewardView>('shop');
   const [pickerOpen, setPickerOpen] = useState(false);
   // Long-press → open this reward's action sheet. Single source of truth
   // for the sheet so it stays bound to one reward across re-renders.
@@ -103,12 +88,6 @@ export default function RewardsScreen() {
   // Custom in-aesthetic confirm modal — replaces the system Alert that
   // used to pop on BUY. Single state holds the reward; null = closed.
   const [confirmingPurchase, setConfirmingPurchase] = useState<Reward | null>(null);
-  // Bank long-press action sheet payload — closes when null.
-  const [bankActionSheet, setBankActionSheet] = useState<RedemptionEntry | null>(null);
-  // Sell confirm modal payload — set when user picks "Vender" from the
-  // action sheet. Carries the redemption so the modal can show the
-  // exact refund amount.
-  const [sellingItem, setSellingItem] = useState<RedemptionEntry | null>(null);
   // Celebration modal payload — set after a successful purchase. Captures
   // the bank count BEFORE the redeem so the modal can show the before→after
   // transition even though the live query has invalidated already.
@@ -277,44 +256,6 @@ export default function RewardsScreen() {
     }
   };
 
-  const handleUse = async (entry: { id: string; reward_title: string }) => {
-    const ok = await confirmAction(
-      t('reward.shop.useTitle', { title: entry.reward_title }),
-      t('reward.shop.useBody'),
-      { okText: t('reward.shop.useOk'), cancelText: t('reward.common.cancel') },
-    );
-    if (!ok) return;
-    setUsingId(entry.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    try {
-      await useReward.mutateAsync(entry.id);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo(t('reward.shop.useFail'), msg);
-    } finally {
-      setUsingId(null);
-    }
-  };
-
-  const openBankActionSheet = (entry: RedemptionEntry) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setBankActionSheet(entry);
-  };
-
-  const handleConfirmSell = async (entry: RedemptionEntry) => {
-    setSellingItem(null);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    try {
-      await sellReward.mutateAsync({
-        redemptionId: entry.id,
-        refund: entry.cost_paid,
-      });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo(t('rewards.sellConfirm.failTitle'), msg);
-    }
-  };
-
   const handleTrack = (rewardId: string) => {
     setTracked.mutate(rewardId);
   };
@@ -382,44 +323,54 @@ export default function RewardsScreen() {
               rewards.isRefetching ||
               character.isRefetching ||
               templates.isRefetching ||
-              banked.isRefetching ||
-              used.isRefetching
+              banked.isRefetching
             }
             onRefresh={() => {
               rewards.refetch();
               character.refetch();
               templates.refetch();
               banked.refetch();
-              used.refetch();
             }}
             tintColor={tokens.brand.violet2}
           />
         }
       >
-        <VaultHero
-          balanceLabel={coins.toLocaleString()}
-          status={
-            view === 'shop'
-              ? headline
-              : view === 'bank'
-                ? bankCount > 0
-                  ? t('rewards.vault.itemsCount', { count: bankCount })
-                  : t('rewards.vault.heroStatusIdle')
-                : t('rewards.vault.itemsCount', { count: (used.data ?? []).length })
-          }
-        />
+        {/* Discrete header icons — clock opens the history modal,
+            gear opens the manage screen. Both are rare-use surfaces,
+            so they live as small icons in the top-right corner instead
+            of stealing tab real estate. */}
+        <View style={styles.headerIconsRow}>
+          <Pressable
+            onPress={() => router.push('/rewards-history')}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              pressed && { opacity: 0.6 },
+            ]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('rewards.history.title')}
+          >
+            <Ionicons name="time-outline" size={18} color={tokens.text.mid} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/rewards-manage')}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              pressed && { opacity: 0.6 },
+            ]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('rewards.manage.title')}
+          >
+            <Ionicons name="settings-outline" size={18} color={tokens.text.mid} />
+          </Pressable>
+        </View>
 
-        {/* BankCTA pill removed — being reworked as a floating action
-            button anchored at the bottom-right corner where the thumb
-            naturally lands (a pill at the top of the screen, right next
-            to the Bank tab, didn't add anything beyond what the tab
-            already gave). See follow-up PR. */}
+        <VaultHero balanceLabel={coins.toLocaleString()} status={headline} />
 
-        {/* Tracked reward lives right under the coin balance so the
-            user sees what they're saving for without scanning past the
-            tabs first. Only renders when both a reward is tracked AND
-            the user is on Shop — switching to Bank/Used hides it. */}
-        {view === 'shop' && trackedReward && (
+        {/* Tracked reward sits right under the coin balance so the user
+            sees what they're saving for at a glance. */}
+        {trackedReward && (
           <View style={styles.trackedWrap}>
             <TrackedRewardCard
               reward={trackedReward}
@@ -433,67 +384,11 @@ export default function RewardsScreen() {
           </View>
         )}
 
-        <View style={styles.tabRow}>
-          {(
-            [
-              { value: 'shop', label: t('rewards.vault.tabs.shop') },
-              {
-                value: 'bank',
-                label: t('rewards.vault.tabs.bank', { count: bankCount }),
-              },
-              { value: 'used', label: t('rewards.vault.tabs.used') },
-            ] as { value: RewardView; label: string }[]
-          ).map((tab) => {
-            const active = view === tab.value;
-            return (
-              <Pressable
-                key={tab.value}
-                onPress={() => {
-                  if (!active) Haptics.selectionAsync().catch(() => {});
-                  setView(tab.value);
-                }}
-                style={({ pressed }) => [
-                  styles.tabBtn,
-                  active && styles.tabBtnActive,
-                  pressed && { opacity: 0.85 },
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-              >
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    active ? styles.tabLabelActive : styles.tabLabelInactive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-          <View style={{ flex: 1 }} />
-          <Pressable
-            onPress={() => router.push('/rewards-manage')}
-            style={({ pressed }) => [
-              styles.manageBtn,
-              pressed && { opacity: 0.6 },
-            ]}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t('rewards.manage.title')}
-          >
-            <Ionicons name="settings-outline" size={18} color={tokens.text.mid} />
-          </Pressable>
-        </View>
-
-        {view === 'shop' && (
-          <>
-            {/* "Track a reward" CTA appears only when nothing is tracked
-                yet. The tracked card itself lives above the tab row (see
-                hoisted block) so the user always sees their current goal
-                immediately under the balance. */}
-            {!trackedReward && (
+        {/* "Track a reward" CTA appears only when nothing is tracked
+            yet. The tracked card itself lives above (see hoisted
+            block) so the user always sees their current goal
+            immediately under the balance. */}
+        {!trackedReward && (
               <Pressable
                 onPress={() => setPickerOpen(true)}
                 style={({ pressed }) => [
@@ -671,124 +566,6 @@ export default function RewardsScreen() {
                 </View>
               </View>
             )}
-          </>
-        )}
-
-        {view === 'bank' && (
-          <>
-            {banked.isLoading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator color={tokens.brand.violet2} />
-              </View>
-            ) : (banked.data?.length ?? 0) === 0 ? (
-              <View style={styles.emptyBox}>
-                <EmptyHero tone="coin" iconName="wallet" size={140} />
-                <Text style={styles.emptyTitle}>Your bank is empty</Text>
-                <Text style={styles.emptySub}>
-                  Buy a reward from the Shop. It lands here for whenever you&apos;re ready to use it.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: '#FFC83D' }]}>
-                    {t('rewards.vault.sections.available')}
-                  </Text>
-                  <Text style={styles.sectionMeta}>
-                    {t('rewards.vault.itemsCount', {
-                      count: banked.data!.length,
-                    })}
-                  </Text>
-                </View>
-                <View style={styles.bankList}>
-                  {banked.data!.map((b) => (
-                    <VaultBankCard
-                      key={b.id}
-                      entry={b}
-                      cta={t('rewards.vault.cta.use')}
-                      earnedTime={t('rewards.vault.earnedTime', {
-                        when: timeAgo(b.redeemed_at),
-                      })}
-                      busy={usingId === b.id}
-                      onUse={() => handleUse(b)}
-                      onLongPress={() => openBankActionSheet(b)}
-                    />
-                  ))}
-                </View>
-              </>
-            )}
-          </>
-        )}
-
-        {view === 'used' && (
-          <>
-            {used.isLoading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator color={tokens.brand.violet2} />
-              </View>
-            ) : (used.data?.length ?? 0) === 0 ? (
-              <View style={styles.emptyBox}>
-                <EmptyHero tone="coin" iconName="gift" size={140} />
-                <Text style={styles.emptyTitle}>Nothing used yet</Text>
-                <Text style={styles.emptySub}>
-                  Once you use a reward from your Bank, it shows up here.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>
-                    {t('rewards.title')}
-                  </Text>
-                  <Text style={styles.sectionMeta}>
-                    {t('rewards.vault.itemsCount', {
-                      count: used.data!.length,
-                    })}
-                  </Text>
-                </View>
-                <View style={styles.historyList}>
-                  {used.data!.map((r) => {
-                    const cat = r.reward_category
-                      ? REWARD_CATEGORY_META[r.reward_category]
-                      : null;
-                    return (
-                      <View key={r.id} style={styles.historyRow}>
-                        <View
-                          style={[
-                            styles.historyIconWrap,
-                            cat
-                              ? { backgroundColor: cat.bg }
-                              : { backgroundColor: 'rgba(255,255,255,0.05)' },
-                          ]}
-                        >
-                          <Ionicons
-                            name={r.reward_icon as never}
-                            size={14}
-                            color={cat ? cat.color : tokens.text.mid}
-                          />
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.historyTitle} numberOfLines={1}>
-                            {r.reward_title}
-                          </Text>
-                          <Text style={styles.historyMeta}>
-                            {r.used_at ? timeAgo(r.used_at) : ''}
-                          </Text>
-                        </View>
-                        <View style={styles.historyCost}>
-                          <CoinIcon size={11} />
-                          <Text style={styles.historyCostText}>
-                            −{r.cost_paid.toLocaleString()}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
-            )}
-          </>
-        )}
       </ScrollView>
       </ScreenBackground>
 
@@ -836,35 +613,6 @@ export default function RewardsScreen() {
         }}
       />
 
-      <VaultBankActionSheet
-        visible={!!bankActionSheet}
-        rewardTitle={bankActionSheet?.reward_title ?? ''}
-        onCancel={() => setBankActionSheet(null)}
-        onUse={() => {
-          const b = bankActionSheet;
-          setBankActionSheet(null);
-          if (b) handleUse(b);
-        }}
-        onSell={() => {
-          const b = bankActionSheet;
-          setBankActionSheet(null);
-          if (b) setSellingItem(b);
-        }}
-      />
-
-      <SellConfirmModal
-        visible={!!sellingItem}
-        rewardTitle={sellingItem?.reward_title ?? ''}
-        rewardIcon={sellingItem?.reward_icon ?? 'gift'}
-        category={sellingItem?.reward_category ?? null}
-        refund={sellingItem?.cost_paid ?? 0}
-        onCancel={() => setSellingItem(null)}
-        onConfirm={() => {
-          const b = sellingItem;
-          if (b) handleConfirmSell(b);
-        }}
-      />
-
       <BuyCelebrationModal
         visible={!!celebration}
         reward={celebration?.reward ?? null}
@@ -875,20 +623,20 @@ export default function RewardsScreen() {
         onClose={() => setCelebration(null)}
         onGoToBank={() => {
           setCelebration(null);
-          setView('bank');
+          router.push('/rewards-bank');
         }}
       />
 
       {/* Bank FAB — sits in the bottom-right corner where the thumb
           naturally lands. Only when there's actually something to
-          retrieve AND the user isn't already viewing the Bank. */}
-      {bankCount > 0 && view !== 'bank' && (
+          retrieve. Tap → /rewards-bank screen. */}
+      {bankCount > 0 && (
         <BankFab
           count={bankCount}
           bottomOffset={bottomClearance}
           onPress={() => {
             Haptics.selectionAsync().catch(() => {});
-            setView('bank');
+            router.push('/rewards-bank');
           }}
         />
       )}
@@ -901,47 +649,26 @@ const styles = StyleSheet.create({
   content: {
     padding: tokens.space[4],
   },
-  // Underline view tabs (Loja / Banco · N / Histórico)
-  tabRow: {
+  // Header icons row — discrete clock + gear at the top-right, replacing
+  // the old underline tab bar that mixed Shop/Bank/Used with the
+  // settings entry. Right-aligned with mild vertical padding so it sits
+  // above the coin balance without competing with it.
+  headerIconsRow: {
     flexDirection: 'row',
-    gap: 18,
+    justifyContent: 'flex-end',
+    gap: tokens.space[2],
+    paddingTop: tokens.space[2],
     paddingHorizontal: 0,
-    marginTop: tokens.space[3],
-    marginBottom: tokens.space[5],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: tokens.border.base,
   },
-  tabBtn: {
-    paddingTop: tokens.space[2],
-    paddingBottom: tokens.space[3],
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    // Negative margin lifts the bottom border under the row border so the
-    // active gold underline reads as continuous with the divider.
-    marginBottom: -StyleSheet.hairlineWidth,
-  },
-  tabBtnActive: {
-    borderBottomColor: '#FFC83D',
-  },
-  tabLabel: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 12,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  manageBtn: {
-    paddingTop: tokens.space[2],
-    paddingBottom: tokens.space[3],
-    paddingHorizontal: 4,
-    // Match tabBtn vertical rhythm so the icon's baseline sits on the
-    // divider, not floating above it.
-    marginBottom: -StyleSheet.hairlineWidth,
-  },
-  tabLabelActive: {
-    color: tokens.text.hi,
-  },
-  tabLabelInactive: {
-    color: tokens.text.mid,
+  headerIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: tokens.border.base,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -1043,53 +770,6 @@ const styles = StyleSheet.create({
     // Full row. Used by the "Big goals" section so aspirational
     // rewards read at full attention instead of crammed two-up.
     width: '100%',
-  },
-
-  // BANK — list spacing only; the row is VaultBankCard
-  bankList: {
-    gap: tokens.space[2],
-  },
-
-  // USED history — leanest possible row, same visual language as bank
-  historyList: {
-    gap: tokens.space[1],
-  },
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[3],
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  historyIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: tokens.radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyTitle: {
-    ...tokens.type.body,
-    color: tokens.text.base,
-    fontFamily: 'Manrope_600SemiBold',
-  },
-  historyMeta: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    fontSize: 11,
-    marginTop: 1,
-  },
-  historyCost: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  historyCostText: {
-    ...tokens.type.caption,
-    color: tokens.text.dim,
-    fontFamily: 'Manrope_700Bold',
   },
 
   addCardWrap: {

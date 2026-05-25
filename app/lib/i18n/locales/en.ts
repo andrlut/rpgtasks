@@ -610,13 +610,14 @@ const en = {
     insufficient: 'Not enough coins. You need {{short}} more.',
     coins: { one: '{{count}} coin', other: '{{count}} coins' },
     history: {
-      title: 'Redemption history',
-      empty: 'No redemptions yet',
+      title: 'History',
+      emptyTitle: 'Nothing used yet',
+      emptySub: 'Once you use a reward from the Bank, it shows up here.',
     },
     bank: {
-      title: 'Suggestions',
-      subtitle: 'Tap to add to your shop.',
-      added: 'Added',
+      title: 'Bank',
+      emptyTitle: 'Your bank is empty',
+      emptySub: 'Buy a reward from the Shop. It lands here for whenever you’re ready to use it.',
     },
     vault: {
       eyebrow: 'REWARDS',

@@ -600,13 +600,14 @@ const pt: Translations = {
     insufficient: 'Moedas insuficientes. Faltam {{short}}.',
     coins: { one: '{{count}} moeda', other: '{{count}} moedas' },
     history: {
-      title: 'Histórico de resgates',
-      empty: 'Nenhum resgate ainda',
+      title: 'Histórico',
+      emptyTitle: 'Nada usado ainda',
+      emptySub: 'Quando você usa uma reward do Banco, ela aparece aqui.',
     },
     bank: {
-      title: 'Sugestões',
-      subtitle: 'Toque pra adicionar à sua loja.',
-      added: 'Adicionada',
+      title: 'Banco',
+      emptyTitle: 'Seu banco está vazio',
+      emptySub: 'Compre uma reward na Loja. Ela cai aqui pra quando você quiser usar.',
     },
     vault: {
       eyebrow: 'REWARDS',
