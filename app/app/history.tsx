@@ -510,6 +510,7 @@ export default function HistoryScreen() {
                           day.data?.completions.find((c) => c.id === completionId)?.coinsGranted ?? 0,
                         )
                       }
+                      onExtra={(task) => handleRetroQuickComplete(task)}
                     />
                     <CompletedBucket
                       items={skippedItems}

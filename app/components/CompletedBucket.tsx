@@ -23,6 +23,14 @@ interface Props {
   onUndo?: (completionId: string) => void;
   /** Tap a row → unskip that task. Receives the row's `task.id`. */
   onUnskip?: (taskId: string) => void;
+  /**
+   * Tap the "+1" pill → log another completion of this task with the
+   * defaults. Only renders on the 'completed' variant; the pill is
+   * tap-target-distinct from the row body (which still triggers undo
+   * via long-press or tap depending on caller wiring). When omitted,
+   * no pill renders and the row behaves like before.
+   */
+  onExtra?: (task: TaskWithSubs) => void;
 }
 
 /**
@@ -44,6 +52,7 @@ export function CompletedBucket({
   variant = 'completed',
   onUndo,
   onUnskip,
+  onExtra,
 }: Props) {
   const [open, setOpen] = useState(false);
   const meta = useMetaLookup();
@@ -138,6 +147,32 @@ export function CompletedBucket({
                 >
                   {item.task.title}
                 </Text>
+                {/* +1 extra pill — only on the completed variant when
+                    onExtra is wired. Tap target is distinct from the
+                    row body so the user can log an extra without
+                    accidentally undoing the original completion. */}
+                {!isSkipped && onExtra && (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onExtra(item.task);
+                    }}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      styles.extraPill,
+                      pressed && styles.extraPillPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Log another completion of ${item.task.title}`}
+                  >
+                    <Ionicons
+                      name="add"
+                      size={11}
+                      color={tokens.semantic.xp}
+                    />
+                    <Text style={styles.extraPillText}>1</Text>
+                  </Pressable>
+                )}
                 <Ionicons
                   name={canTap ? 'arrow-undo' : defaultIcon}
                   size={14}
@@ -215,6 +250,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: tokens.border.base,
     opacity: 0.65,
+  },
+  extraPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(61, 214, 140, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(61, 214, 140, 0.35)',
+  },
+  extraPillPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.94 }],
+  },
+  extraPillText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 11,
+    color: tokens.semantic.xp,
   },
   rowLast: {
     borderBottomWidth: 0,
