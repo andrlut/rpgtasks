@@ -654,6 +654,13 @@ const en = {
       remaining: '{{deficit}} to go',
       earnedTime: 'earned {{when}}',
     },
+    bankCta: {
+      title: {
+        one: 'You have {{count}} reward waiting in your bank',
+        other: 'You have {{count}} rewards waiting in your bank',
+      },
+      sub: 'Tap to use',
+    },
     actionSheet: {
       edit: 'Edit reward',
       editSub: 'Change title, cost, icon or category',

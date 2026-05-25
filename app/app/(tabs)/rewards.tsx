@@ -68,11 +68,16 @@ export default function RewardsScreen() {
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [usingId, setUsingId] = useState<string | null>(null);
   const [addingTemplateId, setAddingTemplateId] = useState<string | null>(null);
-  // Multi-toggle category filter. Default all on; user can mute one or two
-  // but never all three (the last enabled chip is non-deactivatable).
-  const [enabledCategories, setEnabledCategories] = useState<Set<RewardCategory>>(
-    new Set(REWARD_CATEGORY_ORDER),
+  // Additive category filter. Empty set = no filter active (everything
+  // shows). Tapping a chip adds it to the filter; tapping it again
+  // removes it. When the user empties the set back out, they're "back to
+  // showing everything" — same state as the initial render.
+  // Chips render in 3 states: rest (no filter active), selected (in
+  // filter), and ghosted (filter active but this chip not selected).
+  const [selectedCategories, setSelectedCategories] = useState<Set<RewardCategory>>(
+    () => new Set(),
   );
+  const filterActive = selectedCategories.size > 0;
   const [view, setView] = useState<RewardView>('shop');
   const [pickerOpen, setPickerOpen] = useState(false);
   // Long-press → open this reward's action sheet. Single source of truth
@@ -90,13 +95,16 @@ export default function RewardsScreen() {
     [trackedId.data, rewards.data],
   );
 
-  // Reward set after applying the category multi-toggle filter, with the
-  // tracked reward removed (it gets its own hero card so we don't duplicate).
+  // Reward set after applying the category filter, with the tracked
+  // reward removed (it gets its own hero card so we don't duplicate).
+  // Empty filter set = no filter (everything passes the category gate).
   const filteredRewards = useMemo(() => {
     return (rewards.data ?? []).filter(
-      (r) => enabledCategories.has(r.category) && r.id !== trackedId.data,
+      (r) =>
+        (!filterActive || selectedCategories.has(r.category)) &&
+        r.id !== trackedId.data,
     );
-  }, [rewards.data, enabledCategories, trackedId.data]);
+  }, [rewards.data, selectedCategories, filterActive, trackedId.data]);
 
   // Bucket every visible reward into exactly one section so the screen
   // partitions cleanly with no overlap or orphans.
@@ -123,17 +131,17 @@ export default function RewardsScreen() {
   }, [filteredRewards, coins]);
 
   // Templates we don't already own (case-insensitive title match), filtered
-  // by the same enabled-categories set.
+  // by the same selected-categories set. Empty set = no filter.
   const visibleTemplates = useMemo(() => {
     const owned = new Set(
       (rewards.data ?? []).map((r) => r.title.trim().toLowerCase()),
     );
     return (templates.data ?? []).filter(
       (tmpl) =>
-        enabledCategories.has(tmpl.category) &&
+        (!filterActive || selectedCategories.has(tmpl.category)) &&
         !owned.has(tmpl.title.trim().toLowerCase()),
     );
-  }, [templates.data, rewards.data, enabledCategories]);
+  }, [templates.data, rewards.data, selectedCategories, filterActive]);
 
   // Headline for the hero. The deficit number deliberately lives ONLY in
   // the TrackedRewardCard below — repeating it here read as duplication.
@@ -149,11 +157,11 @@ export default function RewardsScreen() {
   }, [trackedReward, coins, t]);
 
   const toggleCategory = (cat: RewardCategory) => {
-    setEnabledCategories((prev) => {
+    setSelectedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) {
-        // Don't allow disabling the last active chip.
-        if (next.size === 1) return prev;
+        // Removing the last chip lands us back in "no filter active",
+        // which is the same visual as "haven't picked anything yet".
         next.delete(cat);
       } else {
         next.add(cat);
@@ -322,6 +330,35 @@ export default function RewardsScreen() {
           }
         />
 
+        {/* Bank CTA — only when there's actually stuff to retrieve and
+            the user isn't already on the bank tab. A second route to
+            the Bank that's contextual and dismisses itself. */}
+        {bankCount > 0 && view !== 'bank' && (
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              setView('bank');
+            }}
+            style={({ pressed }) => [
+              styles.bankCta,
+              pressed && { opacity: 0.85 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('rewards.bankCta.title', { count: bankCount })}
+          >
+            <View style={styles.bankCtaIcon}>
+              <Ionicons name="wallet" size={18} color="#FFC83D" />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.bankCtaTitle} numberOfLines={1}>
+                {t('rewards.bankCta.title', { count: bankCount })}
+              </Text>
+              <Text style={styles.bankCtaSub}>{t('rewards.bankCta.sub')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#FFE3A6" />
+          </Pressable>
+        )}
+
         <View style={styles.tabRow}>
           {(
             [
@@ -414,37 +451,53 @@ export default function RewardsScreen() {
             <View style={styles.chipsRow}>
               {REWARD_CATEGORY_ORDER.map((cat) => {
                 const m = REWARD_CATEGORY_META[cat];
-                const active = enabledCategories.has(cat);
+                const selected = selectedCategories.has(cat);
+                // Three states: 'rest' (no filter active), 'selected'
+                // (in active filter) or 'ghosted' (filter active but
+                // this chip not in it). 'rest' renders mid-key so the
+                // user reads "tap to filter"; 'selected' goes full
+                // category color; 'ghosted' fades to make the filter
+                // state legible at a glance.
+                const variant: 'rest' | 'selected' | 'ghosted' = !filterActive
+                  ? 'rest'
+                  : selected
+                    ? 'selected'
+                    : 'ghosted';
+                const iconColor =
+                  variant === 'selected'
+                    ? m.color
+                    : variant === 'ghosted'
+                      ? tokens.text.faint
+                      : m.color;
+                const textColor =
+                  variant === 'selected'
+                    ? m.color
+                    : variant === 'ghosted'
+                      ? tokens.text.faint
+                      : tokens.text.mid;
                 return (
                   <Pressable
                     key={cat}
                     onPress={() => toggleCategory(cat)}
                     style={[
                       styles.chip,
-                      active
-                        ? {
-                            // Embossed treatment without elevation: Android
-                            // would paint a flat grey halo. Vertical
-                            // border-top bump fakes an inset highlight; the
-                            // colored border carries the chip's identity.
-                            backgroundColor: `${m.color}1A`,
-                            borderTopColor: `${m.color}80`,
-                            borderColor: `${m.color}70`,
-                          }
-                        : styles.chipMuted,
+                      variant === 'selected' && {
+                        backgroundColor: `${m.color}1A`,
+                        borderTopColor: `${m.color}80`,
+                        borderColor: `${m.color}70`,
+                      },
+                      variant === 'ghosted' && styles.chipGhosted,
+                      variant === 'rest' && styles.chipRest,
                     ]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                   >
                     <Ionicons
                       name={m.icon as never}
                       size={14}
-                      color={active ? m.color : tokens.text.dim}
+                      color={iconColor}
                     />
-                    <Text
-                      style={[
-                        styles.chipText,
-                        { color: active ? m.color : tokens.text.dim },
-                      ]}
-                    >
+                    <Text style={[styles.chipText, { color: textColor }]}>
                       {t(`rewards.categories.${cat}` as const)}
                     </Text>
                   </Pressable>
@@ -765,10 +818,17 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.base,
     backgroundColor: 'rgba(255,255,255,0.02)',
   },
-  chipMuted: {
+  // Initial state — no filter active. Mid-key so it reads as "tap to filter".
+  chipRest: {
     backgroundColor: 'rgba(255,255,255,0.02)',
     borderColor: tokens.border.base,
-    opacity: 0.7,
+  },
+  // Filter is active and this chip is NOT in it. Faded so the active
+  // chips visually dominate; user can see at a glance which ones are on.
+  chipGhosted: {
+    backgroundColor: 'rgba(255,255,255,0.01)',
+    borderColor: tokens.border.base,
+    opacity: 0.4,
   },
   chipText: {
     fontFamily: 'Manrope_800ExtraBold',
@@ -886,6 +946,43 @@ const styles = StyleSheet.create({
 
   addCardWrap: {
     marginTop: tokens.space[2],
+  },
+
+  // Bank CTA — gold-tinted pill sitting between the hero and the tab
+  // row, only when bankCount > 0 and the user isn't already on the
+  // Bank tab. Communicates "you have stuff to enjoy" without making
+  // the user hunt for it.
+  bankCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    marginTop: tokens.space[3],
+    marginBottom: tokens.space[1],
+    paddingHorizontal: tokens.space[4],
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 200, 61, 0.35)',
+    backgroundColor: 'rgba(255, 200, 61, 0.08)',
+  },
+  bankCtaIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(255, 200, 61, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bankCtaTitle: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 14,
+    color: '#FFE3A6',
+  },
+  bankCtaSub: {
+    fontFamily: 'Manrope_500Medium',
+    fontSize: 11,
+    color: tokens.text.mid,
+    marginTop: 2,
   },
 
   // Tracked reward block

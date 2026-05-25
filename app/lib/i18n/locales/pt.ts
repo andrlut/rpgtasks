@@ -644,6 +644,13 @@ const pt: Translations = {
       remaining: 'faltam {{deficit}}',
       earnedTime: 'conquistado {{when}}',
     },
+    bankCta: {
+      title: {
+        one: 'Você tem {{count}} prêmio prontinho no banco',
+        other: 'Você tem {{count}} prêmios prontinhos no banco',
+      },
+      sub: 'Toque pra usar',
+    },
     actionSheet: {
       edit: 'Editar recompensa',
       editSub: 'Mudar título, custo, ícone ou categoria',
