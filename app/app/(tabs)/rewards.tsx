@@ -17,6 +17,7 @@ import { AddCard } from '@/components/AddCard';
 import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
+import { RewardActionSheet } from '@/components/RewardActionSheet';
 import { RewardCard } from '@/components/RewardCard';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { TemplateCard } from '@/components/TemplateCard';
@@ -74,6 +75,9 @@ export default function RewardsScreen() {
   );
   const [view, setView] = useState<RewardView>('shop');
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Long-press → open this reward's action sheet. Single source of truth
+  // for the sheet so it stays bound to one reward across re-renders.
+  const [actionSheetReward, setActionSheetReward] = useState<Reward | null>(null);
   const bottomClearance = useBottomNavClearance();
 
   const coins = character.data?.character.coins ?? 0;
@@ -160,12 +164,21 @@ export default function RewardsScreen() {
     Haptics.selectionAsync().catch(() => {});
   };
 
-  const handleRewardActions = async (reward: Reward) => {
+  const openActionSheet = (reward: Reward) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setActionSheetReward(reward);
+  };
+
+  const handleEditReward = (reward: Reward) => {
+    router.push({ pathname: '/reward-form', params: { id: reward.id } });
+  };
+
+  const handleArchiveReward = async (reward: Reward) => {
     const ok = await confirmAction(
-      t('reward.shop.removeTitle', { title: reward.title }),
-      t('reward.shop.removeBody'),
+      t('reward.shop.archiveTitle', { title: reward.title }),
+      t('reward.shop.archiveBody'),
       {
-        okText: t('reward.shop.removeOk'),
+        okText: t('reward.shop.archiveOk'),
         cancelText: t('reward.common.cancel'),
         destructive: true,
       },
@@ -176,7 +189,7 @@ export default function RewardsScreen() {
       await archiveReward.mutateAsync(reward.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo(t('reward.shop.removeFail'), msg);
+      showInfo(t('reward.shop.archiveFail'), msg);
     }
   };
 
@@ -258,8 +271,8 @@ export default function RewardsScreen() {
             coins={coins}
             tracked={trackedId.data === reward.id}
             onRedeem={() => handleBuy(reward)}
-            onEdit={() => handleRewardActions(reward)}
-            onLongPress={() => handleRewardActions(reward)}
+            onEdit={() => handleEditReward(reward)}
+            onLongPress={() => openActionSheet(reward)}
             onTrack={() => handleTrack(reward.id)}
             onUntrack={handleUntrack}
             isRedeeming={redeemingId === reward.id}
@@ -351,6 +364,19 @@ export default function RewardsScreen() {
               </Pressable>
             );
           })}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            onPress={() => router.push('/rewards-manage')}
+            style={({ pressed }) => [
+              styles.manageBtn,
+              pressed && { opacity: 0.6 },
+            ]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('rewards.manage.title')}
+          >
+            <Ionicons name="settings-outline" size={18} color={tokens.text.mid} />
+          </Pressable>
         </View>
 
         {view === 'shop' && (
@@ -363,6 +389,7 @@ export default function RewardsScreen() {
                   onChange={() => setPickerOpen(true)}
                   onUntrack={handleUntrack}
                   onBuy={() => handleBuy(trackedReward)}
+                  onLongPress={() => openActionSheet(trackedReward)}
                   isBuying={redeemingId === trackedReward.id}
                 />
               </View>
@@ -656,6 +683,22 @@ export default function RewardsScreen() {
         currentTrackedId={trackedId.data ?? null}
         onPick={handleTrack}
       />
+
+      <RewardActionSheet
+        visible={!!actionSheetReward}
+        rewardTitle={actionSheetReward?.title ?? ''}
+        onCancel={() => setActionSheetReward(null)}
+        onEdit={() => {
+          const r = actionSheetReward;
+          setActionSheetReward(null);
+          if (r) handleEditReward(r);
+        }}
+        onArchive={() => {
+          const r = actionSheetReward;
+          setActionSheetReward(null);
+          if (r) handleArchiveReward(r);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -692,6 +735,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+  },
+  manageBtn: {
+    paddingTop: tokens.space[2],
+    paddingBottom: tokens.space[3],
+    paddingHorizontal: 4,
+    // Match tabBtn vertical rhythm so the icon's baseline sits on the
+    // divider, not floating above it.
+    marginBottom: -StyleSheet.hairlineWidth,
   },
   tabLabelActive: {
     color: tokens.text.hi,

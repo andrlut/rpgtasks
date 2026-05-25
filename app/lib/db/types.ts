@@ -353,6 +353,7 @@ export interface Reward {
   icon: string;
   category: RewardCategory;
   is_archived: boolean;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }

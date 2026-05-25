@@ -19,6 +19,8 @@ interface Props {
   onUntrack: () => void;
   /** Buy now — shown only when affordable. */
   onBuy?: () => void;
+  /** Long-press → open the Edit/Archive action sheet. Tap still swaps. */
+  onLongPress?: () => void;
   isBuying?: boolean;
 }
 
@@ -45,6 +47,7 @@ export function TrackedRewardCard({
   onChange,
   onUntrack,
   onBuy,
+  onLongPress,
   isBuying,
 }: Props) {
   const { t } = useT();
@@ -71,12 +74,14 @@ export function TrackedRewardCard({
 
       <Pressable
         onPress={onChange}
+        onLongPress={onLongPress}
         style={({ pressed }) => [
           styles.content,
           pressed && { opacity: 0.95 },
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Change tracked reward"
+        accessibilityLabel={`Tracked reward: ${reward.title}`}
+        accessibilityHint="Tap to change tracked reward. Long press to edit or archive."
       >
         {/* Header: SUA META eyebrow + untrack X */}
         <View style={styles.header}>
