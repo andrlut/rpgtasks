@@ -406,9 +406,18 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            {/* Tasks come BEFORE the bucket selector so the user lands
-                straight on their list. Selector + quest chips sit just
-                below as a filter / discovery strip. */}
+            {/* Order under the hero (XP / Reward cards above): quests
+                first, then the bucket selector, then the active list.
+                Tasks at the bottom so the selector context is always
+                visible when scanning the list. */}
+            <QuestChipsStrip />
+
+            <BucketTabsV2<BucketTab>
+              tabs={tabSpecs}
+              value={activeTab}
+              onChange={setActiveTab}
+            />
+
             <View style={styles.taskList}>
               {activeList.length === 0 ? (
                 <Text style={styles.tabEmpty}>{t(activeEmptyKey[activeTab])}</Text>
@@ -427,17 +436,7 @@ export default function HomeScreen() {
                   />
                 ))
               )}
-            </View>
 
-            <BucketTabsV2<BucketTab>
-              tabs={tabSpecs}
-              value={activeTab}
-              onChange={setActiveTab}
-            />
-
-            <QuestChipsStrip />
-
-            <View style={styles.taskList}>
               <CompletedBucket
                 items={
                   activeTab === 'weekly'
