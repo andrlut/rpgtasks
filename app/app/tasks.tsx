@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import DraggableFlatList, {
+  type RenderItemParams,
+  ScaleDecorator,
+} from 'react-native-draggable-flatlist';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -26,6 +30,7 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { useT } from '@/lib/i18n';
 import {
   useActiveTasks,
+  useReorderTasks,
   useStartTaskFromTemplate,
   useTaskTemplates,
 } from '@/lib/api/tasks';
@@ -102,6 +107,7 @@ function bucketFor(rec: Recurrence): Bucket {
 export default function TasksHubScreen() {
   const router = useRouter();
   const { t } = useT();
+  const reorderTasks = useReorderTasks();
   const tasks = useActiveTasks();
   const templates = useTaskTemplates();
   const startFromTemplate = useStartTaskFromTemplate();
@@ -291,100 +297,120 @@ export default function TasksHubScreen() {
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={tokens.brand.violet2}
-              colors={[tokens.brand.violet2]}
-            />
-          }
-        >
-          {/* Tab toggle with counts — replaces the stats strip + tab redundancy */}
-          <View style={styles.tabsWrap}>
-            <SegmentedControl<Tab>
-              options={[
-                {
-                  value: 'allocated',
-                  label: t('tasksHub.filters.allocated'),
-                  count: filterCounts.allocated,
-                },
-                {
-                  value: 'mine',
-                  label: t('tasksHub.filters.mine'),
-                  count: filterCounts.mine,
-                },
-                {
-                  value: 'suggested',
-                  label: t('tasksHub.filters.suggested'),
-                  count: filterCounts.suggested,
-                },
-              ]}
-              value={tab}
-              onChange={setTab}
-            />
-          </View>
+        {/* Tab + search live outside the ScrollView so they stay
+            visible while the body container swaps between ScrollView
+            (allocated / suggested) and DraggableFlatList (mine). */}
+        <View style={styles.tabsWrap}>
+          <SegmentedControl<Tab>
+            options={[
+              {
+                value: 'allocated',
+                label: t('tasksHub.filters.allocated'),
+                count: filterCounts.allocated,
+              },
+              {
+                value: 'mine',
+                label: t('tasksHub.filters.mine'),
+                count: filterCounts.mine,
+              },
+              {
+                value: 'suggested',
+                label: t('tasksHub.filters.suggested'),
+                count: filterCounts.suggested,
+              },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </View>
 
-          {/* Collapsible inline search (only when the magnifier is active) */}
-          {searchOpen && (
-            <View style={styles.searchWrap}>
-              <Ionicons name="search" size={16} color={tokens.text.dim} />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder={
-                  tab === 'mine'
-                    ? t('tasksHub.search.placeholderMine')
-                    : t('tasksHub.search.placeholderCatalog')
-                }
-                placeholderTextColor={tokens.text.faint}
-                style={styles.searchInput}
-                autoCorrect={false}
-                autoCapitalize="none"
-                autoFocus
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                  <Ionicons name="close-circle" size={16} color={tokens.text.dim} />
-                </Pressable>
-              )}
-            </View>
-          )}
-
-          {/* Body */}
-          <View style={styles.bodyWrap}>
-            {tab === 'suggested' ? (
-              <SuggestedBody
-                templatesBySub={templatesBySub}
-                loading={templates.isLoading}
-                query={query}
-                adoptedTemplateIds={adoptedTemplateIds}
-                collapsedSubs={collapsedSubs}
-                onToggleSub={toggleSub}
-                onAdopt={handleAdopt}
-                adoptingId={adoptingId}
-                t={t}
-              />
-            ) : (
-              <MineBody
-                tasks={tasksByBucket}
-                loading={tasks.isLoading}
-                query={query}
-                collapsed={collapsed}
-                onToggle={toggleBucket}
-                onTaskPress={(id) =>
-                  router.push({ pathname: '/task-form', params: { id } })
-                }
-                onCreate={() => router.push('/task-form')}
-                t={t}
-              />
+        {searchOpen && (
+          <View style={styles.searchWrap}>
+            <Ionicons name="search" size={16} color={tokens.text.dim} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder={
+                tab === 'mine'
+                  ? t('tasksHub.search.placeholderMine')
+                  : t('tasksHub.search.placeholderCatalog')
+              }
+              placeholderTextColor={tokens.text.faint}
+              style={styles.searchInput}
+              autoCorrect={false}
+              autoCapitalize="none"
+              autoFocus
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={16} color={tokens.text.dim} />
+              </Pressable>
             )}
           </View>
-        </ScrollView>
+        )}
+
+        {/* Body — DraggableFlatList for Mine (drag-reorder), ScrollView
+            for everything else. Nesting a draggable inside a ScrollView
+            breaks the long-press → drag gesture (RN responder collision),
+            so we pick the right container per tab. */}
+        {tab === 'mine' ? (
+          <MineDraggableBody
+            tasks={filteredTasks}
+            loading={tasks.isLoading}
+            query={query}
+            isRefreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            onTaskPress={(id) =>
+              router.push({ pathname: '/task-form', params: { id } })
+            }
+            onCreate={() => router.push('/task-form')}
+            onReorder={(ids) => reorderTasks.mutate(ids)}
+            t={t}
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={tokens.brand.violet2}
+                colors={[tokens.brand.violet2]}
+              />
+            }
+          >
+            <View style={styles.bodyWrap}>
+              {tab === 'suggested' ? (
+                <SuggestedBody
+                  templatesBySub={templatesBySub}
+                  loading={templates.isLoading}
+                  query={query}
+                  adoptedTemplateIds={adoptedTemplateIds}
+                  collapsedSubs={collapsedSubs}
+                  onToggleSub={toggleSub}
+                  onAdopt={handleAdopt}
+                  adoptingId={adoptingId}
+                  t={t}
+                />
+              ) : (
+                <MineBody
+                  tasks={tasksByBucket}
+                  loading={tasks.isLoading}
+                  query={query}
+                  collapsed={collapsed}
+                  onToggle={toggleBucket}
+                  onTaskPress={(id) =>
+                    router.push({ pathname: '/task-form', params: { id } })
+                  }
+                  onCreate={() => router.push('/task-form')}
+                  t={t}
+                />
+              )}
+            </View>
+          </ScrollView>
+        )}
       </ScreenBackground>
 
       <AdoptPeriodicitySheet
@@ -395,6 +421,197 @@ export default function TasksHubScreen() {
         onConfirm={handleAdoptConfirm}
       />
     </SafeAreaView>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MineDraggableBody — flat list of the user's custom (or all-active) tasks
+// with drag-to-reorder. Mirrors the /rewards-manage pattern.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface MineDraggableBodyProps {
+  tasks: TaskWithSubs[];
+  loading: boolean;
+  query: string;
+  isRefreshing: boolean;
+  onRefresh: () => void;
+  onTaskPress: (id: string) => void;
+  onCreate: () => void;
+  onReorder: (orderedIds: string[]) => void;
+  t: (key: string, opts?: Record<string, string | number | undefined>) => string;
+}
+
+function MineDraggableBody({
+  tasks,
+  loading,
+  query,
+  isRefreshing,
+  onRefresh,
+  onTaskPress,
+  onCreate,
+  onReorder,
+  t,
+}: MineDraggableBodyProps) {
+  // Local mirror of the list — drag updates this immediately for the
+  // weightless feel, the mutation reconciles on commit. We sync from
+  // the parent whenever the id sequence changes (refetch, new task,
+  // archive); user-initiated drags don't trigger this because our
+  // optimistic update keeps the parent cache aligned with localOrder.
+  const [localOrder, setLocalOrder] = useState<TaskWithSubs[]>(tasks);
+  const tasksKey = tasks.map((t) => t.id).join('|');
+  useEffect(() => {
+    setLocalOrder(tasks);
+    // tasksKey is the dependency cue — when the id sequence changes,
+    // resync. Pulling tasks directly would re-fire on object-identity
+    // shifts (TanStack returns fresh arrays each refetch).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasksKey]);
+
+  const renderRow = ({ item, drag, isActive }: RenderItemParams<TaskWithSubs>) => {
+    return (
+      <ScaleDecorator>
+        <Pressable
+          onPress={() => onTaskPress(item.id)}
+          onLongPress={drag}
+          delayLongPress={400}
+          disabled={isActive}
+          style={({ pressed }) => [
+            styles.dragRow,
+            isActive && styles.dragRowActive,
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Ionicons name="reorder-three" size={22} color={tokens.text.dim} />
+          <DragRowInner task={item} />
+          <Ionicons name="chevron-forward" size={16} color={tokens.text.dim} />
+        </Pressable>
+      </ScaleDecorator>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingBox}>
+        <ActivityIndicator color={tokens.brand.violet2} />
+      </View>
+    );
+  }
+
+  if (localOrder.length === 0) {
+    return (
+      <View style={styles.emptyBox}>
+        <Ionicons
+          name={query ? 'search' : 'list'}
+          size={32}
+          color={tokens.text.dim}
+        />
+        <Text style={styles.emptyTitle}>
+          {query ? t('tasksHub.empty.noMatchesTitle') : t('tasksHub.empty.noTasksTitle')}
+        </Text>
+        <Text style={styles.emptySub}>
+          {query
+            ? t('tasksHub.empty.noMatchesBody', { query })
+            : t('tasksHub.empty.noTasksBody')}
+        </Text>
+        {!query && (
+          <Pressable
+            onPress={onCreate}
+            style={({ pressed }) => [
+              styles.emptyCta,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <Ionicons name="add" size={18} color={tokens.text.hi} />
+            <Text style={styles.emptyCtaText}>{t('tasksHub.empty.cta')}</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <DraggableFlatList
+      data={localOrder}
+      keyExtractor={(item) => item.id}
+      renderItem={renderRow}
+      onDragEnd={({ data }) => {
+        setLocalOrder(data);
+        onReorder(data.map((d) => d.id));
+      }}
+      // How much the finger can drift during the long-press before
+      // it cancels. 20px matches rewards-manage — small enough that
+      // scrolling micro-jitters don't promote to drag.
+      activationDistance={20}
+      contentContainerStyle={styles.dragListContent}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          tintColor={tokens.brand.violet2}
+          colors={[tokens.brand.violet2]}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * Body of a drag row — title + small meta line. Replicates the most
+ * compact bits of the existing TaskRow (sub icon, pips, +XP, recurrence)
+ * minus the chevron / drag handle which the parent draws.
+ */
+function DragRowInner({ task }: { task: TaskWithSubs }) {
+  const meta = useMetaLookup();
+  const primarySubMeta = meta.sub(task.primary_sub_id);
+  const dimMeta = meta.dim(task.primary_dimension_id);
+  const reward = rewardForTaskSubs(task.subs);
+  const pips: string[] = [];
+  for (const s of task.subs) {
+    const sm = SUB_META[s.sub_id];
+    const color = sm ? DIMENSION_META[sm.dimensionId].color : tokens.brand.violet2;
+    for (let i = 0; i < s.stars; i++) pips.push(color);
+  }
+  const isCustom = !task.template_id;
+  return (
+    <>
+      <View style={[styles.subDot, { backgroundColor: dimMeta.bg }]}>
+        {primarySubMeta && (
+          <Ionicons
+            name={primarySubMeta.iconName as never}
+            size={14}
+            color={dimMeta.color}
+          />
+        )}
+      </View>
+      <View style={styles.taskBody}>
+        <View style={styles.taskTitleRow}>
+          <Text style={styles.taskTitle} numberOfLines={1}>
+            {task.title}
+          </Text>
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
+          {isCustom && (
+            <View style={styles.customChip}>
+              <Text style={styles.customChipText}>CUSTOM</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.taskMetaRow}>
+          {pips.length > 0 && (
+            <View style={styles.pipsRow}>
+              {pips.map((color, i) => (
+                <View
+                  key={i}
+                  style={[styles.pip, { backgroundColor: color }]}
+                />
+              ))}
+            </View>
+          )}
+          <Text style={styles.taskRecurrence} numberOfLines={1}>
+            {describeRecurrence(task.recurrence, task.target_count)}
+          </Text>
+        </View>
+      </View>
+    </>
   );
 }
 
@@ -905,6 +1122,7 @@ const styles = StyleSheet.create({
   },
   tabsWrap: {
     marginTop: tokens.space[2],
+    paddingHorizontal: tokens.space[4],
   },
   searchWrap: {
     flexDirection: 'row',
@@ -915,6 +1133,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.border.base,
     paddingHorizontal: tokens.space[3],
+    marginHorizontal: tokens.space[4],
     height: 40,
     marginTop: tokens.space[3],
   },
@@ -926,6 +1145,28 @@ const styles = StyleSheet.create({
   },
   bodyWrap: {
     marginTop: tokens.space[4],
+  },
+  dragListContent: {
+    paddingHorizontal: tokens.space[4],
+    paddingTop: tokens.space[4],
+    paddingBottom: tokens.space[10],
+    gap: tokens.space[2],
+  },
+  dragRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[2],
+    paddingVertical: tokens.space[3],
+    paddingHorizontal: tokens.space[3],
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    borderRadius: tokens.radius.lg,
+  },
+  dragRowActive: {
+    backgroundColor: tokens.bg.surface2,
+    borderColor: tokens.brand.violetGlow,
+    transform: [{ scale: 1.02 }],
   },
   loadingBox: {
     paddingVertical: tokens.space[8],

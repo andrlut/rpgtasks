@@ -600,9 +600,60 @@ export function useActiveTasks() {
         .from('task')
         .select('*, task_sub(sub_id, stars)')
         .eq('is_archived', false)
+        // sort_order is the user-controlled order set via drag-reorder
+        // on the Manage screen's Mine tab. created_at is the tiebreaker
+        // for tasks that share a sort_order (shouldn't happen after the
+        // backfill, but defensive).
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
       if (error) throw error;
       return ((data ?? []) as TaskRow[]).map(mapTaskRow);
+    },
+  });
+}
+
+/**
+ * Batch reorder the user's active tasks. Pass the full active list in
+ * the order the user wants — sort_order is rewritten 1..N server-side.
+ * Optimistic: we update the cached active list immediately so the drag
+ * feels weightless, then reconcile on settle.
+ *
+ * Mirrors `useReorderRewards` — same RPC shape (`reorder_tasks(uuid[])`),
+ * same optimistic + rollback pattern.
+ */
+export function useReorderTasks() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const { error } = await supabase.rpc('reorder_tasks', {
+        p_ids: orderedIds,
+      });
+      if (error) throw error;
+    },
+    onMutate: async (orderedIds) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.active() });
+      const prev = queryClient.getQueryData<TaskWithSubs[]>(taskKeys.active());
+      if (prev) {
+        const byId = new Map(prev.map((t) => [t.id, t]));
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter((t): t is TaskWithSubs => !!t);
+        // Append any tasks the caller didn't include (e.g. tasks outside
+        // the drag scope — adopted ones not in the Mine tab). Preserves
+        // their previous relative order.
+        for (const t of prev) {
+          if (!orderedIds.includes(t.id)) next.push(t);
+        }
+        queryClient.setQueryData<TaskWithSubs[]>(taskKeys.active(), next);
+      }
+      return { prev };
+    },
+    onError: (_err, _ids, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(taskKeys.active(), ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.active() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
     },
   });
 }
