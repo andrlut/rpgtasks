@@ -291,12 +291,16 @@ export function useDayDetail(date: Date, weekStart: WeekStart = 'monday') {
         );
       });
 
-      // Active tasks created on or before this day.
+      // Active tasks created on or before this day. Ordered by the
+      // user's drag-reorder sort_order (set on the /tasks Alocadas
+      // screen) so the History day view follows the same sequence as
+      // the home buckets — created_at is the defensive tiebreaker.
       const { data: tasks, error: taskErr } = await supabase
         .from('task')
         .select('*, task_sub(sub_id, stars)')
         .eq('is_archived', false)
         .lte('created_at', dayEnd.toISOString())
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
       if (taskErr) throw taskErr;
 

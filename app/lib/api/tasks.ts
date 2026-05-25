@@ -297,6 +297,11 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
     .from('task')
     .select('*, task_sub(sub_id, stars)')
     .eq('is_archived', false)
+    // User-controlled order via /tasks Alocadas drag-reorder. Matches
+    // useActiveTasks so the home Today buckets render in the same
+    // sequence the user set on the Manage screen. created_at is the
+    // defensive tiebreaker for rows that share a sort_order.
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
   if (taskErr) throw taskErr;
 
@@ -654,6 +659,10 @@ export function useReorderTasks() {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: taskKeys.active() });
       queryClient.invalidateQueries({ queryKey: taskKeys.pending() });
+      // History day-detail also pulls tasks from the same table — bust
+      // its cache so a reorder done on the Manage screen shows up next
+      // time the user opens a past day.
+      queryClient.invalidateQueries({ queryKey: ['history'] });
     },
   });
 }
