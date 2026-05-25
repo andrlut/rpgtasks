@@ -22,14 +22,28 @@ interface XPProps {
   level: number;
   xpInLevel: number;
   xpNeededForLevel: number;
+  /** Tap on the card — Home wires this to the Praticada/Dedicação tab. */
+  onPress?: () => void;
 }
 
-export function XPStatsCard({ level, xpInLevel, xpNeededForLevel }: XPProps) {
+export function XPStatsCard({
+  level,
+  xpInLevel,
+  xpNeededForLevel,
+  onPress,
+}: XPProps) {
   const pct =
     xpNeededForLevel === 0 ? 0 : (xpInLevel / xpNeededForLevel) * 100;
 
   return (
-    <View style={styles.cardWrap}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.cardWrap,
+        pressed && onPress && styles.cardPressed,
+      ]}
+    >
       <LinearGradient
         colors={tokens.gradient.todayHero}
         locations={tokens.gradient.todayHeroLocations}
@@ -57,7 +71,7 @@ export function XPStatsCard({ level, xpInLevel, xpNeededForLevel }: XPProps) {
           <Text style={styles.lvChipText}>LV {level}</Text>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

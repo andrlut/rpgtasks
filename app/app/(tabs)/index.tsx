@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,7 +18,6 @@ import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { BucketTabsV2, type BucketTabSpec } from '@/components/BucketTabsV2';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { CompletedBucket, type CompletedItem } from '@/components/CompletedBucket';
-import { ManageTasksButton } from '@/components/ManageTasksButton';
 import { QuestChipsStrip } from '@/components/QuestChipsStrip';
 import { RewardStatsCard, XPStatsCard } from '@/components/StatsCards';
 import { TaskActionSheet } from '@/components/TaskActionSheet';
@@ -377,6 +377,12 @@ export default function HomeScreen() {
           level={lp.level}
           xpInLevel={lp.xpInLevel}
           xpNeededForLevel={lp.xpNeededForLevel}
+          onPress={() =>
+            router.push({
+              pathname: '/(tabs)/character',
+              params: { pillar: 'praticada' },
+            })
+          }
         />
 
         {trackedReward && (
@@ -400,14 +406,9 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
-            <BucketTabsV2<BucketTab>
-              tabs={tabSpecs}
-              value={activeTab}
-              onChange={setActiveTab}
-            />
-
-            <QuestChipsStrip />
-
+            {/* Tasks come BEFORE the bucket selector so the user lands
+                straight on their list. Selector + quest chips sit just
+                below as a filter / discovery strip. */}
             <View style={styles.taskList}>
               {activeList.length === 0 ? (
                 <Text style={styles.tabEmpty}>{t(activeEmptyKey[activeTab])}</Text>
@@ -426,7 +427,17 @@ export default function HomeScreen() {
                   />
                 ))
               )}
+            </View>
 
+            <BucketTabsV2<BucketTab>
+              tabs={tabSpecs}
+              value={activeTab}
+              onChange={setActiveTab}
+            />
+
+            <QuestChipsStrip />
+
+            <View style={styles.taskList}>
               <CompletedBucket
                 items={
                   activeTab === 'weekly'
@@ -446,8 +457,41 @@ export default function HomeScreen() {
               />
             </View>
 
-            <View style={styles.manageWrap}>
-              <ManageTasksButton onPress={() => router.push('/tasks')} />
+            <View style={styles.bottomActions}>
+              <Pressable
+                onPress={() => router.push('/history')}
+                style={({ pressed }) => [
+                  styles.bottomBtn,
+                  pressed && styles.bottomBtnPressed,
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={tokens.text.mid}
+                />
+                <Text style={styles.bottomBtnLabel}>
+                  {t('tabs.history')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/tasks')}
+                style={({ pressed }) => [
+                  styles.bottomBtn,
+                  pressed && styles.bottomBtnPressed,
+                ]}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={16}
+                  color={tokens.text.mid}
+                />
+                <Text style={styles.bottomBtnLabel}>
+                  {t('home.manageCta')}
+                </Text>
+              </Pressable>
             </View>
           </>
         )}
@@ -512,8 +556,36 @@ const styles = StyleSheet.create({
     paddingVertical: tokens.space[4],
     textAlign: 'center',
   },
-  manageWrap: {
+  // Bottom row at the end of the home scroll — Calendar (history) +
+  // Manage tasks side by side. The Calendar is here so the user can
+  // reach History without diving for the tiny top-right icon.
+  bottomActions: {
+    flexDirection: 'row',
+    gap: tokens.space[2],
     paddingTop: tokens.space[3],
     paddingHorizontal: tokens.space[4],
+  },
+  bottomBtn: {
+    flex: 1,
+    paddingVertical: tokens.space[3] + 2,
+    paddingHorizontal: tokens.space[3],
+    backgroundColor: tokens.bg.surface2,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    borderRadius: tokens.radius.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.space[2],
+  },
+  bottomBtnPressed: {
+    opacity: 0.7,
+    borderColor: 'rgba(123, 92, 255, 0.3)',
+    backgroundColor: tokens.bg.surface,
+  },
+  bottomBtnLabel: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.text.mid,
   },
 });

@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -73,8 +74,22 @@ export default function CharacterScreen() {
   const character = useCharacter();
   const skillStates = useSkillStates();
   const momentum = useMomentum();
+  const params = useLocalSearchParams<{ pillar?: PillarKey }>();
 
-  const [activePillar, setActivePillar] = useState<PillarKey>('percebida');
+  const [activePillar, setActivePillar] = useState<PillarKey>(
+    params.pillar ?? 'percebida',
+  );
+
+  // Honor `?pillar=` changes after mount — e.g. the Home XP card pushes
+  // back to this tab to land on Praticada/Dedicação. Without this, the
+  // first push works but subsequent re-pushes with the same param do
+  // nothing because activePillar is already set.
+  useEffect(() => {
+    if (params.pillar && params.pillar !== activePillar) {
+      setActivePillar(params.pillar);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.pillar]);
   const [activeSub, setActiveSub] = useState<ActiveSubState>({
     percebida: 'avaliacao',
     praticada: 'dedicacao',
