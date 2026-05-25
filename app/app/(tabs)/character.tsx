@@ -1,8 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -12,10 +10,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBottomNavClearance } from '@/components/BottomNavBar';
-import { InfoSheet } from '@/components/InfoSheet';
-import { LevelRing } from '@/components/LevelRing';
+import { HeroHeader } from '@/components/HeroHeader';
 import { PillarSwitcher, type PillarKey } from '@/components/PillarSwitcher';
-import { ProgressBar } from '@/components/ProgressBar';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SubSelector } from '@/components/SubSelector';
 import { AutoconhecimentoView } from '@/components/pillars/AutoconhecimentoView';
@@ -27,38 +23,8 @@ import { SkillsPanel } from '@/components/pillars/SkillsPanel';
 import { useCharacter } from '@/lib/api/character';
 import { useMomentum } from '@/lib/api/momentum';
 import { useSkillStates } from '@/lib/api/skills';
-import type { CharacterDimension, DimensionId } from '@/lib/db/types';
-import { levelProgress } from '@/lib/xp';
 import { useT } from '@/lib/i18n';
-import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
-
-/**
- * Pick the user's strongest dimension. Caller composes the visible label —
- * keeping i18n out of this pure helper so it stays trivially testable.
- */
-function pickStrongestDim(
-  dimensions: CharacterDimension[],
-): { dim: DimensionId; rankKey: 'master' | 'adept' | 'builder' | 'apprentice' } | null {
-  if (dimensions.length === 0) return null;
-  let best: CharacterDimension | undefined;
-  for (const d of dimensions) {
-    if (!best || d.xp > best.xp) best = d;
-  }
-  if (!best || best.xp === 0) return null;
-  const lvl = levelProgress(best.xp).level;
-  const rankKey = lvl >= 10 ? 'master' : lvl >= 6 ? 'adept' : lvl >= 3 ? 'builder' : 'apprentice';
-  return { dim: best.dimension_id, rankKey };
-}
-
-const TITLE_INFO_BODY =
-  'Derivado em runtime da sua dimensão mais forte (a com mais XP).\n\n' +
-  'O nível dessa dimensão define o rank:\n' +
-  '• Apprentice — nível 0 a 2\n' +
-  '• Builder — nível 3 a 5\n' +
-  '• Adept — nível 6 a 9\n' +
-  '• Master — nível 10+\n\n' +
-  'Muda sozinho conforme você ganha XP em outras dimensões.';
 
 // Sub-pillar key types per pilar — kept narrow so TS catches mis-typings.
 type PercebidaSub = 'avaliacao' | 'autoconhecimento';
@@ -92,10 +58,10 @@ const PILLAR_TONE: Record<PillarKey, { accent: string; halo: string; border: str
 };
 
 /**
- * Eu (formerly Hero) tab — identity header on top, then a 3-icon pillar
- * switcher followed by a 2-segment sub-selector for the active pilar's
- * sub-pilares. Content renders directly into the page scroll (no card
- * wrapper) so the hex / list / placeholder dominate the screen.
+ * Eu tab — full-width HeroHeader on top (Iris-Wrapped Avatar), then a
+ * 3-icon pillar switcher followed by a 2-segment sub-selector for the
+ * active pilar's sub-pilares. Content renders directly into the page
+ * scroll (no card wrapper) so the chart / list / placeholder dominates.
  *
  * Default sub per pilar:
  *   - Percebida → Avaliação (hex chamariz)
@@ -104,7 +70,6 @@ const PILLAR_TONE: Record<PillarKey, { accent: string; halo: string; border: str
  */
 export default function CharacterScreen() {
   const { t } = useT();
-  const metaLookup = useMetaLookup();
   const character = useCharacter();
   const skillStates = useSkillStates();
   const momentum = useMomentum();
@@ -115,20 +80,8 @@ export default function CharacterScreen() {
     praticada: 'dedicacao',
     desejada: 'skills',
   });
-  const [infoOpen, setInfoOpen] = useState<null | 'title'>(null);
   const bottomClearance = useBottomNavClearance();
   const scrollViewRef = useRef<ScrollView>(null);
-
-  const strongest = useMemo(
-    () => pickStrongestDim(character.data?.dimensions ?? []),
-    [character.data?.dimensions],
-  );
-  const title = strongest
-    ? {
-        label: `${metaLookup.dim(strongest.dim).label} ${t(`character.ranks.${strongest.rankKey}`)}`,
-        dim: strongest.dim,
-      }
-    : null;
 
   if (character.isLoading) {
     return (
@@ -150,13 +103,9 @@ export default function CharacterScreen() {
     );
   }
 
-  const { profile, character: char, dimensions } = character.data;
-  const totalProgress = levelProgress(char.total_xp);
-  const titleDim = title ? metaLookup.dim(title.dim) : null;
-
+  const { dimensions } = character.data;
   const tone = PILLAR_TONE[activePillar];
 
-  // Build the sub-selector options for the active pillar.
   const subOptions: [{ key: string; label: string }, { key: string; label: string }] =
     activePillar === 'percebida'
       ? [
@@ -183,7 +132,7 @@ export default function CharacterScreen() {
       <ScreenBackground>
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
+          contentContainerStyle={{ paddingBottom: bottomClearance }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -201,198 +150,61 @@ export default function CharacterScreen() {
             />
           }
         >
-          {/* ── HERO IDENTITY (top) ─────────────────────────────
-            * "Quem estou me tornando?" — aspirational anchor that
-            * doesn't change as the user switches between pilares.
-            */}
-          <View style={styles.heroBlock}>
-            <View style={styles.heroBody}>
-              <LevelRing
-                size={96}
-                level={totalProgress.level}
-                progress={
-                  totalProgress.xpNeededForLevel === 0
-                    ? 0
-                    : totalProgress.xpInLevel / totalProgress.xpNeededForLevel
-                }
-              >
-                <Ionicons
-                  name={(titleDim?.iconName as never) ?? ('person' as never)}
-                  size={44}
-                  color={titleDim?.color ?? tokens.brand.violet2}
+          {/* Full-width header — sits flush against the SafeArea so the
+              ambient halo bleeds from the screen edge. No surrounding
+              padding; the header owns its own internal spacing. */}
+          <HeroHeader />
+
+          {/* Tab body — padded inset under the header. */}
+          <View style={styles.body}>
+            <PillarSwitcher active={activePillar} onChange={setActivePillar} />
+            <SubSelector
+              options={subOptions}
+              active={currentSub}
+              onChange={handleSubChange}
+              accent={tone.accent}
+              halo={tone.halo}
+              border={tone.border}
+            />
+            <View style={styles.subViewWrap}>
+              {activePillar === 'percebida' && currentSub === 'avaliacao' && (
+                <AvaliacaoPanel subScores={character.data.subScores} />
+              )}
+              {activePillar === 'percebida' && currentSub === 'autoconhecimento' && (
+                <AutoconhecimentoView />
+              )}
+              {activePillar === 'praticada' && currentSub === 'dedicacao' && (
+                <DedicacaoPanel
+                  dimensions={dimensions}
+                  scrollViewRef={scrollViewRef}
                 />
-              </LevelRing>
-              <View style={styles.heroInfo}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {profile.display_name}
-                </Text>
-                <Text style={styles.levelLine}>Level {totalProgress.level}</Text>
-                <View style={styles.chipRow}>
-                  {title && titleDim && (
-                    <Pressable
-                      onPress={() => setInfoOpen('title')}
-                      style={({ pressed }) => [
-                        styles.titleChip,
-                        {
-                          backgroundColor: titleDim.bg,
-                          borderColor: `${titleDim.color}55`,
-                        },
-                        pressed && { opacity: 0.7 },
-                      ]}
-                      hitSlop={6}
-                    >
-                      <Ionicons
-                        name={titleDim.iconName as never}
-                        size={11}
-                        color={titleDim.color}
-                      />
-                      <Text style={[styles.titleText, { color: titleDim.color }]}>
-                        {title.label}
-                      </Text>
-                      <Ionicons
-                        name="information-circle-outline"
-                        size={11}
-                        color={titleDim.color}
-                        style={{ opacity: 0.55 }}
-                      />
-                    </Pressable>
-                  )}
-                </View>
-                <View style={styles.totalBar}>
-                  <ProgressBar
-                    value={totalProgress.xpInLevel}
-                    max={totalProgress.xpNeededForLevel}
-                    color={tokens.brand.violet}
-                    height={5}
-                  />
-                </View>
-                <Text style={styles.toNext}>
-                  {Math.max(
-                    0,
-                    totalProgress.xpNeededForLevel - totalProgress.xpInLevel,
-                  )}{' '}
-                  XP to LV {totalProgress.level + 1}
-                </Text>
-              </View>
+              )}
+              {activePillar === 'praticada' && currentSub === 'momentum' && (
+                <MomentumView momentum={momentum.data?.attributes} />
+              )}
+              {activePillar === 'desejada' && currentSub === 'goals' && (
+                <GoalsPreview />
+              )}
+              {activePillar === 'desejada' && currentSub === 'skills' && (
+                <SkillsPanel skills={skillStates.data ?? []} />
+              )}
             </View>
-          </View>
-
-          {/* ── 3-icon pillar switcher ───────────────────────── */}
-          <PillarSwitcher active={activePillar} onChange={setActivePillar} />
-
-          {/* ── 2-segment sub-selector (current pillar's pair) ── */}
-          <SubSelector
-            options={subOptions}
-            active={currentSub}
-            onChange={handleSubChange}
-            accent={tone.accent}
-            halo={tone.halo}
-            border={tone.border}
-          />
-
-          {/* ── SUB-VIEW (no card wrapper — content breathes) ── */}
-          <View style={styles.subViewWrap}>
-            {activePillar === 'percebida' && currentSub === 'avaliacao' && (
-              <AvaliacaoPanel subScores={character.data.subScores} />
-            )}
-            {activePillar === 'percebida' && currentSub === 'autoconhecimento' && (
-              <AutoconhecimentoView />
-            )}
-            {activePillar === 'praticada' && currentSub === 'dedicacao' && (
-              <DedicacaoPanel
-                dimensions={dimensions}
-                scrollViewRef={scrollViewRef}
-              />
-            )}
-            {activePillar === 'praticada' && currentSub === 'momentum' && (
-              <MomentumView momentum={momentum.data?.attributes} />
-            )}
-            {activePillar === 'desejada' && currentSub === 'goals' && (
-              <GoalsPreview />
-            )}
-            {activePillar === 'desejada' && currentSub === 'skills' && (
-              <SkillsPanel skills={skillStates.data ?? []} />
-            )}
           </View>
         </ScrollView>
       </ScreenBackground>
-
-      <InfoSheet
-        visible={infoOpen === 'title'}
-        onClose={() => setInfoOpen(null)}
-        title="Título"
-        body={TITLE_INFO_BODY}
-        accent={titleDim?.color ?? tokens.brand.violet2}
-      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.deep },
-  content: {
-    padding: tokens.space[4],
-    gap: tokens.space[4],
-  },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorText: { ...tokens.type.body, color: tokens.text.mid },
-
-  // Hero identity
-  heroBlock: {
-    paddingTop: tokens.space[2],
-    gap: tokens.space[3],
-  },
-  heroBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  body: {
+    paddingHorizontal: tokens.space[4],
+    paddingTop: tokens.space[3],
     gap: tokens.space[4],
   },
-  heroInfo: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  name: {
-    ...tokens.type.h2,
-    color: tokens.text.hi,
-  },
-  levelLine: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 13,
-    color: tokens.text.mid,
-    letterSpacing: 0.3,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-    marginTop: 2,
-  },
-  titleChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: 4,
-    borderRadius: tokens.radius.pill,
-    borderWidth: 1,
-  },
-  titleText: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    letterSpacing: 0.3,
-  },
-  totalBar: {
-    marginTop: tokens.space[2],
-  },
-  toNext: {
-    ...tokens.type.caption,
-    color: tokens.brand.violet2,
-    fontFamily: 'Manrope_700Bold',
-    marginTop: 4,
-  },
-
   subViewWrap: {
     marginTop: 0,
   },

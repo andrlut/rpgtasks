@@ -157,7 +157,11 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
       m.set(d, {
         window: 0,
         cumulative: [],
-        perSub: SUBS_BY_DIM[d].map((subId) => ({ subId, windowXp: 0 })),
+        perSub: SUBS_BY_DIM[d].map((subId) => ({
+          subId,
+          windowXp: 0,
+          cumulative: [],
+        })),
       });
     }
     for (const row of windowQuery.data?.perDim ?? []) {
@@ -233,6 +237,18 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
   const donutSize = Math.max(176, Math.min((screenWidth || 360) - 96, 220));
   const sparkWidth = Math.max(160, (screenWidth || 360) - 64);
 
+  // Order cards by window XP descending — leaders surface first. Ties
+  // fall back to the canonical DIMENSION_ORDER so the layout doesn't
+  // flicker as the user scrubs periods that yield equal values.
+  const orderedDims = useMemo(() => {
+    return [...DIMENSION_ORDER].sort((a, b) => {
+      const aXp = perDimWindow.get(a)?.window ?? 0;
+      const bXp = perDimWindow.get(b)?.window ?? 0;
+      if (aXp !== bXp) return bXp - aXp;
+      return DIMENSION_ORDER.indexOf(a) - DIMENSION_ORDER.indexOf(b);
+    });
+  }, [perDimWindow]);
+
   return (
     <View style={styles.wrap}>
       <PeriodSelector
@@ -256,7 +272,7 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
       </View>
 
       <View style={styles.list}>
-        {DIMENSION_ORDER.map((id) => {
+        {orderedDims.map((id) => {
           const meta = DIMENSION_META[id];
           const xp = dimMap.get(id)?.xp ?? 0;
           const lp = levelProgress(xp);
@@ -360,39 +376,81 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
               {isExpanded && (
                 <View style={styles.expandWrap}>
                   <View style={styles.divider} />
-                  {perSub.map((sub) => {
-                    const subMeta = SUB_META[sub.subId];
-                    const subLabel = metaLookup.sub(sub.subId).label;
-                    const share =
-                      winXp > 0 ? Math.round((sub.windowXp / winXp) * 100) : 0;
-                    return (
-                      <View key={sub.subId} style={styles.subRow}>
-                        <Ionicons
-                          name={subMeta.iconName as never}
-                          size={14}
-                          color={`${meta.color}DD`}
-                        />
-                        <Text style={styles.subLabel} numberOfLines={1}>
-                          {subLabel}
-                        </Text>
-                        <View style={styles.subBarTrack}>
+                  {(() => {
+                    // Normalize sub sparklines against the leader within
+                    // this dim — comparing siblings, not cross-dim heroes.
+                    const subMax = perSub.reduce(
+                      (m, s) =>
+                        Math.max(
+                          m,
+                          s.cumulative.length
+                            ? s.cumulative[s.cumulative.length - 1]
+                            : 0,
+                        ),
+                      0,
+                    );
+                    return perSub.map((sub) => {
+                      const subMeta = SUB_META[sub.subId];
+                      const subLabel = metaLookup.sub(sub.subId).label;
+                      const share =
+                        winXp > 0
+                          ? Math.round((sub.windowXp / winXp) * 100)
+                          : 0;
+                      return (
+                        <View key={sub.subId} style={styles.subRow}>
                           <View
                             style={[
-                              styles.subBarFill,
-                              {
-                                width: `${share}%`,
-                                backgroundColor: meta.color,
-                              },
+                              styles.subIcon,
+                              { backgroundColor: `${meta.color}1F` },
                             ]}
-                          />
+                          >
+                            <Ionicons
+                              name={subMeta.iconName as never}
+                              size={14}
+                              color={meta.color}
+                            />
+                          </View>
+                          <View style={styles.subTextCol}>
+                            <Text style={styles.subLabel} numberOfLines={1}>
+                              {subLabel}
+                            </Text>
+                            <Text style={styles.subShare}>
+                              {share}% {locale === 'pt' ? 'do' : 'of'}{' '}
+                              {metaLookup.dim(id).label}
+                            </Text>
+                          </View>
+                          <View style={styles.subSparkBlock}>
+                            <Sparkline
+                              cumulative={sub.cumulative}
+                              color={meta.color}
+                              globalMax={subMax}
+                              height={28}
+                              width={sparkWidth - 200}
+                              idSuffix={`${id}-${sub.subId}`}
+                            />
+                            <View
+                              style={styles.subSparkOverlay}
+                              pointerEvents="none"
+                            >
+                              <Text
+                                style={[
+                                  styles.subSparkXp,
+                                  {
+                                    color:
+                                      sub.windowXp > 0
+                                        ? meta.color
+                                        : tokens.text.faint,
+                                  },
+                                ]}
+                              >
+                                +{sub.windowXp.toLocaleString()}
+                              </Text>
+                            </View>
+                          </View>
                         </View>
-                        <Text style={styles.subShare}>{share}%</Text>
-                        <Text style={[styles.subXp, { color: meta.color }]}>
-                          +{sub.windowXp.toLocaleString()}
-                        </Text>
-                      </View>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                   <Pressable
                     onPress={() =>
                       router.push({
@@ -531,38 +589,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[2],
+    paddingVertical: 4,
+  },
+  subIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: tokens.radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subTextCol: {
+    minWidth: 90,
+    gap: 1,
   },
   subLabel: {
-    fontFamily: 'Manrope_600SemiBold',
+    fontFamily: 'Manrope_700Bold',
     fontSize: 12,
     color: tokens.text.base,
-    flexShrink: 1,
-    minWidth: 70,
-  },
-  subBarTrack: {
-    flex: 1,
-    height: 5,
-    borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-  },
-  subBarFill: {
-    height: '100%',
-    borderRadius: tokens.radius.pill,
   },
   subShare: {
     fontFamily: 'Manrope_600SemiBold',
     fontSize: 10,
     color: tokens.text.dim,
-    minWidth: 30,
-    textAlign: 'right',
+    letterSpacing: 0.2,
   },
-  subXp: {
+  subSparkBlock: {
+    position: 'relative',
+    flex: 1,
+  },
+  subSparkOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  subSparkXp: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 11,
-    letterSpacing: 0.3,
-    minWidth: 48,
-    textAlign: 'right',
+    fontSize: 13,
+    letterSpacing: -0.1,
   },
   detailLink: {
     flexDirection: 'row',

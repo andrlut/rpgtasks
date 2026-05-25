@@ -26,6 +26,9 @@ export interface WindowSpec {
 export interface SubWindow {
   subId: SubId;
   windowXp: number;
+  /** Cumulative XP at the end of each bucket. Same bucket layout as the
+   *  parent dim — drives the per-sub sparkline inside the expanded card. */
+  cumulative: number[];
 }
 
 export interface DimWindow {
@@ -280,14 +283,19 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
         DimensionId,
         { window: number; prev: number; perBucket: number[] }
       >();
-      const perSubAgg = new Map<SubId, number>();
+      const perSubAgg = new Map<SubId, { window: number; perBucket: number[] }>();
       for (const dim of DIMENSION_ORDER) {
         perDimAgg.set(dim, {
           window: 0,
           prev: 0,
           perBucket: Array(comp.bucketStarts.length).fill(0),
         });
-        for (const sub of SUBS_BY_DIM[dim]) perSubAgg.set(sub, 0);
+        for (const sub of SUBS_BY_DIM[dim]) {
+          perSubAgg.set(sub, {
+            window: 0,
+            perBucket: Array(comp.bucketStarts.length).fill(0),
+          });
+        }
       }
 
       let totalXp = 0;
@@ -322,7 +330,11 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
             totalXp += xp;
             if (bucketIdx >= 0) agg.perBucket[bucketIdx] += xp;
             const subId = tcs.sub_id as SubId;
-            perSubAgg.set(subId, (perSubAgg.get(subId) ?? 0) + xp);
+            const subAgg = perSubAgg.get(subId);
+            if (subAgg) {
+              subAgg.window += xp;
+              if (bucketIdx >= 0) subAgg.perBucket[bucketIdx] += xp;
+            }
           } else if (inPrev) {
             agg.prev += xp;
             prevTotalXp += xp;
@@ -338,10 +350,20 @@ export function useDedicacaoWindow(spec: WindowSpec, weekStart: WeekStart) {
           running += v;
           cumulative.push(running);
         }
-        const perSub: SubWindow[] = SUBS_BY_DIM[dimId].map((subId) => ({
-          subId,
-          windowXp: perSubAgg.get(subId) ?? 0,
-        }));
+        const perSub: SubWindow[] = SUBS_BY_DIM[dimId].map((subId) => {
+          const subAgg = perSubAgg.get(subId);
+          const subCumulative: number[] = [];
+          let subRunning = 0;
+          for (const v of subAgg?.perBucket ?? []) {
+            subRunning += v;
+            subCumulative.push(subRunning);
+          }
+          return {
+            subId,
+            windowXp: subAgg?.window ?? 0,
+            cumulative: subCumulative,
+          };
+        });
         return {
           dimId,
           windowXp: agg.window,
