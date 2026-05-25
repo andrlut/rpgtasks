@@ -41,8 +41,13 @@ export function formatCompactDate(date: Date = new Date(), locale?: LanguageCode
 /** Big-headline date for the V3 home — split form so the caller can style
  *  the month/day fragment distinctly.
  *
- *  English: { weekday: "Sunday", monthDay: "May 24" }
- *  Portuguese: { weekday: "Domingo", monthDay: "24 mai" }
+ *  English: { weekday: "Sunday,", monthDay: "May 24" }
+ *  Portuguese: { weekday: "Domingo,", monthDay: "24 de mai" }
+ *
+ *  Capitalizes the weekday (Portuguese `toLocaleDateString` returns it
+ *  lowercase) and strips the trailing period that pt-BR adds to the
+ *  abbreviated month (e.g. "mai." → "mai") — looks weird in a big
+ *  headline.
  */
 export function formatHeroDate(
   date: Date = new Date(),
@@ -51,10 +56,9 @@ export function formatHeroDate(
   const tag = bcp47(locale);
   const weekday = date.toLocaleDateString(tag, { weekday: 'long' });
   const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-  const monthDay = date.toLocaleDateString(tag, {
-    month: 'short',
-    day: 'numeric',
-  });
+  const monthDay = date
+    .toLocaleDateString(tag, { month: 'short', day: 'numeric' })
+    .replace(/\.$/, '');
   return { weekday: `${cap},`, monthDay };
 }
 
