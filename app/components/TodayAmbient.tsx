@@ -59,20 +59,31 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   // The halo + glyph are deliberately oversized and clipped — they
-  // anchor visually on the TodayHeader's ring, which sits ~16px from
-  // the right edge with a 52px diameter. We want the GLYPH center
-  // (size/2 = 120) to land on the ring center (42 from right edge,
-  // ~110 from top below the eyebrow).
-  //   right: -(120 - 42) = -78  → glyph center 42 from right
-  //   top:   ringCenterY - 120 ≈ -10
+  // anchor visually on the TodayHeader's ring. Ring center math:
+  //   horizontal: header paddingHorizontal (16) + ring/2 (26)
+  //               = 42 from screen right edge
+  //   vertical:   header paddingTop (8) + eyebrow row (32) + gap (10)
+  //               + ring/2 (26) = 76 from safe-area top
+  //
+  // Glyph (240×240): top = 76 - 120 = -44, right = 240/2 - 42 ... actually
+  //   we want glyph center at (x_from_right=42, y_from_top=76)
+  //   right offset = width - 2*x_from_right ... let's just verify with
+  //   the formula: center_x_from_screen_right = -(right_offset) - width/2
+  //   wait, for `right: R`: right edge at x = W-R (from screen left).
+  //   With R=-78, w=240: center = (W-R-w/2) = W - (-78) - 120 = W + 78 - 120
+  //   from screen right: W - (W+78-120) = 42 ✓
+  //
+  // So both anchors stay at right: -78 (horizontal) and top: -44.
+  // Halo (480×480) follows the same anchor:
+  //   right: -(480/2 - 42) = -198, top: -(480/2 - 76) = -164
   halo: {
     position: 'absolute',
-    top: -190,
-    right: -228,
+    top: -164,
+    right: -198,
   },
   glyphSlot: {
     position: 'absolute',
-    top: -10,
+    top: -44,
     right: -78,
     width: 240,
     height: 240,
