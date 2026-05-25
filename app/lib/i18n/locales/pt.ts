@@ -672,6 +672,23 @@ const pt: Translations = {
       cancel: 'Cancelar',
       failTitle: 'Não consegui vender',
     },
+    useConfirm: {
+      eyebrow: 'HORA DE CURTIR',
+      title: 'Curtir agora!',
+      confirm: 'Aproveitar',
+      cancel: 'Esperar mais',
+    },
+    historyActionSheet: {
+      unuse: 'Devolver pro banco',
+      unuseSub: 'Volta a contar como disponível pra usar depois',
+    },
+    unuseConfirm: {
+      eyebrow: 'VOLTAR PRO BANCO',
+      sub: 'A recompensa volta pra ficar disponível pra usar quando quiser.',
+      confirm: 'Devolver',
+      cancel: 'Cancelar',
+      failTitle: 'Não consegui devolver',
+    },
     actionSheet: {
       edit: 'Editar recompensa',
       editSub: 'Mudar título, custo, ícone ou categoria',
