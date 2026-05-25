@@ -454,6 +454,7 @@ export default function HomeScreen() {
                 }
                 title={completedBucketTitle}
                 onUndo={handleUndo}
+                onExtra={(task) => handleQuickComplete(task)}
               />
               <CompletedBucket
                 items={skippedTodayItems}
