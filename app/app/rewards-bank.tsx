@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyHero } from '@/components/EmptyHero';
 import { SellConfirmModal } from '@/components/SellConfirmModal';
+import { UseConfirmModal } from '@/components/UseConfirmModal';
 import { VaultBankActionSheet } from '@/components/VaultBankActionSheet';
 import { VaultBankCard } from '@/components/VaultBankCard';
 import {
@@ -24,7 +25,7 @@ import {
 } from '@/lib/api/rewards';
 import { useT } from '@/lib/i18n';
 import { timeAgo } from '@/lib/time';
-import { confirmAction, showInfo } from '@/lib/util/confirm';
+import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
 /**
@@ -46,14 +47,17 @@ export default function RewardsBankScreen() {
   const [usingId, setUsingId] = useState<string | null>(null);
   const [bankActionSheet, setBankActionSheet] = useState<RedemptionEntry | null>(null);
   const [sellingItem, setSellingItem] = useState<RedemptionEntry | null>(null);
+  // Custom in-aesthetic confirm — replaces the dark system Alert with
+  // a celebration-framed modal so tapping USE feels rewarding rather
+  // than warning the user away.
+  const [usingItem, setUsingItem] = useState<RedemptionEntry | null>(null);
 
-  const handleUse = async (entry: { id: string; reward_title: string }) => {
-    const ok = await confirmAction(
-      t('reward.shop.useTitle', { title: entry.reward_title }),
-      t('reward.shop.useBody'),
-      { okText: t('reward.shop.useOk'), cancelText: t('reward.common.cancel') },
-    );
-    if (!ok) return;
+  const handleUseRequest = (entry: RedemptionEntry) => {
+    setUsingItem(entry);
+  };
+
+  const handleConfirmUse = async (entry: RedemptionEntry) => {
+    setUsingItem(null);
     setUsingId(entry.id);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     try {
@@ -98,7 +102,19 @@ export default function RewardsBankScreen() {
           <Ionicons name="close" size={24} color={tokens.text.hi} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('rewards.bank.title')}</Text>
-        <View style={styles.iconButton} />
+        {/* Shortcut to /rewards-history — saves the user from closing
+            the bank, going back to Shop, and reopening from the gear
+            row. router.push (not replace) so the back gesture still
+            lands the user back in the bank. */}
+        <Pressable
+          onPress={() => router.push('/rewards-history')}
+          style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t('rewards.history.title')}
+        >
+          <Ionicons name="time-outline" size={20} color={tokens.text.hi} />
+        </Pressable>
       </View>
 
       {banked.isLoading ? (
@@ -123,7 +139,7 @@ export default function RewardsBankScreen() {
                   when: timeAgo(b.redeemed_at),
                 })}
                 busy={usingId === b.id}
-                onUse={() => handleUse(b)}
+                onUse={() => handleUseRequest(b)}
                 onLongPress={() => openBankActionSheet(b)}
               />
             ))}
@@ -138,12 +154,25 @@ export default function RewardsBankScreen() {
         onUse={() => {
           const b = bankActionSheet;
           setBankActionSheet(null);
-          if (b) handleUse(b);
+          if (b) handleUseRequest(b);
         }}
         onSell={() => {
           const b = bankActionSheet;
           setBankActionSheet(null);
           if (b) setSellingItem(b);
+        }}
+      />
+
+      <UseConfirmModal
+        visible={!!usingItem}
+        rewardTitle={usingItem?.reward_title ?? ''}
+        rewardIcon={usingItem?.reward_icon ?? 'gift'}
+        category={usingItem?.reward_category ?? null}
+        redemptionId={usingItem?.id}
+        onCancel={() => setUsingItem(null)}
+        onConfirm={() => {
+          const b = usingItem;
+          if (b) handleConfirmUse(b);
         }}
       />
 

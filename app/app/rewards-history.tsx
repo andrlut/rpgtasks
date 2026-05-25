@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Stack, useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,9 +14,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
-import { useUsedRewards } from '@/lib/api/rewards';
+import { HistoryActionSheet } from '@/components/HistoryActionSheet';
+import { UnuseConfirmModal } from '@/components/UnuseConfirmModal';
+import {
+  useUnuseReward,
+  useUsedRewards,
+  type RedemptionEntry,
+} from '@/lib/api/rewards';
 import { useT } from '@/lib/i18n';
 import { timeAgo } from '@/lib/time';
+import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
@@ -31,6 +40,24 @@ export default function RewardsHistoryScreen() {
   const router = useRouter();
   const { t } = useT();
   const used = useUsedRewards(50);
+  const unuse = useUnuseReward();
+
+  // Long-press → action sheet; "Devolver" → confirm modal. Same
+  // separation we use elsewhere (sheet for action selection, modal
+  // for destructive confirmation) so users learn one pattern.
+  const [actionRow, setActionRow] = useState<RedemptionEntry | null>(null);
+  const [unusing, setUnusing] = useState<RedemptionEntry | null>(null);
+
+  const handleConfirmUnuse = async (entry: RedemptionEntry) => {
+    setUnusing(null);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await unuse.mutateAsync(entry.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo(t('rewards.unuseConfirm.failTitle'), msg);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -70,7 +97,20 @@ export default function RewardsHistoryScreen() {
                 ? REWARD_CATEGORY_META[r.reward_category]
                 : null;
               return (
-                <View key={r.id} style={styles.row}>
+                <Pressable
+                  key={r.id}
+                  style={styles.row}
+                  onLongPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
+                      () => {},
+                    );
+                    setActionRow(r);
+                  }}
+                  delayLongPress={400}
+                  accessibilityRole="button"
+                  accessibilityLabel={r.reward_title}
+                  accessibilityHint="Long press to send back to the bank."
+                >
                   <View
                     style={[
                       styles.iconWrap,
@@ -99,12 +139,35 @@ export default function RewardsHistoryScreen() {
                       −{r.cost_paid.toLocaleString()}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
         </ScrollView>
       )}
+
+      <HistoryActionSheet
+        visible={!!actionRow}
+        rewardTitle={actionRow?.reward_title ?? ''}
+        onCancel={() => setActionRow(null)}
+        onUnuse={() => {
+          const r = actionRow;
+          setActionRow(null);
+          if (r) setUnusing(r);
+        }}
+      />
+
+      <UnuseConfirmModal
+        visible={!!unusing}
+        rewardTitle={unusing?.reward_title ?? ''}
+        rewardIcon={unusing?.reward_icon ?? 'gift'}
+        category={unusing?.reward_category ?? null}
+        onCancel={() => setUnusing(null)}
+        onConfirm={() => {
+          const r = unusing;
+          if (r) handleConfirmUnuse(r);
+        }}
+      />
     </SafeAreaView>
   );
 }

@@ -629,3 +629,57 @@ export function useSellReward() {
     },
   });
 }
+
+/**
+ * Move a used redemption back into the bank. Server-side flips
+ * used_at to null on the same row (preserving cost_paid and the
+ * original redeemed_at). Optimistically removes from the used cache
+ * and adds back to the bank cache.
+ */
+export function useUnuseReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (redemptionId: string) => {
+      const { data, error } = await supabase.rpc('unuse_reward', {
+        p_redemption_id: redemptionId,
+      });
+      if (error) throw error;
+      return data as { id: string };
+    },
+    onMutate: async (redemptionId) => {
+      await queryClient.cancelQueries({ queryKey: rewardKeys.bank() });
+      await queryClient.cancelQueries({ queryKey: rewardKeys.used() });
+      const prevUsed = queryClient.getQueryData<RedemptionEntry[]>(
+        rewardKeys.used(),
+      );
+      const prevBank = queryClient.getQueryData<RedemptionEntry[]>(
+        rewardKeys.bank(),
+      );
+      const moved = prevUsed?.find((r) => r.id === redemptionId);
+      if (prevUsed) {
+        queryClient.setQueryData<RedemptionEntry[]>(
+          rewardKeys.used(),
+          prevUsed.filter((r) => r.id !== redemptionId),
+        );
+      }
+      if (prevBank && moved) {
+        // Front-load it so the user sees it pop up at the top of the
+        // bank immediately. Server-side ordering (by redeemed_at desc)
+        // may shuffle on the next refetch — that's fine.
+        queryClient.setQueryData<RedemptionEntry[]>(
+          rewardKeys.bank(),
+          [{ ...moved, used_at: null }, ...prevBank],
+        );
+      }
+      return { prevUsed, prevBank };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prevUsed) queryClient.setQueryData(rewardKeys.used(), ctx.prevUsed);
+      if (ctx?.prevBank) queryClient.setQueryData(rewardKeys.bank(), ctx.prevBank);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.bank() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.used() });
+    },
+  });
+}

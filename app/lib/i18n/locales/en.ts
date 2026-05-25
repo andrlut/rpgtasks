@@ -682,6 +682,23 @@ const en = {
       cancel: 'Cancel',
       failTitle: 'Could not sell',
     },
+    useConfirm: {
+      eyebrow: 'TIME TO ENJOY',
+      title: 'Enjoy it now!',
+      confirm: 'Enjoy',
+      cancel: 'Save for later',
+    },
+    historyActionSheet: {
+      unuse: 'Send back to bank',
+      unuseSub: 'Marks it available again so you can use it later',
+    },
+    unuseConfirm: {
+      eyebrow: 'BACK TO THE BANK',
+      sub: 'The reward goes back to your bank, ready to use whenever.',
+      confirm: 'Send back',
+      cancel: 'Cancel',
+      failTitle: 'Could not send back',
+    },
     actionSheet: {
       edit: 'Edit reward',
       editSub: 'Change title, cost, icon or category',
