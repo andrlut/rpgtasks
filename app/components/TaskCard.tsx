@@ -34,6 +34,13 @@ interface Props {
   onEdit?: () => void;
   /** Swipe-left handler (skip-today). When omitted, swipe-left does nothing. */
   onSkip?: () => void;
+  /**
+   * Swipe-right handler. When provided, swipe-right fires this instead
+   * of `onComplete` — the home wires this to the per-sub adjust sheet
+   * so the user can pick custom stars before logging. Tap on the check
+   * button continues to fire `onComplete` (quick-complete with defaults).
+   */
+  onSwipeComplete?: () => void;
   isCompleting?: boolean;
 }
 
@@ -68,6 +75,7 @@ export function TaskCard({
   onLongPress,
   onEdit,
   onSkip,
+  onSwipeComplete,
   isCompleting,
 }: Props) {
   const { t } = useT();
@@ -105,11 +113,21 @@ export function TaskCard({
   // ── Swipe gesture ───────────────────────────────────────────────────
   // Activates only after the user has pulled ≥15px horizontally, so taps
   // on the card body / check button still work.
+  // Swipe-right behavior splits in two:
+  //  - `onSwipeComplete` provided → the parent wants the per-sub adjust
+  //    sheet (intentional gesture should let the user pick stars before
+  //    committing).
+  //  - otherwise → quick-complete with default subs, same as tap.
   const fireComplete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-      () => {},
-    );
-    onComplete();
+    if (onSwipeComplete) {
+      Haptics.selectionAsync().catch(() => {});
+      onSwipeComplete();
+    } else {
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
+      onComplete();
+    }
   };
   const fireSkip = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});

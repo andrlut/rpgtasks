@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CoinIcon } from '@/components/CoinIcon';
-import { PercevaGlyph } from '@/components/PercevaGlyph';
 import { tokens } from '@/theme';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -39,14 +38,6 @@ export function XPStatsCard({ level, xpInLevel, xpNeededForLevel }: XPProps) {
         style={styles.cardBg}
       />
       <View style={[styles.cardBorder, styles.cardBorderViolet]} pointerEvents="none" />
-      <View style={styles.glyphSlot} pointerEvents="none">
-        <PercevaGlyph
-          size={130}
-          bare
-          palette="gilded"
-          idSuffix="stats-xp"
-        />
-      </View>
 
       <View style={styles.barRow}>
         <Text style={styles.lbl}>XP</Text>
@@ -114,14 +105,6 @@ export function RewardStatsCard({
         style={styles.cardBg}
       />
       <View style={[styles.cardBorder, styles.cardBorderGold]} pointerEvents="none" />
-      <View style={styles.glyphSlot} pointerEvents="none">
-        <PercevaGlyph
-          size={130}
-          bare
-          palette="gilded"
-          idSuffix="stats-reward"
-        />
-      </View>
 
       <View style={styles.rewardBarRow}>
         <View style={styles.rewardIcon}>
@@ -135,7 +118,7 @@ export function RewardStatsCard({
           <Text style={styles.rewardName} numberOfLines={1}>
             {rewardName}
           </Text>
-          <View style={styles.barTrack}>
+          <View style={styles.rewardBarTrack}>
             <LinearGradient
               colors={tokens.gradient.rewardBarFill}
               locations={tokens.gradient.rewardBarFillLocations}
@@ -192,14 +175,6 @@ const styles = StyleSheet.create({
   cardBorderGold: {
     borderTopColor: 'rgba(255, 224, 138, 0.18)',
   },
-  glyphSlot: {
-    position: 'absolute',
-    bottom: -30,
-    right: -28,
-    width: 130,
-    height: 130,
-    opacity: 0.07,
-  },
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -219,6 +194,15 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface3,
     overflow: 'hidden',
     minWidth: 60,
+  },
+  // Reward bar lives inside a column (under the name) — needs explicit
+  // full width, not a flex: 1 fight with the column's main axis.
+  rewardBarTrack: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: tokens.bg.surface3,
+    overflow: 'hidden',
   },
   barFill: {
     height: '100%',

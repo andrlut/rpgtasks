@@ -5,9 +5,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgLinear, Stop } from 'react-nati
 import { tokens } from '@/theme';
 
 interface Props {
-  /** Pre-formatted compact date, already uppercased — e.g. "SUN · MAY 24". */
-  eyebrowDate: string;
-  /** Display name appended to the eyebrow line — DECO style. */
+  /** Display name shown in the eyebrow line — DECO style. */
   displayName: string;
   /** Big headline: weekday word, e.g. "Sunday,". */
   weekdayLabel: string;
@@ -40,7 +38,6 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
  * vocabulary. Icons sit in 32×32 tiles on the right.
  */
 export function TodayHeader({
-  eyebrowDate,
   displayName,
   weekdayLabel,
   monthDayLabel,
@@ -58,7 +55,7 @@ export function TodayHeader({
     <View style={styles.wrap}>
       <View style={styles.topRow}>
         <Text style={styles.eyebrow} numberOfLines={1}>
-          {eyebrowDate} · {displayName.toUpperCase()}
+          {displayName.toUpperCase()}
         </Text>
         <View style={styles.icons}>
           <IconBtn icon="calendar-outline" onPress={onHistoryPress} />

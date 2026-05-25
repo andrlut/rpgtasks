@@ -58,15 +58,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 0,
   },
+  // The halo + glyph are deliberately oversized and clipped — they
+  // anchor visually on the TodayHeader's ring, which sits ~16px from
+  // the right edge with a 52px diameter. We want the GLYPH center
+  // (size/2 = 120) to land on the ring center (42 from right edge,
+  // ~110 from top below the eyebrow).
+  //   right: -(120 - 42) = -78  → glyph center 42 from right
+  //   top:   ringCenterY - 120 ≈ -10
   halo: {
     position: 'absolute',
-    top: -160,
-    right: -200,
+    top: -190,
+    right: -228,
   },
   glyphSlot: {
     position: 'absolute',
-    top: -40,
-    right: -50,
+    top: -10,
+    right: -78,
     width: 240,
     height: 240,
     opacity: 0.1,

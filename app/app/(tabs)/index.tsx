@@ -39,7 +39,7 @@ import {
 } from '@/lib/api/tasks';
 import { useQuests } from '@/lib/api/quests';
 import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
-import { formatCompactDate, formatHeroDate } from '@/lib/time';
+import { formatHeroDate } from '@/lib/time';
 import { levelProgress, rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 
@@ -362,7 +362,6 @@ export default function HomeScreen() {
         }
       >
         <TodayHeader
-          eyebrowDate={formatCompactDate()}
           displayName={character.data?.profile.display_name ?? t('home.defaultName')}
           weekdayLabel={hero.weekday}
           monthDayLabel={hero.monthDay}
@@ -420,6 +419,7 @@ export default function HomeScreen() {
                     onComplete={() => handleQuickComplete(task)}
                     onLongPress={() => handleLongPress(task)}
                     onSkip={() => handleSwipeSkip(task)}
+                    onSwipeComplete={() => setSheetTask(task)}
                     onEdit={() =>
                       router.push({ pathname: '/task-form', params: { id: task.id } })
                     }
