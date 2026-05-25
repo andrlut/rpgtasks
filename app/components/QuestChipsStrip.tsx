@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useQuests } from '@/lib/api/quests';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 /**
@@ -22,6 +23,7 @@ import { tokens } from '@/theme';
  */
 export function QuestChipsStrip() {
   const router = useRouter();
+  const { t } = useT();
   const quests = useQuests();
   const active = (quests.data ?? []).filter(
     (q) => q.quest.status === 'active',
@@ -74,7 +76,7 @@ export function QuestChipsStrip() {
         >
           <Ionicons name="add" size={12} color={tokens.brand.violet2} />
           <Text style={[styles.chipName, { color: tokens.brand.violet2 }]}>
-            Browse
+            {t('home.quests.browseChip')}
           </Text>
         </LinearGradient>
       </Pressable>
