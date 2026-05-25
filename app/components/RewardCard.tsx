@@ -142,6 +142,13 @@ export function RewardCard({
         onPress={onEdit}
         onLongPress={onLongPress}
         disabled={!onEdit && !onLongPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${reward.title}, ${reward.cost} coins`}
+        accessibilityHint={
+          onLongPress
+            ? 'Tap to edit. Long press to archive or delete.'
+            : 'Tap to edit.'
+        }
       >
         <View style={styles.top}>
           {/* Top row: icon tile + status badge */}

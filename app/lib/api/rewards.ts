@@ -9,6 +9,7 @@ import { characterKeys, useCharacter, type CharacterWithProfile } from './charac
 export const rewardKeys = {
   all: ['rewards'] as const,
   active: () => [...rewardKeys.all, 'active'] as const,
+  archived: () => [...rewardKeys.all, 'archived'] as const,
   detail: (id: string) => [...rewardKeys.all, 'detail', id] as const,
   templates: () => [...rewardKeys.all, 'templates'] as const,
   bank: () => [...rewardKeys.all, 'bank'] as const,
@@ -99,7 +100,7 @@ async function fetchActiveRewards(): Promise<Reward[]> {
     .from('reward')
     .select('*')
     .eq('is_archived', false)
-    .order('cost', { ascending: true });
+    .order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []) as Reward[];
 }
@@ -108,6 +109,25 @@ export function useRewards() {
   return useQuery({
     queryKey: rewardKeys.active(),
     queryFn: fetchActiveRewards,
+  });
+}
+
+/**
+ * Archived rewards — the bin behind the Manage screen. Newest archive
+ * first so a just-arquivada reward sits at the top for an obvious undo.
+ */
+export function useArchivedRewards() {
+  return useQuery({
+    queryKey: rewardKeys.archived(),
+    queryFn: async (): Promise<Reward[]> => {
+      const { data, error } = await supabase
+        .from('reward')
+        .select('*')
+        .eq('is_archived', true)
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Reward[];
+    },
   });
 }
 
@@ -187,13 +207,99 @@ export function useArchiveReward() {
     mutationFn: async (rewardId: string) => {
       const { error } = await supabase
         .from('reward')
-        .update({ is_archived: true })
+        .update({ is_archived: true, updated_at: new Date().toISOString() })
         .eq('id', rewardId);
       if (error) throw error;
     },
     onSuccess: (_data, rewardId) => {
       queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.archived() });
       queryClient.invalidateQueries({ queryKey: rewardKeys.detail(rewardId) });
+      // Tracked row may have pointed at this reward; clearing UX is the
+      // caller's job but we re-fetch so the tracked card disappears.
+      queryClient.invalidateQueries({ queryKey: rewardKeys.tracked() });
+    },
+  });
+}
+
+/**
+ * Move an archived reward back to the active set. Bumps updated_at so
+ * the Archived list re-sorts on the next fetch.
+ */
+export function useRestoreReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rewardId: string) => {
+      const { error } = await supabase
+        .from('reward')
+        .update({ is_archived: false, updated_at: new Date().toISOString() })
+        .eq('id', rewardId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, rewardId) => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.archived() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.detail(rewardId) });
+    },
+  });
+}
+
+/**
+ * Hard delete via RPC. Server-side gates block adopted-from-template
+ * rewards and any reward with redemption history (caller should surface
+ * the error message — it's safe to display verbatim, it's English-only
+ * for now since the gates are intentional dead-ends, not edge cases).
+ */
+export function useDeleteReward() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rewardId: string) => {
+      const { error } = await supabase.rpc('delete_reward', {
+        p_reward_id: rewardId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
+      queryClient.invalidateQueries({ queryKey: rewardKeys.archived() });
+    },
+  });
+}
+
+/**
+ * Batch reorder the active rewards. Pass the full active list in the
+ * order the user wants — sort_order is rewritten 1..N server-side.
+ * Optimistic: we update the cached active list immediately so the drag
+ * feels weightless, then reconcile on settle.
+ */
+export function useReorderRewards() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      const { error } = await supabase.rpc('reorder_rewards', {
+        p_ids: orderedIds,
+      });
+      if (error) throw error;
+    },
+    onMutate: async (orderedIds) => {
+      await queryClient.cancelQueries({ queryKey: rewardKeys.active() });
+      const prev = queryClient.getQueryData<Reward[]>(rewardKeys.active());
+      if (prev) {
+        // Rebuild the array in the new order. Any id not found is dropped
+        // (shouldn't happen — caller built the list from the same cache).
+        const byId = new Map(prev.map((r) => [r.id, r]));
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter((r): r is Reward => !!r);
+        queryClient.setQueryData<Reward[]>(rewardKeys.active(), next);
+      }
+      return { prev };
+    },
+    onError: (_err, _ids, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(rewardKeys.active(), ctx.prev);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rewardKeys.active() });
     },
   });
 }
