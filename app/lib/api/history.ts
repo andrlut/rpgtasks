@@ -154,6 +154,11 @@ export interface DayDetail {
   completions: DayCompletion[];
   /** Active tasks not yet completed on this day — candidates for retro logging. */
   openTasks: OpenTaskOnDay[];
+  /** Tasks skipped on this specific day (task_skip rows). Each entry is
+   *  hydrated to the live task; rows whose task no longer exists are
+   *  filtered out. Used by the History "Skipped" drawer and the day
+   *  stats row. */
+  skipped: TaskWithSubs[];
   totalXp: number;
   totalCoins: number;
 }
@@ -294,10 +299,28 @@ export function useDayDetail(date: Date) {
           completedThisDay: completionCountThisDay.get(raw.id) ?? 0,
         }));
 
+      // Tasks the user explicitly skipped on this day. `skipped_for` is
+      // a YYYY-MM-DD date column (not a timestamp), so we match on the
+      // local-day key.
+      const { data: skips, error: skipErr } = await supabase
+        .from('task_skip')
+        .select('task_id')
+        .eq('skipped_for', dateKey);
+      if (skipErr) throw skipErr;
+      const skippedIds = new Set((skips ?? []).map((s) => s.task_id));
+      const tasksById = new Map(
+        taskRows.map((t) => [t.id, hydrateTask(t, parseRecurrence(t.recurrence))]),
+      );
+      const skipped: TaskWithSubs[] = [];
+      for (const id of skippedIds) {
+        const t = tasksById.get(id);
+        if (t) skipped.push(t);
+      }
+
       const totalXp = completions.reduce((s, c) => s + c.xpGranted, 0);
       const totalCoins = completions.reduce((s, c) => s + c.coinsGranted, 0);
 
-      return { dateKey, completions, openTasks, totalXp, totalCoins };
+      return { dateKey, completions, openTasks, skipped, totalXp, totalCoins };
     },
   });
 }
