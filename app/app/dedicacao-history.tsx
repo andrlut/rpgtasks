@@ -8,6 +8,7 @@ import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   findNodeHandle,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -210,6 +211,10 @@ export default function DedicacaoHistoryScreen() {
     // source of truth for "what happened"; an empty day has nothing to
     // scroll to.
     if (!hasEntries) return;
+    // findNodeHandle isn't supported on web (RN-Web restriction). The
+    // cell still highlights; user can scroll manually. Native APK keeps
+    // the smooth auto-scroll.
+    if (Platform.OS === 'web') return;
     const node = dayHeaderRefs.current.get(k);
     const sv = scrollViewRef.current;
     if (!node || !sv) return;

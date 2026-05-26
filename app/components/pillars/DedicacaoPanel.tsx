@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   findNodeHandle,
+  Platform,
   Pressable,
   type ScrollView as ScrollViewType,
   StyleSheet,
@@ -200,6 +201,10 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
 
   const handleSlicePress = (dim: DimensionId) => {
     setHighlightDim(dim);
+    // findNodeHandle isn't supported on web (RN-Web restriction). The
+    // border still flashes; user scrolls manually. Native APK keeps
+    // the smooth auto-scroll.
+    if (Platform.OS === 'web') return;
     const node = cardRefs.current[dim];
     const sv = scrollViewRef?.current;
     if (!node || !sv) return;
