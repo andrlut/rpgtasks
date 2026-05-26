@@ -17,11 +17,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  CalendarHeatmap,
-  HeatmapLegend,
-} from '@/components/history/CalendarHeatmap';
 import { CompletionLog } from '@/components/history/CompletionLog';
+import {
+  HeatmapLegend,
+  MonthHeatmap,
+} from '@/components/history/MonthHeatmap';
 import { HistoryFilters } from '@/components/history/HistoryFilters';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import {
@@ -201,9 +201,15 @@ export default function DedicacaoHistoryScreen() {
   // ── Scroll-to-day on heatmap cell press ──
   const scrollViewRef = useRef<ScrollView>(null);
   const dayHeaderRefs = useRef<Map<string, View | null>>(new Map());
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
 
-  const handleCellPress = (date: Date) => {
+  const handleCellPress = (date: Date, _xp: number, hasEntries: boolean) => {
     const k = dayKey(date);
+    setSelectedDayKey(k);
+    // No entries on this day → just highlight the cell. The log is the
+    // source of truth for "what happened"; an empty day has nothing to
+    // scroll to.
+    if (!hasEntries) return;
     const node = dayHeaderRefs.current.get(k);
     const sv = scrollViewRef.current;
     if (!node || !sv) return;
@@ -324,7 +330,7 @@ export default function DedicacaoHistoryScreen() {
               </View>
             ) : (
               <>
-                <CalendarHeatmap
+                <MonthHeatmap
                   from={windowComp.start}
                   to={windowComp.end}
                   dailyTotals={dailyTotals}
@@ -332,8 +338,9 @@ export default function DedicacaoHistoryScreen() {
                   weekStart={settings.weekStart}
                   onCellPress={handleCellPress}
                   accent={accent}
+                  selectedKey={selectedDayKey}
                 />
-                <HeatmapLegend accent={accent} weekStart={settings.weekStart} />
+                <HeatmapLegend accent={accent} />
               </>
             )}
           </View>

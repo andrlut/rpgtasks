@@ -1,6 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 
 import { PeriodSelector } from '@/components/dedicacao/PeriodSelector';
 import type { WindowSpec } from '@/lib/api/dedicacao';
@@ -16,6 +25,12 @@ import {
   SUBS_BY_DIM,
 } from '@/theme/dimensions';
 
+// Enable native layout animations on Android — needed for the collapsible
+// section's smooth open/close. iOS has them on by default.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 interface Props {
   spec: WindowSpec;
   onSpecChange: (s: WindowSpec) => void;
@@ -28,14 +43,14 @@ interface Props {
 const MIN_XP_STEPS = [0, 25, 50, 100];
 
 /**
- * Filter bar for the Dedicação history screen. Three independent axes:
- *   - Period chip selector (delegated to PeriodSelector + ◀ ▶ arrows).
- *   - Dim multi-select (6 chips, dim-colored when on).
- *   - Sub multi-select (12 chips wrapped, sub icon, dim-colored when on).
- *   - Min XP per completion (4 chips: any/25+/50+/100+).
+ * Filter bar for the Dedicação history screen — two layers:
  *
- * Stateless — owns nothing, just emits new filter snapshots. URL syncing
- * lives in the parent route so deep links survive remounts.
+ *   1. Collapsible header chip ("Filtros · N") that opens the drawer
+ *      with dim multi-select + sub multi-select + min-XP chips.
+ *   2. Period chip selector + ◀ ▶ arrows, always visible at the bottom.
+ *
+ * The period control lives last in the stack — closest to the heatmap
+ * it drives, and the most-used control for moving through time.
  */
 export function HistoryFilters({
   spec,
@@ -47,6 +62,13 @@ export function HistoryFilters({
 }: Props) {
   const { locale } = useT();
   const metaLookup = useMetaLookup();
+  const [open, setOpen] = useState(false);
+
+  const toggleOpen = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    Haptics.selectionAsync().catch(() => {});
+    setOpen((o) => !o);
+  };
 
   const toggleDim = (dim: DimensionId) => {
     Haptics.selectionAsync().catch(() => {});
@@ -92,6 +114,191 @@ export function HistoryFilters({
 
   return (
     <View style={styles.wrap}>
+      <Pressable
+        onPress={toggleOpen}
+        style={({ pressed }) => [
+          styles.toggle,
+          open && styles.toggleOpen,
+          pressed && { opacity: 0.85 },
+        ]}
+        hitSlop={4}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+      >
+        <Ionicons
+          name="options-outline"
+          size={14}
+          color={activeCount > 0 ? tokens.brand.violet2 : tokens.text.mid}
+        />
+        <Text
+          style={[
+            styles.toggleText,
+            activeCount > 0 && { color: tokens.brand.violet2 },
+          ]}
+        >
+          {locale === 'pt' ? 'Filtros' : 'Filters'}
+          {activeCount > 0 && ` · ${activeCount}`}
+        </Text>
+        <View style={styles.toggleSpacer} />
+        {activeCount > 0 && (
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              clearAll();
+            }}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.clearBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityLabel={locale === 'pt' ? 'Limpar filtros' : 'Clear filters'}
+          >
+            <Ionicons
+              name="close-circle"
+              size={14}
+              color={tokens.text.mid}
+            />
+          </Pressable>
+        )}
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={14}
+          color={tokens.text.mid}
+        />
+      </Pressable>
+
+      {open && (
+        <View style={styles.drawer}>
+          <Text style={styles.sectionLabel}>
+            {locale === 'pt' ? 'DIMENSÕES' : 'DIMENSIONS'}
+          </Text>
+          <View style={styles.chipWrap}>
+            {DIMENSION_ORDER.map((id) => {
+              const meta = DIMENSION_META[id];
+              const isActive = filters.dims.has(id);
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => toggleDim(id)}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    isActive && {
+                      backgroundColor: meta.bg,
+                      borderColor: `${meta.color}99`,
+                    },
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityState={isActive ? { selected: true } : {}}
+                >
+                  <Ionicons
+                    name={meta.iconName as never}
+                    size={12}
+                    color={isActive ? meta.color : tokens.text.dim}
+                  />
+                  <Text
+                    style={[
+                      styles.chipLabel,
+                      { color: isActive ? meta.color : tokens.text.dim },
+                    ]}
+                  >
+                    {metaLookup.dim(id).label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={styles.sectionLabel}>SUBS</Text>
+          <View style={styles.chipWrap}>
+            {DIMENSION_ORDER.flatMap((dim) => SUBS_BY_DIM[dim]).map(
+              (subId) => {
+                const subMeta = SUB_META[subId];
+                const dimMeta = DIMENSION_META[subMeta.dimensionId];
+                const isActive = filters.subs.has(subId);
+                return (
+                  <Pressable
+                    key={subId}
+                    onPress={() => toggleSub(subId)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      isActive && {
+                        backgroundColor: dimMeta.bg,
+                        borderColor: `${dimMeta.color}99`,
+                      },
+                      pressed && { opacity: 0.85 },
+                    ]}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityState={isActive ? { selected: true } : {}}
+                  >
+                    <Ionicons
+                      name={subMeta.iconName as never}
+                      size={12}
+                      color={isActive ? dimMeta.color : tokens.text.dim}
+                    />
+                    <Text
+                      style={[
+                        styles.chipLabel,
+                        {
+                          color: isActive ? dimMeta.color : tokens.text.dim,
+                        },
+                      ]}
+                    >
+                      {metaLookup.sub(subId).label}
+                    </Text>
+                  </Pressable>
+                );
+              },
+            )}
+          </View>
+
+          <Text style={styles.sectionLabel}>
+            {locale === 'pt' ? 'XP MÍNIMO POR ATIVIDADE' : 'MIN XP PER ENTRY'}
+          </Text>
+          <View style={styles.minXpRow}>
+            {MIN_XP_STEPS.map((step) => {
+              const isActive = filters.minXp === step;
+              return (
+                <Pressable
+                  key={step}
+                  onPress={() => setMinXp(step)}
+                  style={({ pressed }) => [
+                    styles.minChip,
+                    isActive && {
+                      backgroundColor: 'rgba(155, 130, 255, 0.18)',
+                      borderColor: 'rgba(155, 130, 255, 0.45)',
+                    },
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  hitSlop={4}
+                  accessibilityRole="button"
+                  accessibilityState={isActive ? { selected: true } : {}}
+                >
+                  <Text
+                    style={[
+                      styles.chipLabel,
+                      {
+                        color: isActive
+                          ? tokens.brand.violet2
+                          : tokens.text.dim,
+                      },
+                    ]}
+                  >
+                    {step === 0
+                      ? locale === 'pt'
+                        ? 'Qualquer'
+                        : 'Any'
+                      : `${step}+`}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
       <PeriodSelector
         spec={spec}
         onChange={onSpecChange}
@@ -101,153 +308,6 @@ export function HistoryFilters({
         border="rgba(155, 130, 255, 0.35)"
         labels={chipLabels}
       />
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>
-          {locale === 'pt' ? 'DIMENSÕES' : 'DIMENSIONS'}
-        </Text>
-        {activeCount > 0 && (
-          <Pressable
-            onPress={clearAll}
-            style={({ pressed }) => [
-              styles.clearChip,
-              pressed && { opacity: 0.7 },
-            ]}
-            hitSlop={6}
-          >
-            <Ionicons
-              name="close-circle"
-              size={11}
-              color={tokens.text.mid}
-            />
-            <Text style={styles.clearText}>
-              {locale === 'pt'
-                ? `Limpar (${activeCount})`
-                : `Clear (${activeCount})`}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-      <View style={styles.chipWrap}>
-        {DIMENSION_ORDER.map((id) => {
-          const meta = DIMENSION_META[id];
-          const isActive = filters.dims.has(id);
-          return (
-            <Pressable
-              key={id}
-              onPress={() => toggleDim(id)}
-              style={({ pressed }) => [
-                styles.chip,
-                isActive && {
-                  backgroundColor: meta.bg,
-                  borderColor: `${meta.color}99`,
-                },
-                pressed && { opacity: 0.85 },
-              ]}
-              hitSlop={4}
-              accessibilityRole="button"
-              accessibilityState={isActive ? { selected: true } : {}}
-            >
-              <Ionicons
-                name={meta.iconName as never}
-                size={12}
-                color={isActive ? meta.color : tokens.text.dim}
-              />
-              <Text
-                style={[
-                  styles.chipLabel,
-                  { color: isActive ? meta.color : tokens.text.dim },
-                ]}
-              >
-                {metaLookup.dim(id).label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Text style={styles.sectionLabel}>SUBS</Text>
-      <View style={styles.chipWrap}>
-        {DIMENSION_ORDER.flatMap((dim) => SUBS_BY_DIM[dim]).map((subId) => {
-          const subMeta = SUB_META[subId];
-          const dimMeta = DIMENSION_META[subMeta.dimensionId];
-          const isActive = filters.subs.has(subId);
-          return (
-            <Pressable
-              key={subId}
-              onPress={() => toggleSub(subId)}
-              style={({ pressed }) => [
-                styles.chip,
-                isActive && {
-                  backgroundColor: dimMeta.bg,
-                  borderColor: `${dimMeta.color}99`,
-                },
-                pressed && { opacity: 0.85 },
-              ]}
-              hitSlop={4}
-              accessibilityRole="button"
-              accessibilityState={isActive ? { selected: true } : {}}
-            >
-              <Ionicons
-                name={subMeta.iconName as never}
-                size={12}
-                color={isActive ? dimMeta.color : tokens.text.dim}
-              />
-              <Text
-                style={[
-                  styles.chipLabel,
-                  { color: isActive ? dimMeta.color : tokens.text.dim },
-                ]}
-              >
-                {metaLookup.sub(subId).label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Text style={styles.sectionLabel}>
-        {locale === 'pt' ? 'XP MÍNIMO POR ATIVIDADE' : 'MIN XP PER ENTRY'}
-      </Text>
-      <View style={styles.minXpRow}>
-        {MIN_XP_STEPS.map((step) => {
-          const isActive = filters.minXp === step;
-          return (
-            <Pressable
-              key={step}
-              onPress={() => setMinXp(step)}
-              style={({ pressed }) => [
-                styles.minChip,
-                isActive && {
-                  backgroundColor: 'rgba(155, 130, 255, 0.18)',
-                  borderColor: 'rgba(155, 130, 255, 0.45)',
-                },
-                pressed && { opacity: 0.85 },
-              ]}
-              hitSlop={4}
-              accessibilityRole="button"
-              accessibilityState={isActive ? { selected: true } : {}}
-            >
-              <Text
-                style={[
-                  styles.chipLabel,
-                  {
-                    color: isActive
-                      ? tokens.brand.violet2
-                      : tokens.text.dim,
-                  },
-                ]}
-              >
-                {step === 0
-                  ? locale === 'pt'
-                    ? 'Qualquer'
-                    : 'Any'
-                  : `${step}+`}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
     </View>
   );
 }
@@ -256,31 +316,48 @@ const styles = StyleSheet.create({
   wrap: {
     gap: tokens.space[3],
   },
-  sectionHeader: {
+  toggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: 10,
+    borderRadius: tokens.radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  toggleOpen: {
+    borderColor: 'rgba(155, 130, 255, 0.35)',
+    backgroundColor: 'rgba(155, 130, 255, 0.06)',
+  },
+  toggleText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 12,
+    color: tokens.text.mid,
+    letterSpacing: 0.3,
+  },
+  toggleSpacer: { flex: 1 },
+  clearBtn: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drawer: {
+    gap: tokens.space[2],
+    paddingHorizontal: tokens.space[3],
+    paddingVertical: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderWidth: 1,
+    borderColor: tokens.border.base,
   },
   sectionLabel: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
     color: tokens.text.dim,
     letterSpacing: 1.4,
-  },
-  clearChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: tokens.radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  clearText: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.mid,
-    letterSpacing: 0.2,
   },
   chipWrap: {
     flexDirection: 'row',
