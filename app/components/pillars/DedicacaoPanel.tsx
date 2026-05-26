@@ -269,6 +269,37 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
           size={donutSize}
           onSlicePress={handleSlicePress}
         />
+        {/* Entry point to the history screen — sits in the space where the
+            caption used to be. Quiet, contextual, doesn't compete with the
+            chip selector above. */}
+        <Pressable
+          onPress={() =>
+            router.push({
+              pathname: '/dedicacao-history',
+              params: {
+                granularity: spec.granularity,
+                offset: String(spec.offset),
+              },
+            })
+          }
+          hitSlop={6}
+          style={({ pressed }) => [
+            styles.historyLink,
+            pressed && { opacity: 0.6 },
+          ]}
+          accessibilityRole="link"
+        >
+          <Text style={styles.historyLinkText}>
+            {locale === 'pt'
+              ? 'Ver histórico completo'
+              : 'Open full history'}
+          </Text>
+          <Ionicons
+            name="arrow-forward"
+            size={12}
+            color={tokens.text.mid}
+          />
+        </Pressable>
       </View>
 
       <View style={styles.list}>
@@ -397,7 +428,26 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                           ? Math.round((sub.windowXp / winXp) * 100)
                           : 0;
                       return (
-                        <View key={sub.subId} style={styles.subRow}>
+                        <Pressable
+                          key={sub.subId}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/dedicacao-history',
+                              params: {
+                                granularity: spec.granularity,
+                                offset: String(spec.offset),
+                                subs: sub.subId,
+                              },
+                            })
+                          }
+                          style={({ pressed }) => [
+                            styles.subRow,
+                            pressed && { opacity: 0.6 },
+                          ]}
+                          hitSlop={4}
+                          accessibilityRole="link"
+                          accessibilityLabel={`${subLabel} history`}
+                        >
                           <View
                             style={[
                               styles.subIcon,
@@ -447,15 +497,19 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                               </Text>
                             </View>
                           </View>
-                        </View>
+                        </Pressable>
                       );
                     });
                   })()}
                   <Pressable
                     onPress={() =>
                       router.push({
-                        pathname: '/dimension/[id]',
-                        params: { id },
+                        pathname: '/dedicacao-history',
+                        params: {
+                          granularity: spec.granularity,
+                          offset: String(spec.offset),
+                          dims: id,
+                        },
                       })
                     }
                     style={({ pressed }) => [
@@ -466,8 +520,8 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
                   >
                     <Text style={[styles.detailLinkText, { color: meta.color }]}>
                       {locale === 'pt'
-                        ? `Ver ${metaLookup.dim(id).label}`
-                        : `Open ${metaLookup.dim(id).label}`}
+                        ? `Histórico de ${metaLookup.dim(id).label}`
+                        : `${metaLookup.dim(id).label} history`}
                     </Text>
                     <Ionicons
                       name="arrow-forward"
@@ -487,7 +541,20 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: tokens.space[3] },
-  donutWrap: { alignItems: 'center' },
+  donutWrap: { alignItems: 'center', gap: tokens.space[2] },
+  historyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  historyLinkText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.text.mid,
+    letterSpacing: 0.3,
+  },
   list: { gap: tokens.space[2] },
   attribute: {
     paddingVertical: tokens.space[3],
