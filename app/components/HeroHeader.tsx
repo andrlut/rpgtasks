@@ -193,37 +193,9 @@ export function HeroHeader() {
         </View>
       </View>
 
-      {/* XP bar + caption */}
-      <View style={styles.xpRow}>
-        <View style={styles.xpTrack}>
-          <LinearGradient
-            colors={[tokens.brand.violet, tokens.brand.violet2]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={[
-              styles.xpFill,
-              {
-                width: `${Math.round(progressFraction * 100)}%`,
-              },
-            ]}
-          />
-        </View>
-        <Text style={styles.xpLabel}>
-          <Text style={styles.xpLabelNum}>
-            {Math.max(
-              0,
-              lp.xpNeededForLevel - lp.xpInLevel,
-            ).toLocaleString()}
-          </Text>
-          <Text style={styles.xpLabelRest}>
-            {locale === 'pt' ? ' XP até LV ' : ' XP to LV '}
-            {lp.level + 1}
-          </Text>
-        </Text>
-      </View>
-
       {/* Faint horizontal divider — separates header from the tab body
-          without drawing a hard line. */}
+          without drawing a hard line. The XP progress story already lives
+          in the avatar's ring; a second bar here was redundant. */}
       <LinearGradient
         colors={[
           'rgba(255,255,255,0)',
@@ -308,42 +280,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     color: tokens.text.hi,
     marginTop: 2,
-  },
-  xpRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 14,
-  },
-  xpTrack: {
-    flex: 1,
-    height: 5,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  xpFill: {
-    height: 5,
-    borderRadius: 3,
-    shadowColor: tokens.brand.violet2,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    boxShadow: '0px 0px 6px rgba(155, 130, 255, 0.4)',
-  },
-  xpLabel: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-  },
-  xpLabelNum: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    color: tokens.text.hi,
-  },
-  xpLabelRest: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.mid,
   },
   divider: {
     height: 1,
