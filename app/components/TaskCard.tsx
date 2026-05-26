@@ -24,6 +24,8 @@ import { DIMENSION_META, SUB_META } from '@/theme/dimensions';
 
 import { useMetaLookup } from '@/lib/i18n/meta';
 
+import { SubStack } from './SubStack';
+
 interface Props {
   task: TaskWithSubs;
   /** Quick-tap completion (uses the task's default subs). */
@@ -291,6 +293,16 @@ export function TaskCard({
             </Text>
 
             <View style={styles.metaRow}>
+              {/* Mini sub-stack — small overlapping icons for each sub
+                  the task touches. Sits next to the colored pips: pips
+                  encode how heavy (per-star), stack encodes which subs. */}
+              {task.subs.length > 0 && (
+                <SubStack
+                  subIds={task.subs.map((s) => s.sub_id)}
+                  max={3}
+                  size={18}
+                />
+              )}
               <SubColoredPips subs={task.subs} />
               <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
               {showRecurrenceNote && (
