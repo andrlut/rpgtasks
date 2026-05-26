@@ -42,20 +42,26 @@ export function formatCompactDate(date: Date = new Date(), locale?: LanguageCode
  *  the month/day fragment distinctly.
  *
  *  English: { weekday: "Sunday,", monthDay: "May 24" }
- *  Portuguese: { weekday: "Domingo,", monthDay: "24 de mai" }
+ *  Portuguese: { weekday: "Segunda,", monthDay: "24 de mai" }
  *
- *  Capitalizes the weekday (Portuguese `toLocaleDateString` returns it
- *  lowercase) and strips the trailing period that pt-BR adds to the
- *  abbreviated month (e.g. "mai." → "mai") — looks weird in a big
- *  headline.
+ *  - Capitalizes the weekday (Portuguese `toLocaleDateString` returns it
+ *    lowercase).
+ *  - Strips the trailing period that pt-BR adds to the abbreviated month
+ *    (e.g. "mai." → "mai") — looks weird in a big headline.
+ *  - Strips the "-feira" suffix from Portuguese weekdays
+ *    (Mon-Fri come as "segunda-feira", "terça-feira", etc.) — Saturday
+ *    and Sunday are already short ("sábado", "domingo") so they pass
+ *    through untouched. The full form was wrapping / clipping next to
+ *    the ring in 360-wide phones.
  */
 export function formatHeroDate(
   date: Date = new Date(),
   locale?: LanguageCode,
 ): { weekday: string; monthDay: string } {
   const tag = bcp47(locale);
-  const weekday = date.toLocaleDateString(tag, { weekday: 'long' });
-  const cap = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  const weekdayRaw = date.toLocaleDateString(tag, { weekday: 'long' });
+  const trimmed = weekdayRaw.replace(/-feira$/i, '');
+  const cap = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
   const monthDay = date
     .toLocaleDateString(tag, { month: 'short', day: 'numeric' })
     .replace(/\.$/, '');
