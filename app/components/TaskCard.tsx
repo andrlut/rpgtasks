@@ -355,9 +355,13 @@ function SubIconTile({ task }: { task: TaskWithSubs }) {
   const meta = useMetaLookup();
   const sub = meta.sub(task.primary_sub_id);
   const dim = meta.dim(task.primary_dimension_id);
+  // Custom icon picked in the task form overrides the auto-derived
+  // primary-sub icon. Tile color/border stays tied to the primary
+  // sub's dim so the identity still reads.
+  const iconName = (task.icon ?? sub.iconName) as never;
   return (
     <View style={[styles.subTile, { backgroundColor: dim.bg }]}>
-      <Ionicons name={sub.iconName as never} size={18} color={dim.color} />
+      <Ionicons name={iconName} size={18} color={dim.color} />
     </View>
   );
 }

@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RecurrencePicker } from '@/components/RecurrencePicker';
 import { SubPicker } from '@/components/SubPicker';
+import { SUB_META } from '@/theme/dimensions';
 import {
   useArchiveTask,
   useCreateTask,
@@ -38,6 +39,64 @@ function legacyTypeFor(r: Recurrence): 'one_shot' | 'daily' | 'weekly' {
   // daily and monthly both map to daily for the legacy column
   return 'daily';
 }
+
+/**
+ * Curated Ionicons covering the main task archetypes. First row = the
+ * sub-aligned icons (same defaults the SubIconTile uses) so picking
+ * "default-y" stays one tap. Rest = expressive choices grouped by
+ * domain. Same shape as `ICON_CHOICES` in reward-form.
+ */
+const TASK_ICON_CHOICES = [
+  // Sub defaults (mirror SUB_META.iconName — keeps the auto-derived
+  // look one tap away even after the user opens the picker)
+  'moon',
+  'restaurant',
+  'barbell',
+  'walk',
+  'book',
+  'flower',
+  'cash',
+  'briefcase',
+  'people',
+  'heart',
+  'game-controller',
+  'hammer',
+  // Body / movement
+  'bicycle',
+  'fitness',
+  'basketball',
+  'football',
+  'tennisball',
+  // Mind / focus
+  'library',
+  'school',
+  'pencil',
+  'language',
+  'bulb',
+  'compass',
+  // Wealth / craft
+  'card',
+  'wallet',
+  'trending-up',
+  'build',
+  'color-palette',
+  'brush',
+  'camera',
+  'musical-notes',
+  // Bonds / social
+  'call',
+  'chatbubbles',
+  'gift',
+  // Misc daily
+  'water',
+  'sunny',
+  'bed',
+  'cafe',
+  'leaf',
+  'medkit',
+  'time',
+  'checkbox',
+] as const;
 
 export default function TaskFormScreen() {
   const router = useRouter();
@@ -66,6 +125,9 @@ export default function TaskFormScreen() {
   const [recurrence, setRecurrence] = useState<Recurrence>({ type: 'daily' });
   const [targetCount, setTargetCount] = useState<number>(1);
   const [subs, setSubs] = useState<TaskSub[]>([]);
+  // null = auto (use the primary sub's icon at render time). User-picked
+  // value sticks even if subs change later — predictable contract.
+  const [icon, setIcon] = useState<string | null>(null);
   const [prefillApplied, setPrefillApplied] = useState(false);
   // Keep scroll content reachable while the keyboard is up. `endCoordinates`
   // doesn't always include the keyboard's tool/suggestion bar, so we add a
@@ -80,6 +142,7 @@ export default function TaskFormScreen() {
       setRecurrence(existing.data.recurrence);
       setTargetCount(existing.data.target_count ?? 1);
       setSubs(existing.data.subs);
+      setIcon(existing.data.icon ?? null);
     }
   }, [existing.data]);
 
@@ -95,6 +158,7 @@ export default function TaskFormScreen() {
     setRecurrence(templateSource.recurrence);
     setTargetCount(templateSource.target_count ?? 1);
     setSubs(templateSource.subs);
+    setIcon(templateSource.icon ?? null);
     setPrefillApplied(true);
   }, [isEdit, prefillApplied, templateSource]);
 
@@ -117,8 +181,9 @@ export default function TaskFormScreen() {
       recurrence,
       target_count: recurrence.type === 'one_shot' ? 1 : targetCount,
       subs,
+      icon,
     };
-  }, [title, description, recurrence, targetCount, subs, totalStars]);
+  }, [title, description, recurrence, targetCount, subs, totalStars, icon]);
 
   /** True when editing a template-adopted task AND the user has changed
    *  any field that triggers the template-link drop (title, description,
@@ -280,6 +345,63 @@ export default function TaskFormScreen() {
               numberOfLines={3}
               textAlignVertical="top"
             />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Icon</Text>
+            <Text style={styles.hint}>
+              Pick the glyph the card shows. Leave on default to inherit
+              from the primary sub.
+            </Text>
+            <View style={styles.iconGrid}>
+              {/* "Auto" pick — clears the override, falls back to
+                  primary sub icon at render time. */}
+              <Pressable
+                onPress={() => setIcon(null)}
+                style={[
+                  styles.iconCell,
+                  icon === null && styles.iconCellSelected,
+                ]}
+                accessibilityLabel="Use primary sub icon"
+              >
+                {(() => {
+                  const primarySubId = subs[0]?.sub_id;
+                  const autoIcon = primarySubId
+                    ? (SUB_META[primarySubId]?.iconName as never)
+                    : ('ellipse-outline' as never);
+                  return (
+                    <Ionicons
+                      name={autoIcon}
+                      size={22}
+                      color={
+                        icon === null
+                          ? tokens.brand.violet2
+                          : tokens.text.mid
+                      }
+                    />
+                  );
+                })()}
+              </Pressable>
+              {TASK_ICON_CHOICES.map((name) => {
+                const selected = name === icon;
+                return (
+                  <Pressable
+                    key={name}
+                    onPress={() => setIcon(name)}
+                    style={[
+                      styles.iconCell,
+                      selected && styles.iconCellSelected,
+                    ]}
+                  >
+                    <Ionicons
+                      name={name as never}
+                      size={22}
+                      color={selected ? tokens.brand.violet2 : tokens.text.mid}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -461,6 +583,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: tokens.text.dim,
     letterSpacing: 0.4,
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: tokens.space[2],
+  },
+  iconCell: {
+    width: 52,
+    height: 52,
+    borderRadius: tokens.radius.md,
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCellSelected: {
+    // Violet accent matches the home check button — picks the task
+    // domain palette (gold goes to rewards).
+    borderColor: tokens.brand.violet2,
+    backgroundColor: 'rgba(155, 130, 255, 0.16)',
   },
   archiveButton: {
     flexDirection: 'row',

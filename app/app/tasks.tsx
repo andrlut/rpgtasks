@@ -734,7 +734,7 @@ function DragRowInner({ task }: { task: TaskWithSubs }) {
       <View style={[styles.subDot, { backgroundColor: dimMeta.bg }]}>
         {primarySubMeta && (
           <Ionicons
-            name={primarySubMeta.iconName as never}
+            name={(task.icon ?? primarySubMeta.iconName) as never}
             size={14}
             color={dimMeta.color}
           />
@@ -977,7 +977,7 @@ function TaskRow({ task, divider, onPress }: TaskRowProps) {
       <View style={[styles.subDot, { backgroundColor: dimMeta.bg }]}>
         {primarySubMeta && (
           <Ionicons
-            name={primarySubMeta.iconName as never}
+            name={(task.icon ?? primarySubMeta.iconName) as never}
             size={14}
             color={dimMeta.color}
           />

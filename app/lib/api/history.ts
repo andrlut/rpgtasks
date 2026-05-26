@@ -205,6 +205,7 @@ interface TaskRowFull {
   created_at: string;
   updated_at: string;
   template_id: string | null;
+  icon: string | null;
   task_sub: { sub_id: string; stars: number }[] | null;
 }
 
@@ -229,6 +230,7 @@ function hydrateTask(raw: TaskRowFull, recurrence: TaskWithSubs['recurrence']): 
     created_at: raw.created_at,
     updated_at: raw.updated_at,
     template_id: raw.template_id,
+    icon: raw.icon,
     subs,
     primary_sub_id: primary,
     primary_dimension_id: dimensionForSub(primary),

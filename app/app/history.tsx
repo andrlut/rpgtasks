@@ -459,6 +459,7 @@ export default function HistoryScreen() {
                   created_at: '',
                   updated_at: '',
                   template_id: null,
+                  icon: null,
                   subs: c.subs,
                   primary_sub_id: sub ?? ('sleep' as never),
                   primary_dimension_id: sub

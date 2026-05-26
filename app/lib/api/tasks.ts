@@ -38,6 +38,9 @@ export interface TaskFormInput {
   target_count: number;
   /** N sub allocations, sum of stars 1..5 (DB-enforced via set_task_subs). */
   subs: TaskSub[];
+  /** Optional Ionicons name override — null means auto-derive from
+   *  primary sub at render time. */
+  icon: string | null;
 }
 
 // ─── Row shapes coming from PostgREST ────────────────────────────────────
@@ -59,6 +62,7 @@ interface TaskRow {
   created_at: string;
   updated_at: string;
   template_id: string | null;
+  icon: string | null;
   task_sub: TaskSubRow[] | null;
 }
 
@@ -70,6 +74,7 @@ interface TaskTemplateRow {
   recurrence: unknown;
   target_count: number;
   sort_order: number;
+  icon: string | null;
   task_template_sub: TaskSubRow[] | null;
 }
 
@@ -119,6 +124,7 @@ function mapTaskRow(t: TaskRow): TaskWithSubs {
     created_at: t.created_at,
     updated_at: t.updated_at,
     template_id: t.template_id,
+    icon: t.icon,
     subs,
     primary_sub_id: primarySub,
     primary_dimension_id: dimensionForSub(primarySub),
@@ -142,6 +148,7 @@ function mapTaskTemplateRow(t: TaskTemplateRow): TaskTemplateWithSubs {
     recurrence: parseRecurrence(t.recurrence),
     target_count: t.target_count ?? 1,
     sort_order: t.sort_order,
+    icon: t.icon,
     subs,
     primary_sub_id: primarySub,
     primary_dimension_id: dimensionForSub(primarySub),
@@ -866,6 +873,7 @@ export function useCreateTask() {
           task_type: input.task_type,
           recurrence: input.recurrence,
           target_count: input.target_count,
+          icon: input.icon,
         })
         .select('id')
         .single();
@@ -906,6 +914,7 @@ export function useUpdateTask(taskId: string) {
         task_type: input.task_type,
         recurrence: input.recurrence,
         target_count: input.target_count,
+        icon: input.icon,
       };
       if (input.dropTemplateLink) {
         patch.template_id = null;

@@ -276,6 +276,9 @@ export interface Task {
   updated_at: string;
   /** Set when the task was adopted from a task_template. NULL = custom-made. */
   template_id: string | null;
+  /** Optional Ionicons name overriding the auto-derived primary-sub icon
+   *  on the TaskCard tile. Null/undefined falls back to the sub's icon. */
+  icon: string | null;
 }
 
 export interface TaskTemplate {
@@ -286,6 +289,9 @@ export interface TaskTemplate {
   recurrence: Recurrence;
   target_count: number;
   sort_order: number;
+  /** Optional curated Ionicons name for the template — copied into
+   *  `task.icon` on adoption (when `start_task_from_template` runs). */
+  icon: string | null;
 }
 
 /**
