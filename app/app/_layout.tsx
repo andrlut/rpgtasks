@@ -152,6 +152,10 @@ export default function RootLayout() {
               options={{ presentation: 'modal', headerShown: false }}
             />
             <Stack.Screen
+              name="goals"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
               name="quest-detail/[id]"
               options={{ headerShown: false }}
             />

@@ -1,22 +1,50 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { QuestCard } from '@/components/QuestCard';
 import { useT } from '@/lib/i18n';
+import { useQuests } from '@/lib/api/quests';
+import type { QuestWithProgress } from '@/lib/db/types';
 import { tokens } from '@/theme';
 
 const ACCENT = tokens.semantic.coin;
+const TEASER_COUNT = 3;
 
 /**
- * Goals sub-pillar placeholder, richer than the generic PillarPlaceholder.
- * The Goals feature doesn't exist yet, but the Desejada pillar should still
- * feel inhabited rather than empty — so this preview surfaces the concept
- * with a teaser headline, copy that maps to the V3 philosophy ("where I'm
- * heading"), and three example goals as locked tiles.
+ * Goals (Metas) preview rendered inside the Identidade Desejada pillar.
  *
- * When Goals lands (PR 2x), this gets replaced with the real listing.
+ * Shows the user's top {{TEASER_COUNT}} active goals sorted by deadline
+ * ASC. If none exist, renders a hero CTA inviting the user to pick one.
+ * "View all" always opens /goals.
+ *
+ * Goals = quest_requirement.kind !== 'accumulate_sub_stars' — sub_stars
+ * lives on /quests (Missões) and surfaces from Home, not here.
  */
 export function GoalsPreview() {
+  const router = useRouter();
   const { t } = useT();
+  const quests = useQuests();
+
+  const activeGoals = useMemo<QuestWithProgress[]>(() => {
+    const all = (quests.data ?? []).filter(
+      (q) =>
+        q.quest.status === 'active' &&
+        q.requirements.every(
+          (r) => r.requirement.kind !== 'accumulate_sub_stars',
+        ),
+    );
+    return all.sort((a, b) => {
+      const da = new Date(a.quest.deadline).getTime();
+      const db = new Date(b.quest.deadline).getTime();
+      return da - db;
+    });
+  }, [quests.data]);
+
+  const hasGoals = activeGoals.length > 0;
+  const teaser = activeGoals.slice(0, TEASER_COUNT);
+
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
@@ -25,25 +53,56 @@ export function GoalsPreview() {
         </View>
         <Text style={styles.eyebrow}>{t('goalsPreview.eyebrow')}</Text>
         <Text style={styles.title}>{t('goalsPreview.title')}</Text>
-        <Text style={styles.body}>{t('goalsPreview.body')}</Text>
+        {!hasGoals && (
+          <Text style={styles.body}>{t('goalsPreview.body')}</Text>
+        )}
       </View>
 
-      <Text style={styles.examplesLabel}>{t('goalsPreview.examples')}</Text>
-      <View style={styles.examples}>
-        {(['example1', 'example2', 'example3'] as const).map((k) => (
-          <View key={k} style={styles.exampleRow}>
-            <Ionicons
-              name="lock-closed"
-              size={14}
-              color={tokens.text.dim}
-            />
-            <Text style={styles.exampleText} numberOfLines={1}>
-              {t(`goalsPreview.${k}`)}
-            </Text>
-            <Text style={styles.lockedTag}>{t('goalsPreview.locked')}</Text>
+      {hasGoals ? (
+        <>
+          <View style={styles.teaserList}>
+            {teaser.map((q) => (
+              <QuestCard
+                key={`goal-${q.quest.id}`}
+                variant="active"
+                data={q}
+                onLongPress={() => router.push('/goals')}
+              />
+            ))}
           </View>
-        ))}
-      </View>
+          <Pressable
+            onPress={() => router.push('/goals')}
+            style={({ pressed }) => [
+              styles.allBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={t('goalsPreview.allCta')}
+          >
+            <Text style={styles.allBtnText}>
+              {t('goalsPreview.allCta')} ·{' '}
+              {t('goalsPreview.activeCount', { count: activeGoals.length })}
+            </Text>
+            <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+          </Pressable>
+        </>
+      ) : (
+        <Pressable
+          onPress={() => router.push('/goals')}
+          style={({ pressed }) => [
+            styles.heroCta,
+            pressed && { opacity: 0.85 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('goalsPreview.empty.cta')}
+        >
+          <Text style={styles.heroTitle}>{t('goalsPreview.empty.title')}</Text>
+          <View style={styles.heroCtaInner}>
+            <Text style={styles.heroCtaText}>{t('goalsPreview.empty.cta')}</Text>
+            <Ionicons name="arrow-forward" size={14} color={ACCENT} />
+          </View>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -90,41 +149,53 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     marginTop: 4,
   },
-  examplesLabel: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 10,
-    color: tokens.text.dim,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginTop: tokens.space[4],
+  teaserList: {
+    gap: 5,
   },
-  examples: {
-    gap: 8,
-  },
-  exampleRow: {
+  allBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
+    gap: 6,
     paddingVertical: tokens.space[3],
     paddingHorizontal: tokens.space[3],
     borderRadius: tokens.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.025)',
+    backgroundColor: 'rgba(255,200,61,0.06)',
     borderWidth: 1,
-    borderColor: tokens.border.base,
-    borderStyle: 'dashed',
-    opacity: 0.85,
+    borderColor: 'rgba(255,200,61,0.18)',
   },
-  exampleText: {
-    flex: 1,
-    fontFamily: 'Manrope_600SemiBold',
-    fontSize: 13,
-    color: tokens.text.mid,
-  },
-  lockedTag: {
+  allBtnText: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 9,
-    color: tokens.text.dim,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    color: ACCENT,
+    letterSpacing: 0.3,
+  },
+  heroCta: {
+    paddingVertical: tokens.space[4],
+    paddingHorizontal: tokens.space[3],
+    borderRadius: tokens.radius.md,
+    backgroundColor: 'rgba(255,200,61,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,61,0.25)',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    gap: tokens.space[2],
+  },
+  heroTitle: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 13,
+    color: tokens.text.hi,
+    textAlign: 'center',
+  },
+  heroCtaInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroCtaText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    color: ACCENT,
+    letterSpacing: 0.3,
   },
 });

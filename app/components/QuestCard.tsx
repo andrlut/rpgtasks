@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { useT } from '@/lib/i18n';
+import { useMetaLookup } from '@/lib/i18n/meta';
 import type {
   QuestTemplate,
   QuestTemplateRequirement,
@@ -177,6 +178,7 @@ function ActiveCard({
   isClaiming,
 }: Extract<Props, { variant: 'active' }>) {
   const { t } = useT();
+  const meta = useMetaLookup();
   // Active quests don't have a category column on the row — the template
   // category is the source of truth. Without joining template here, we
   // fall back to brand-violet via the unknown-category default. The
@@ -184,7 +186,22 @@ function ActiveCard({
   const cat = getQuestCategoryMeta('');
   const isChallenge = data.quest.quest_type === 'challenge';
   const challengeTarget = Number(data.quest.challenge_target_value ?? 0);
-  const progress = isChallenge
+  // sub_stars quests render `current / target ⭐ · <sub>` instead of the
+  // generic met/total breakdown. Detected via the first requirement; in
+  // practice these quests have exactly one accumulate_sub_stars req.
+  const subStarsReq = data.requirements.find(
+    (r) => r.requirement.kind === 'accumulate_sub_stars',
+  );
+  const isSubStars = !!subStarsReq;
+  const progress = isSubStars
+    ? Number(subStarsReq.requirement.target_count ?? 0) > 0
+      ? Math.min(
+          1,
+          subStarsReq.currentCount /
+            Number(subStarsReq.requirement.target_count ?? 1),
+        )
+      : 0
+    : isChallenge
     ? challengeTarget > 0
       ? Math.min(1, data.currentChallengeValue / challengeTarget)
       : 0
@@ -249,7 +266,11 @@ function ActiveCard({
         <View style={styles.progressLabelRow}>
           <Text style={styles.progressLabel}>{t('quests.progressLabel')}</Text>
           <Text style={styles.progressValue}>
-            {isChallenge
+            {isSubStars
+              ? `${subStarsReq.currentCount} / ${Number(
+                  subStarsReq.requirement.target_count ?? 0,
+                )} ⭐ · ${meta.sub(subStarsReq.requirement.sub_id!).label}`
+              : isChallenge
               ? `${data.currentChallengeValue} / ${challengeTarget}`
               : `${metReqs} / ${totalReqs}`}
           </Text>
@@ -317,6 +338,10 @@ function chipLabelsFromRequirements(reqs: QuestTemplateRequirement[]): string[] 
           return r.skill_id ?? null;
         case 'complete_any_in_dim':
           return r.dimension_id ?? null;
+        case 'accumulate_sub_stars':
+          return r.sub_id && r.target_count
+            ? `${r.target_count}★ · ${r.sub_id}`
+            : null;
         default:
           return null;
       }

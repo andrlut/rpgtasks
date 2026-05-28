@@ -230,14 +230,15 @@ const pt: Translations = {
   },
 
   goalsPreview: {
-    eyebrow: 'EM BREVE',
+    eyebrow: 'METAS',
     title: 'Onde você quer chegar',
     body: 'Goals transformam direção identitária em metas claras. Vão se ligar a Skills e a Avaliação pra mostrar o quanto você está se aproximando de quem quer se tornar.',
-    examples: 'Exemplos do que vai vir:',
-    example1: 'Virar alguém que dorme bem',
-    example2: 'Cultivar presença nas relações',
-    example3: 'Construir disciplina de estudo',
-    locked: 'em breve',
+    activeCount: { one: '{{count}} meta em andamento', other: '{{count}} metas em andamento' },
+    allCta: 'Ver todas as metas',
+    empty: {
+      title: 'Sem metas ainda',
+      cta: 'Escolher uma meta',
+    },
   },
 
   avaliacao: {
@@ -1100,10 +1101,12 @@ const pt: Translations = {
     partialOk: 'partial OK',
     longPressHint: 'Segure para ver mais',
     board: {
-      title: 'Quest Board',
-      subtitle: 'Segure para ver detalhes',
-      activeChip: { one: '{{count}} ativa', other: '{{count}} ativas' },
-      createCta: 'Nova quest personalizada',
+      title: 'Missões',
+      subtitle: 'Acumule estrelas no que importa essa quinzena.',
+      activeChip: { one: '{{count}} em andamento', other: '{{count}} em andamento' },
+      activeSection: 'Em andamento',
+      inactiveSection: 'Inativas',
+      createCta: 'Nova missão personalizada',
       comingSoon: 'Em breve',
     },
     create: {
@@ -1150,6 +1153,21 @@ const pt: Translations = {
       title: 'Modelos de missão',
       start: 'Começar missão',
     },
+  },
+
+  // Metas — the /goals board (a sibling of /quests, but for non-sub_stars
+  // quest kinds). Quest detail / quest_template rendering still resolves
+  // through the quests.* namespace; this is just the board chrome.
+  goals: {
+    board: {
+      title: 'Metas',
+      subtitle: 'Onde eu quero chegar.',
+      activeChip: { one: '{{count}} em andamento', other: '{{count}} em andamento' },
+      activeSection: 'Em andamento',
+      inactiveSection: 'Inativas',
+      createCta: 'Criar meta',
+    },
+    empty: 'Sem metas ainda. Escolha uma das categorias acima.',
   },
 
   selfAssessment: {
