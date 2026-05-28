@@ -24,6 +24,7 @@ import {
   adoptChoiceToOverrides,
   type AdoptPeriodicityChoice,
 } from '@/components/AdoptPeriodicitySheet';
+import { useBottomSafeClearance } from '@/components/BottomNavBar';
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -107,6 +108,7 @@ function bucketFor(rec: Recurrence): Bucket {
 export default function TasksHubScreen() {
   const router = useRouter();
   const { t } = useT();
+  const bottomClearance = useBottomSafeClearance();
   const reorderTasks = useReorderTasks();
   const tasks = useActiveTasks();
   const templates = useTaskTemplates();
@@ -254,7 +256,7 @@ export default function TasksHubScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
       <ScreenBackground>
         {/* Top bar */}
@@ -372,7 +374,13 @@ export default function TasksHubScreen() {
           />
         ) : (
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              {
+                paddingBottom:
+                  Math.max(tokens.space[10], bottomClearance) + tokens.space[6],
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             refreshControl={
@@ -473,6 +481,7 @@ function AllocatedDraggableBody({
   onReorder,
   t,
 }: AllocatedDraggableBodyProps) {
+  const bottomClearance = useBottomSafeClearance();
   // Build the flat item list every time the inputs shift. Headers
   // act as section dividers (non-draggable); tasks are draggable
   // rows. Empty placeholders render only inside open empty buckets.
@@ -699,7 +708,15 @@ function AllocatedDraggableBody({
         commitReorder(data);
       }}
       activationDistance={20}
-      contentContainerStyle={styles.dragListContent}
+      contentContainerStyle={[
+        styles.dragListContent,
+        {
+          // Generous bottom padding so the ONE-TIME bucket pill clears the
+          // OS nav comfortably even when the safe-area inset under-reports.
+          paddingBottom:
+            Math.max(tokens.space[10], bottomClearance) + tokens.space[6] + 28,
+        },
+      ]}
       refreshControl={
         <RefreshControl
           refreshing={isRefreshing}

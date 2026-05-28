@@ -292,10 +292,15 @@ export default function HistoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScreenBackground>
       <ScrollView
-        contentContainerStyle={styles.content}
+        // SafeAreaView['bottom'] already handles OS nav clearance — content
+        // only needs a small visual breathing room above the safe-area edge.
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: tokens.space[5] },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

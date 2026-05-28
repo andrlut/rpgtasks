@@ -113,7 +113,7 @@ export default function MaterialDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScreenBackground>
         <Stack.Screen options={{ headerShown: false }} />
 
@@ -326,8 +326,9 @@ export default function MaterialDetailScreen() {
           </View>
         </ScrollView>
 
-        {/* Sticky CTA */}
-        <View style={styles.footer}>
+        {/* Sticky CTA — SafeAreaView['bottom'] handles OS nav clearance, so
+            we only need a small breathing room above the button itself. */}
+        <View style={[styles.footer, { paddingBottom: tokens.space[3] }]}>
           <Pressable
             disabled={isRead || busy}
             onPress={onMarkRead}

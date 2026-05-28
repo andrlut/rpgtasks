@@ -46,6 +46,22 @@ export function useBottomNavClearance(): number {
   return TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 12;
 }
 
+/**
+ * Padding-bottom to apply on Stack-pushed screens that do NOT render the
+ * BottomNavBar but still need breathing room above the Android gesture bar
+ * (or iOS home indicator). Equals safe-area inset + a small visual buffer —
+ * intentionally smaller than `useBottomNavClearance` because there is no
+ * 64px bar to clear.
+ *
+ * Floor at 32 because Expo Go (and some edge-to-edge configs on Samsung
+ * One UI) under-report `insets.bottom` even when the 3-button nav is on
+ * screen. 32 is a safe Android 3-button-nav fallback.
+ */
+export function useBottomSafeClearance(): number {
+  const insets = useSafeAreaInsets();
+  return Math.max(insets.bottom, 32) + tokens.space[4];
+}
+
 export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -111,6 +127,9 @@ export function BottomNavBar({ state, navigation }: BottomTabBarProps) {
                 color={isFocused ? tokens.brand.violet2 : tokens.text.dim}
               />
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
                 style={[
                   styles.label,
                   {
@@ -178,7 +197,19 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   label: {
+    // width: 100% + textAlign center so the label centers inside the tab
+    // regardless of how the per-state font weight (ExtraBold vs SemiBold)
+    // measures the glyphs. Without this, "Recompensas" (11 chars) renders
+    // at slightly different natural widths between states and looks
+    // decentralized when toggling focus.
+    // Explicit lineHeight too — Manrope_800ExtraBold and Manrope_600SemiBold
+    // resolve to slightly different metrics, which shifts the baseline a
+    // pixel or two between states.
+    width: '100%',
     fontSize: 10,
+    lineHeight: 12,
     letterSpacing: 0.2,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 });
