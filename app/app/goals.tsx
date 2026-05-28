@@ -29,15 +29,15 @@ import { tokens } from '@/theme';
 import { QUEST_CATEGORY_ORDER, getQuestCategoryMeta } from '@/theme/quests';
 
 /**
- * Missões — list of all `accumulate_sub_stars` templates + the user's
- * in-flight sub_stars quests. /goals handles every other quest kind.
+ * Metas (Goals) — list of every available template + the user's in-flight
+ * quests whose requirements do NOT include `accumulate_sub_stars`. That's
+ * the "where I want to get to" board — skill targets, task counts,
+ * dimension challenges. /quests (Missões) handles sub_stars instead.
  *
- * Layout: "Em andamento" section (active, sorted by deadline ASC) above
- * an "Inativas" section (templates grouped by sub category in canonical
- * order). The two sections are independent — adding/finishing a goal
- * doesn't reshuffle inactive cards.
+ * Layout mirrors /quests: an "In progress" section sorted by deadline ASC
+ * above an "Inactive" section grouped by category in canonical order.
  */
-export default function QuestBoardScreen() {
+export default function GoalsBoardScreen() {
   const router = useRouter();
   const { t } = useT();
   const quests = useQuests();
@@ -47,19 +47,19 @@ export default function QuestBoardScreen() {
   const bottomClearance = useBottomNavClearance();
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // ── Sub_stars filter ──────────────────────────────────────────────────
-  // Missões = quests/templates whose requirements include accumulate_sub_stars.
+  // ── Non-sub_stars filter ──────────────────────────────────────────────
   const active = useMemo(
     () =>
       (quests.data ?? []).filter(
         (q) =>
           q.quest.status === 'active' &&
-          q.requirements.some((r) => r.requirement.kind === 'accumulate_sub_stars'),
+          q.requirements.every(
+            (r) => r.requirement.kind !== 'accumulate_sub_stars',
+          ),
       ),
     [quests.data],
   );
 
-  /** template_id → active quest using that template (for dimming). */
   const activeByTemplateId = useMemo(() => {
     const map = new Map<string, QuestWithProgress>();
     for (const q of active) {
@@ -68,13 +68,12 @@ export default function QuestBoardScreen() {
     return map;
   }, [active]);
 
-  /** Templates the user hasn't started — sub_stars only. */
   const inactiveTemplates = useMemo(
     () =>
       (templates.data ?? []).filter(
         (tmpl) =>
           !activeByTemplateId.has(tmpl.id) &&
-          tmpl.requirements.some((r) => r.kind === 'accumulate_sub_stars'),
+          tmpl.requirements.every((r) => r.kind !== 'accumulate_sub_stars'),
       ),
     [templates.data, activeByTemplateId],
   );
@@ -85,7 +84,7 @@ export default function QuestBoardScreen() {
       [...active].sort((a, b) => {
         const da = new Date(a.quest.deadline).getTime();
         const db = new Date(b.quest.deadline).getTime();
-        return da - db; // soonest deadline first
+        return da - db;
       }),
     [active],
   );
@@ -126,7 +125,7 @@ export default function QuestBoardScreen() {
       const msg =
         [err.message, err.code, err.details, err.hint].filter(Boolean).join('\n') ||
         'Unknown error';
-      showInfo('Could not start quest', msg);
+      showInfo('Could not start goal', msg);
     } finally {
       setBusyId(null);
     }
@@ -140,7 +139,7 @@ export default function QuestBoardScreen() {
         () => {},
       );
       showInfo(
-        'Quest complete!',
+        'Goal complete!',
         `+${result.reward_xp} XP and +${result.reward_coins} coins.`,
       );
     } catch (e) {
@@ -200,14 +199,14 @@ export default function QuestBoardScreen() {
           <Ionicons name="close" size={16} color={tokens.text.mid} />
         </Pressable>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{t('quests.board.title')}</Text>
+          <Text style={styles.headerTitle}>{t('goals.board.title')}</Text>
           {inactiveTemplates.length > 0 && (
-            <Text style={styles.headerSubtitle}>{t('quests.board.subtitle')}</Text>
+            <Text style={styles.headerSubtitle}>{t('goals.board.subtitle')}</Text>
           )}
         </View>
         <View style={styles.activeChip}>
           <Text style={styles.activeChipText}>
-            {t('quests.board.activeChip', { count: totalActiveCount })}
+            {t('goals.board.activeChip', { count: totalActiveCount })}
           </Text>
         </View>
       </View>
@@ -232,10 +231,9 @@ export default function QuestBoardScreen() {
           </View>
         ) : (
           <>
-            {/* ── Active section ────────────────────────────────────── */}
             <View style={styles.section}>
               <Text style={styles.sectionHeading}>
-                {t('quests.board.activeSection')}
+                {t('goals.board.activeSection')}
               </Text>
               {activeSorted.length === 0 ? (
                 <View style={styles.emptyActive}>
@@ -244,7 +242,7 @@ export default function QuestBoardScreen() {
                     size={28}
                     color={tokens.text.dim}
                   />
-                  <Text style={styles.emptyText}>{t('quests.empty')}</Text>
+                  <Text style={styles.emptyText}>{t('goals.empty')}</Text>
                 </View>
               ) : (
                 <View style={styles.cardsList}>
@@ -262,11 +260,10 @@ export default function QuestBoardScreen() {
               )}
             </View>
 
-            {/* ── Inactive section ──────────────────────────────────── */}
             {inactiveSections.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionHeading}>
-                  {t('quests.board.inactiveSection')}
+                  {t('goals.board.inactiveSection')}
                 </Text>
                 {inactiveSections.map(({ cat, templates: catTemplates }) => {
                   const meta = getQuestCategoryMeta(cat);
@@ -298,7 +295,6 @@ export default function QuestBoardScreen() {
           </>
         )}
 
-        {/* Create custom quest CTA */}
         {!isLoading && (
           <Pressable
             onPress={handleCreateCustom}
@@ -307,12 +303,12 @@ export default function QuestBoardScreen() {
               pressed && { opacity: 0.7 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={t('quests.board.createCta')}
+            accessibilityLabel={t('goals.board.createCta')}
           >
             <View style={styles.createIcon}>
               <Ionicons name="add" size={14} color={tokens.brand.violet} />
             </View>
-            <Text style={styles.createText}>{t('quests.board.createCta')}</Text>
+            <Text style={styles.createText}>{t('goals.board.createCta')}</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -360,14 +356,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: 'rgba(123,92,255,0.15)',
+    backgroundColor: 'rgba(255,200,61,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(123,92,255,0.3)',
+    borderColor: 'rgba(255,200,61,0.30)',
   },
   activeChipText: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 10,
-    color: tokens.brand.violet2,
+    color: tokens.semantic.coin,
   },
   scroll: {
     paddingHorizontal: tokens.space[2],

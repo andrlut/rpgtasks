@@ -240,14 +240,15 @@ const en = {
   },
 
   goalsPreview: {
-    eyebrow: 'COMING SOON',
+    eyebrow: 'GOALS',
     title: 'Where you’re heading',
-    body: 'Goals turn identity direction into clear targets. They’ll tie into Skills and Assessment so you can see how close you are to who you want to become.',
-    examples: 'Examples of what’s coming:',
-    example1: 'Become someone who sleeps well',
-    example2: 'Cultivate presence in relationships',
-    example3: 'Build study discipline',
-    locked: 'soon',
+    body: 'Goals turn identity direction into clear targets. They tie into Skills and Assessment so you can see how close you are to who you want to become.',
+    activeCount: { one: '{{count}} goal in progress', other: '{{count}} goals in progress' },
+    allCta: 'View all goals',
+    empty: {
+      title: 'No goals yet',
+      cta: 'Pick a goal',
+    },
   },
 
   avaliacao: {
@@ -1106,9 +1107,11 @@ const en = {
     partialOk: 'partial OK',
     longPressHint: 'Long press for details',
     board: {
-      title: 'Quest Board',
-      subtitle: 'Long press for details',
-      activeChip: { one: '{{count}} active', other: '{{count}} active' },
+      title: 'Quests',
+      subtitle: 'Stack stars in what matters this stretch.',
+      activeChip: { one: '{{count}} in progress', other: '{{count}} in progress' },
+      activeSection: 'In progress',
+      inactiveSection: 'Inactive',
       createCta: 'New custom quest',
       comingSoon: 'Coming soon',
     },
@@ -1156,6 +1159,21 @@ const en = {
       title: 'Quest templates',
       start: 'Start quest',
     },
+  },
+
+  // Goals — the /goals board (sibling of /quests, but for non-sub_stars
+  // quest kinds). Quest detail / template rendering still resolves through
+  // the quests.* namespace; this is just the board chrome.
+  goals: {
+    board: {
+      title: 'Goals',
+      subtitle: "Where I'm heading.",
+      activeChip: { one: '{{count}} in progress', other: '{{count}} in progress' },
+      activeSection: 'In progress',
+      inactiveSection: 'Inactive',
+      createCta: 'Create goal',
+    },
+    empty: 'No goals yet. Pick one from the categories above.',
   },
 
   selfAssessment: {
