@@ -6,6 +6,7 @@ import type {
   QuestRequirementWithProgress,
   QuestTemplate,
   QuestWithProgress,
+  SubId,
 } from '@/lib/db/types';
 import { supabase } from '@/lib/supabase';
 
@@ -15,6 +16,9 @@ export const questKeys = {
   all: ['quests'] as const,
   active: () => [...questKeys.all, 'active'] as const,
   templates: () => [...questKeys.all, 'templates'] as const,
+  /** Standalone progress for accumulate_sub_stars quests. */
+  subStarsProgress: (questId: string, subId: SubId) =>
+    [...questKeys.all, 'progress', questId, 'sub_stars', subId] as const,
 };
 
 /**
@@ -115,6 +119,22 @@ export function useQuests() {
         if (!lErr) {
           const max = logs && logs.length > 0 ? Number(logs[0]!.value) : 0;
           progressByReqId.set(requirement.id, max);
+        }
+      }
+
+      // 2c2. accumulate_sub_stars — sum task_completion_sub.stars via RPC.
+      // The RPC scopes by quest.character_id and window for us.
+      const subStarsReqs = allReqs.filter(
+        ({ requirement }) =>
+          requirement.kind === 'accumulate_sub_stars' && requirement.sub_id,
+      );
+      for (const { quest, requirement } of subStarsReqs) {
+        const { data: stars, error: sErr } = await supabase.rpc(
+          'sub_stars_progress',
+          { p_quest_id: quest.id, p_sub_id: requirement.sub_id! },
+        );
+        if (!sErr) {
+          progressByReqId.set(requirement.id, Number(stars ?? 0));
         }
       }
 
@@ -308,5 +328,35 @@ export function useAbandonQuest() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: questKeys.active() });
     },
+  });
+}
+
+/**
+ * Standalone progress hook for `accumulate_sub_stars` quests. Callers that
+ * only need the running star total (without the full QuestWithProgress
+ * graph) can use this — e.g. a compact QuestCard variant.
+ *
+ * The underlying RPC is also called inside `useQuests`, so unless you need
+ * a cache key independent of the main quest list, prefer reading from there.
+ */
+export function useSubStarsProgress(
+  questId: string | null | undefined,
+  subId: SubId | null | undefined,
+) {
+  return useQuery({
+    queryKey:
+      questId && subId
+        ? questKeys.subStarsProgress(questId, subId)
+        : ['quests', 'progress', 'noop'],
+    queryFn: async (): Promise<number> => {
+      const { data, error } = await supabase.rpc('sub_stars_progress', {
+        p_quest_id: questId,
+        p_sub_id: subId,
+      });
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    enabled: !!questId && !!subId,
+    staleTime: 30_000,
   });
 }

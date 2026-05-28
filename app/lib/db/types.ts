@@ -469,7 +469,8 @@ export type QuestStatus =
 export type QuestRequirementKind =
   | 'complete_task_n_times'
   | 'complete_any_in_dim'
-  | 'reach_skill_value';
+  | 'reach_skill_value'
+  | 'accumulate_sub_stars';
 
 /**
  * `skill` quests track progress via `quest_requirement` rows (auto-derived
@@ -507,6 +508,8 @@ export interface QuestRequirement {
   task_id: string | null;
   dimension_id: DimensionId | null;
   skill_id: string | null;
+  /** Set for `accumulate_sub_stars` kind; null otherwise. */
+  sub_id: SubId | null;
   target_count: number | null;
   min_value: number | null;
   sort_order: number;
@@ -540,6 +543,8 @@ export interface QuestTemplateRequirement {
   task_title?: string;
   dimension_id?: DimensionId;
   skill_id?: string;
+  /** Set for `accumulate_sub_stars` kind. */
+  sub_id?: SubId;
   target_count?: number;
   min_value?: number;
 }

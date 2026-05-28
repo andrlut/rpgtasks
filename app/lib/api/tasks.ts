@@ -784,7 +784,10 @@ export function useCompleteTask() {
       queryClient.invalidateQueries({ queryKey: characterKeys.me() });
       queryClient.invalidateQueries({ queryKey: momentumKeys.me() });
       queryClient.invalidateQueries({ queryKey: historyKeys.all });
-      queryClient.invalidateQueries({ queryKey: questKeys.active() });
+      // Invalidate the whole quests namespace (active + standalone progress
+      // hooks like useSubStarsProgress) — completing a task can move the
+      // star count for any accumulate_sub_stars quest the sub touches.
+      queryClient.invalidateQueries({ queryKey: questKeys.all });
     },
   });
 }
