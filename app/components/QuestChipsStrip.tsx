@@ -1,33 +1,47 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useQuests } from '@/lib/api/quests';
 import { useT } from '@/lib/i18n';
+import type { QuestWithProgress } from '@/lib/db/types';
 import { tokens } from '@/theme';
 
 /**
- * V3 quest chips strip — horizontal scroll of compact gold pills,
- * one per active quest, plus a trailing violet "+ Browse" pill that
- * routes to the quest board. Replaces the bulkier ActiveQuestsCard
- * on the home screen.
+ * V3 quest chips strip — horizontal scroll on the Home tab.
  *
- *   [⚔ Sem açúcar 21d] [⚔ Dormir 8h+ 14d] [+ Browse]
+ * Splits the user's active items into two visually-distinct groups so the
+ * dual identity of the schema (one `quest` table, two product surfaces) reads
+ * at a glance:
  *
- * Each chip carries: quest icon (Ionicons flash), name, and a small
- * progress label (`{done}/{total}` requirements met). The strip is
- * a no-op (renders nothing) when the user has no active quests AND
- * the design-time goal is to keep the screen lighter — to nudge
- * discovery anyway, the +Browse pill ALWAYS renders.
+ *   1. **Missões** (sub_stars) — gold pills, flash icon. Trailing violet
+ *      "+ Browse" routes to `/quests`.
+ *   2. **Metas** (goals: skill / challenge / dim) — orange→red pills, flag
+ *      icon. Trailing violet "+ Browse" routes to `/goals`.
+ *
+ * Quests always come first per design. A thin vertical divider sits between
+ * the groups when both are present. Each chip opens its own quest detail so
+ * tapping a Goal chip doesn't drop the user onto the Missões browse.
  */
 export function QuestChipsStrip() {
   const router = useRouter();
   const { t } = useT();
   const quests = useQuests();
-  const active = (quests.data ?? []).filter(
-    (q) => q.quest.status === 'active',
-  );
+
+  const { missoes, metas } = useMemo(() => {
+    const m: QuestWithProgress[] = [];
+    const g: QuestWithProgress[] = [];
+    for (const q of quests.data ?? []) {
+      if (q.quest.status !== 'active') continue;
+      const isSubStars = q.requirements.some(
+        (r) => r.requirement.kind === 'accumulate_sub_stars',
+      );
+      (isSubStars ? m : g).push(q);
+    }
+    return { missoes: m, metas: g };
+  }, [quests.data]);
 
   return (
     <ScrollView
@@ -35,55 +49,134 @@ export function QuestChipsStrip() {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.row}
     >
-      {active.map((q) => {
-        const done = q.requirements.filter((r) => r.isMet).length;
-        const total = q.requirements.length;
-        return (
-          <Pressable
-            key={q.quest.id}
-            onPress={() => router.push('/quests')}
-            style={({ pressed }) => [pressed && styles.chipPressed]}
-          >
-            <LinearGradient
-              colors={tokens.gradient.questChipGold}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[styles.chip, styles.chipGold]}
-            >
-              <Ionicons name="flash" size={11} color={tokens.semantic.coin} />
-              <Text style={styles.chipName} numberOfLines={1}>
-                {q.quest.title}
-              </Text>
-              {total > 0 && (
-                <Text style={styles.chipProgress}>
-                  {done}/{total}
-                </Text>
-              )}
-            </LinearGradient>
-          </Pressable>
-        );
-      })}
+      {/* ── Missões (gold) ───────────────────────────────────────────── */}
+      {missoes.map((q) => (
+        <QuestChip
+          key={`m-${q.quest.id}`}
+          quest={q}
+          variant="missao"
+          onPress={() =>
+            router.push({
+              pathname: '/quest-detail/[id]',
+              params: { id: q.quest.id, kind: 'quest' },
+            })
+          }
+        />
+      ))}
 
-      <Pressable
+      <BrowsePill
+        variant="violet"
+        label={t('home.quests.browseChip')}
         onPress={() => router.push('/quests')}
-        style={({ pressed }) => [pressed && styles.chipPressed]}
-      >
-        <LinearGradient
-          colors={tokens.gradient.questChipViolet}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={[styles.chip, styles.chipViolet]}
-        >
-          <Ionicons name="add" size={12} color={tokens.brand.violet2} />
-          <Text style={[styles.chipName, { color: tokens.brand.violet2 }]}>
-            {t('home.quests.browseChip')}
-          </Text>
-        </LinearGradient>
-      </Pressable>
+      />
+
+      {/* ── Divider — only between the two groups ────────────────────── */}
+      {metas.length > 0 && <View style={styles.groupDivider} />}
+
+      {/* ── Metas (orange) ───────────────────────────────────────────── */}
+      {metas.map((q) => (
+        <QuestChip
+          key={`g-${q.quest.id}`}
+          quest={q}
+          variant="meta"
+          onPress={() =>
+            router.push({
+              pathname: '/quest-detail/[id]',
+              params: { id: q.quest.id, kind: 'quest' },
+            })
+          }
+        />
+      ))}
+
+      {metas.length > 0 && (
+        <BrowsePill
+          variant="violet"
+          label={t('home.goals.browseChip')}
+          onPress={() => router.push('/goals')}
+        />
+      )}
 
       {/* Pad the right edge so the last chip doesn't kiss the screen edge. */}
       <View style={{ width: tokens.space[4] }} />
     </ScrollView>
+  );
+}
+
+// ─── Chip ──────────────────────────────────────────────────────────────────
+
+function QuestChip({
+  quest,
+  variant,
+  onPress,
+}: {
+  quest: QuestWithProgress;
+  variant: 'missao' | 'meta';
+  onPress: () => void;
+}) {
+  const done = quest.requirements.filter((r) => r.isMet).length;
+  const total = quest.requirements.length;
+
+  const isMissao = variant === 'missao';
+  const gradient = isMissao
+    ? tokens.gradient.questChipGold
+    : tokens.gradient.questChipOrange;
+  const iconName = isMissao ? 'flash' : 'flag';
+  const accentColor = isMissao ? tokens.semantic.coin : tokens.dimension.body;
+  const chipBorder = isMissao ? styles.chipGold : styles.chipOrange;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.chipPressed]}
+    >
+      <LinearGradient
+        colors={gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.chip, chipBorder]}
+      >
+        <Ionicons name={iconName} size={11} color={accentColor} />
+        <Text style={styles.chipName} numberOfLines={1}>
+          {quest.quest.title}
+        </Text>
+        {total > 0 && (
+          <Text style={[styles.chipProgress, { color: accentColor }]}>
+            {done}/{total}
+          </Text>
+        )}
+      </LinearGradient>
+    </Pressable>
+  );
+}
+
+// ─── Browse pill ───────────────────────────────────────────────────────────
+
+function BrowsePill({
+  variant: _variant,
+  label,
+  onPress,
+}: {
+  variant: 'violet';
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.chipPressed]}
+    >
+      <LinearGradient
+        colors={tokens.gradient.questChipViolet}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={[styles.chip, styles.chipViolet]}
+      >
+        <Ionicons name="add" size={12} color={tokens.brand.violet2} />
+        <Text style={[styles.chipName, { color: tokens.brand.violet2 }]}>
+          {label}
+        </Text>
+      </LinearGradient>
+    </Pressable>
   );
 }
 
@@ -94,6 +187,7 @@ const styles = StyleSheet.create({
     paddingLeft: tokens.space[4],
     paddingTop: 10,
     paddingBottom: 4,
+    alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
@@ -107,6 +201,10 @@ const styles = StyleSheet.create({
   chipGold: {
     borderColor: tokens.semantic.coinRim,
     borderTopColor: 'rgba(255, 224, 138, 0.6)',
+  },
+  chipOrange: {
+    borderColor: 'rgba(255, 138, 61, 0.45)',
+    borderTopColor: 'rgba(255, 170, 110, 0.7)',
   },
   chipViolet: {
     borderColor: 'rgba(155, 130, 255, 0.4)',
@@ -126,7 +224,14 @@ const styles = StyleSheet.create({
   chipProgress: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 11,
-    color: tokens.semantic.coin,
     letterSpacing: 0.2,
+  },
+  /** Thin vertical line between the Missões group and the Metas group. */
+  groupDivider: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: tokens.border.strong,
+    marginHorizontal: 4,
+    marginVertical: 6,
   },
 });

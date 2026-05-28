@@ -419,9 +419,12 @@ const en = {
       label: 'Active quests',
       empty: 'No active quests.',
       browseCta: 'Browse quests',
-      browseChip: 'Browse',
+      browseChip: 'Quests',
       collapse: 'Collapse quests',
       expand: 'Expand quests',
+    },
+    goals: {
+      browseChip: 'Goals',
     },
     empty: {
       title: 'All clear.',
@@ -1111,7 +1114,7 @@ const en = {
       subtitle: 'Stack stars in what matters this stretch.',
       activeChip: { one: '{{count}} in progress', other: '{{count}} in progress' },
       activeSection: 'In progress',
-      inactiveSection: 'Inactive',
+      inactiveSection: 'Buckets by sub',
       createCta: 'New custom quest',
       comingSoon: 'Coming soon',
     },

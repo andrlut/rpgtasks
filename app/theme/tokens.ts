@@ -248,6 +248,14 @@ export const tokens = {
       'rgba(155, 130, 255, 0.18)',
       'rgba(123, 92, 255, 0.06)',
     ] as const,
+    /** Goal (non-sub_stars quest) chip — orange→red metallic feel,
+     *  echoes the Topo Iris hex shield palette. Distinct from the
+     *  gold sub_stars Missões chips so the two groupings read fast
+     *  on the Home strip. */
+    questChipOrange: [
+      'rgba(255, 138, 61, 0.28)',
+      'rgba(195, 56, 24, 0.10)',
+    ] as const,
     /** Reward progress bar fill with a shimmer end → mid → start. */
     rewardBarFill: ['#C8881C', '#FFC83D', '#FFE3A6'] as const,
     rewardBarFillLocations: [0, 0.5, 1] as const,

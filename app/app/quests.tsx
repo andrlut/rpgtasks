@@ -265,6 +265,7 @@ export default function QuestBoardScreen() {
             {/* ── Inactive section ──────────────────────────────────── */}
             {inactiveSections.length > 0 && (
               <View style={styles.section}>
+                <View style={styles.sectionDivider} />
                 <Text style={styles.sectionHeading}>
                   {t('quests.board.inactiveSection')}
                 </Text>
@@ -390,16 +391,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space[5],
   },
   section: {
+    marginBottom: tokens.space[6],
+  },
+  /**
+   * Tiny divider between the two sections so the visual break reads
+   * even when active+inactive sit close together (small phones / few
+   * cards). Matches the existing border tokens.
+   */
+  sectionDivider: {
+    height: 1,
+    backgroundColor: tokens.border.base,
+    marginHorizontal: tokens.space[2],
     marginBottom: tokens.space[4],
   },
   sectionHeading: {
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 10,
-    color: tokens.text.mid,
+    fontSize: 11,
+    color: tokens.text.hi,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
     paddingHorizontal: tokens.space[2],
-    marginBottom: tokens.space[2],
+    marginBottom: tokens.space[3],
   },
   categoryGroup: {
     marginBottom: tokens.space[1],

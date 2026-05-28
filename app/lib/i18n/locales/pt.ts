@@ -409,9 +409,12 @@ const pt: Translations = {
       label: 'Quests ativas',
       empty: 'Nenhuma quest ativa.',
       browseCta: 'Explorar quests',
-      browseChip: 'Explorar',
+      browseChip: 'Missões',
       collapse: 'Recolher quests',
       expand: 'Expandir quests',
+    },
+    goals: {
+      browseChip: 'Metas',
     },
     empty: {
       title: 'Tudo em dia.',
@@ -1105,7 +1108,7 @@ const pt: Translations = {
       subtitle: 'Acumule estrelas no que importa essa quinzena.',
       activeChip: { one: '{{count}} em andamento', other: '{{count}} em andamento' },
       activeSection: 'Em andamento',
-      inactiveSection: 'Inativas',
+      inactiveSection: 'Buckets por sub',
       createCta: 'Nova missão personalizada',
       comingSoon: 'Em breve',
     },
