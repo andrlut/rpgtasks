@@ -16,12 +16,24 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   5: 'Heroic',
 };
 
+/**
+ * Per-star XP/coins reward table.
+ *
+ * Rebalanced from 5/15/40/100/250 (razão 50×) → 10/20/35/55/80 (razão 8×).
+ * The old curve was too exponential — 4★ and 5★ tasks felt unreachable in
+ * day-to-day use, even though the harder ones should still pay more. New
+ * jumps are ~1.45-2× per tier, a gentle, consistent progression. XP and
+ * coins stay 1:1 by current convention.
+ *
+ * Mirror of the SQL `public.base_xp_for_stars` helper — keep both in
+ * lockstep (server is authoritative; this table is the optimistic preview).
+ */
 const REWARD_BY_DIFFICULTY: Record<Difficulty, { xp: number; coins: number }> = {
-  1: { xp: 5, coins: 5 },
-  2: { xp: 15, coins: 15 },
-  3: { xp: 40, coins: 40 },
-  4: { xp: 100, coins: 100 },
-  5: { xp: 250, coins: 250 },
+  1: { xp: 10, coins: 10 },
+  2: { xp: 20, coins: 20 },
+  3: { xp: 35, coins: 35 },
+  4: { xp: 55, coins: 55 },
+  5: { xp: 80, coins: 80 },
 };
 
 export const MOMENTUM_WINDOW_DAYS = 30;
