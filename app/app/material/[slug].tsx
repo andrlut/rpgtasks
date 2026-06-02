@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LearningBody } from '@/components/LearningBody';
+import { FeedbackSheet } from '@/components/learning/FeedbackSheet';
 import { MaterialCover } from '@/components/MaterialCover';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { useReadingProgressStore } from '@/lib/readingProgress';
@@ -52,6 +53,38 @@ export default function MaterialDetailScreen() {
   const meta = useMetaLookup();
 
   const [busy, setBusy] = useState(false);
+  const [feedbackSheetOpen, setFeedbackSheetOpen] = useState(false);
+  const [sheetRating, setSheetRating] = useState<-1 | 1 | null>(null);
+
+  // Called when the user taps 👍 or 👎. Distinguishes 4 cases:
+  //   1. Tapping the active rating again with no follow-up state → clear it
+  //   2. Tapping a new rating (or flipping) → save rating + open the sheet
+  //      for optional tags/comment follow-up
+  const handleRate = (rating: -1 | 1) => {
+    Haptics.selectionAsync().catch(() => {});
+    if (myFeedback.data?.rating === rating) {
+      // Toggle off — call without comment/tags so the RPC clears.
+      rateMaterial.mutate({ slug, rating });
+      return;
+    }
+    // New rating (or flipping). Save the rating immediately so the chip
+    // reflects the user's choice even if they dismiss the sheet, then
+    // open the follow-up sheet.
+    rateMaterial.mutate({ slug: m.slug, rating });
+    setSheetRating(rating);
+    setFeedbackSheetOpen(true);
+  };
+
+  const handleSheetSave = (tags: string[], comment: string | null) => {
+    if (!sheetRating) return;
+    rateMaterial.mutate({
+      slug,
+      rating: sheetRating,
+      tags,
+      comment,
+    });
+    setFeedbackSheetOpen(false);
+  };
 
   // ── Scroll-position tracking for the Continue Reading hero ─────────────
   // Throttle scroll → store writes by hand. RN's `scrollEventThrottle` only
@@ -301,10 +334,7 @@ export default function MaterialDetailScreen() {
             <Text style={styles.feedbackPrompt}>{t('learning.detail.feedbackPrompt')}</Text>
             <View style={styles.feedbackRow}>
               <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => {});
-                  rateMaterial.mutate({ slug: m.slug, rating: 1 });
-                }}
+                onPress={() => handleRate(1)}
                 style={({ pressed }) => [
                   styles.feedbackBtn,
                   myFeedback.data?.rating === 1 && styles.feedbackBtnActiveUp,
@@ -326,10 +356,7 @@ export default function MaterialDetailScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => {
-                  Haptics.selectionAsync().catch(() => {});
-                  rateMaterial.mutate({ slug: m.slug, rating: -1 });
-                }}
+                onPress={() => handleRate(-1)}
                 style={({ pressed }) => [
                   styles.feedbackBtn,
                   myFeedback.data?.rating === -1 && styles.feedbackBtnActiveDown,
@@ -351,6 +378,23 @@ export default function MaterialDetailScreen() {
                 </Text>
               </Pressable>
             </View>
+            {myFeedback.data && (myFeedback.data.tags.length > 0 || myFeedback.data.comment) && (
+              <Pressable
+                onPress={() => {
+                  setSheetRating(myFeedback.data!.rating);
+                  setFeedbackSheetOpen(true);
+                }}
+                style={({ pressed }) => [
+                  styles.feedbackEditRow,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <Ionicons name="create-outline" size={13} color={tokens.text.mid} />
+                <Text style={styles.feedbackEditText}>
+                  {t('learning.feedback.editExisting')}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </ScrollView>
 
@@ -383,6 +427,15 @@ export default function MaterialDetailScreen() {
             )}
           </Pressable>
         </View>
+
+        <FeedbackSheet
+          open={feedbackSheetOpen}
+          rating={sheetRating}
+          initialTags={myFeedback.data?.tags ?? []}
+          initialComment={myFeedback.data?.comment ?? null}
+          onClose={() => setFeedbackSheetOpen(false)}
+          onSave={handleSheetSave}
+        />
       </ScreenBackground>
     </SafeAreaView>
   );
@@ -713,6 +766,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_700Bold',
     fontSize: 13,
     color: tokens.text.base,
+  },
+  feedbackEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
+    paddingTop: 8,
+  },
+  feedbackEditText: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 11,
+    color: tokens.text.mid,
+    letterSpacing: 0.3,
   },
   errorTitle: {
     fontFamily: 'Manrope_700Bold',

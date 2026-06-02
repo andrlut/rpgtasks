@@ -113,16 +113,20 @@ interface MarkReadInput {
   materialId: string;
 }
 
-/** The current user's rating on a single material (null if none yet). */
+/** The current user's rating + tags + comment on a single material (null if none yet). */
 export function useMyMaterialFeedback(slug: string | null | undefined) {
   return useQuery({
     queryKey: slug ? learningKeys.myFeedback(slug) : ['learning', 'myFeedback', 'none'],
     enabled: !!slug,
-    queryFn: async (): Promise<{ rating: -1 | 1; comment: string | null } | null> => {
+    queryFn: async (): Promise<{
+      rating: -1 | 1;
+      comment: string | null;
+      tags: string[];
+    } | null> => {
       if (!slug) return null;
       const { data, error } = await supabase
         .from('learning_material_feedback')
-        .select('rating, comment, material:material_id(slug)')
+        .select('rating, comment, tags, material:material_id(slug)')
         .order('updated_at', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -130,13 +134,18 @@ export function useMyMaterialFeedback(slug: string | null | undefined) {
       type Row = {
         rating: -1 | 1;
         comment: string | null;
+        tags: string[] | null;
         material: { slug: string } | { slug: string }[] | null;
       };
       const rows = (data ?? []) as Row[];
       for (const row of rows) {
         const mat = Array.isArray(row.material) ? row.material[0] : row.material;
         if (mat?.slug === slug) {
-          return { rating: row.rating, comment: row.comment };
+          return {
+            rating: row.rating,
+            comment: row.comment,
+            tags: row.tags ?? [],
+          };
         }
       }
       return null;
@@ -147,21 +156,33 @@ export function useMyMaterialFeedback(slug: string | null | undefined) {
 interface RateInput {
   slug: string;
   rating: -1 | 1;
-  comment?: string;
+  comment?: string | null;
+  tags?: string[] | null;
 }
 
-/** 👍/👎 a material. Tapping the same rating twice clears it. */
+/**
+ * 👍/👎 a material with optional comment + tags.
+ *
+ * Semantics:
+ * - First rating: INSERT
+ * - Same rating tapped AGAIN with no comment AND no tags → CLEAR (toggle off)
+ * - Same rating + comment OR tags → UPDATE (save follow-up from sheet)
+ * - Different rating → UPDATE (flip)
+ */
 export function useRateMaterial() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: RateInput): Promise<{ action: string; rating: -1 | 1 }> => {
+    mutationFn: async (
+      input: RateInput,
+    ): Promise<{ action: string; rating: -1 | 1; tags: string[] }> => {
       const { data, error } = await supabase.rpc('rate_material', {
         p_slug: input.slug,
         p_rating: input.rating,
         p_comment: input.comment ?? null,
+        p_tags: input.tags ?? null,
       });
       if (error) throw error;
-      return data as { action: string; rating: -1 | 1 };
+      return data as { action: string; rating: -1 | 1; tags: string[] };
     },
     onSuccess: (_result, input) => {
       queryClient.invalidateQueries({ queryKey: learningKeys.myFeedback(input.slug) });

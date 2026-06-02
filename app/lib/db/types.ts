@@ -640,9 +640,35 @@ export interface LearningMaterialFeedback {
   character_id: string;
   rating: -1 | 1;
   comment: string | null;
+  /** Predefined slugs picked by the user (e.g. 'confusing', 'well_explained'). */
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
+
+/** Slugs the UI offers per rating direction. Stable across i18n. */
+export const FEEDBACK_TAGS = {
+  positive: [
+    'well_explained',
+    'useful',
+    'good_structure',
+    'trusted_sources',
+    'right_tone',
+  ] as const,
+  negative: [
+    'confusing',
+    'jargon',
+    'too_long',
+    'too_short',
+    'shallow',
+    'mismatch',
+    'weak_sources',
+  ] as const,
+};
+
+export type PositiveFeedbackTag = (typeof FEEDBACK_TAGS.positive)[number];
+export type NegativeFeedbackTag = (typeof FEEDBACK_TAGS.negative)[number];
+export type FeedbackTag = PositiveFeedbackTag | NegativeFeedbackTag;
 
 /** Shape returned from feed queries — body / takeaways / signs / tracking /
  *  reasoning_log stripped to keep payload light. None are shown in the card. */
