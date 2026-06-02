@@ -32,6 +32,19 @@ Linked CLI dir:       C:/Users/André Luthold/Projetos/RPG  (main worktree)
 ## Pré-requisitos (validar e abortar com mensagem clara se faltar)
 
 - `$env:SUPABASE_ACCESS_TOKEN` setado (verificar via `[Environment]::GetEnvironmentVariable("SUPABASE_ACCESS_TOKEN", "User")`)
+- **Token VÁLIDO, não só presente.** O erro mais recorrente desse repo é PAT expirado/revogado: o CLI morre em `Initialising login role... 401 Unauthorized` no push, depois de já ter criado o arquivo. Testar a validade ANTES de tocar em qualquer migration:
+
+  ```powershell
+  try {
+    Invoke-RestMethod -Uri 'https://api.supabase.com/v1/projects' `
+      -Headers @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" } -ErrorAction Stop | Out-Null
+    "token OK"
+  } catch {
+    "TOKEN INVÁLIDO ($($_.Exception.Response.StatusCode.value__)) — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza: [Environment]::SetEnvironmentVariable('SUPABASE_ACCESS_TOKEN','<novo>','User')"
+  }
+  ```
+
+  Se não retornar `token OK` → **abortar** com a URL de rotação. Não seguir pro Passo 1.
 - Repo limpo no main worktree (`git status` sem `.sql` pendentes em `supabase/migrations/`)
 - `gh auth status` ok (pra futuras operações)
 

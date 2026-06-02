@@ -31,7 +31,19 @@ Reviewing as:         andrlut (account com cloud access)
 
 - PR number conhecido (passa como argumento ou pergunta)
 - `gh auth status` ok
-- `$env:SUPABASE_ACCESS_TOKEN` setado
+- `$env:SUPABASE_ACCESS_TOKEN` setado **e válido** — o dry-run do Passo 4 (`db push --linked`) morre em `Initialising login role... 401 Unauthorized` se o PAT estiver expirado. Testar antes:
+
+  ```powershell
+  try {
+    Invoke-RestMethod -Uri 'https://api.supabase.com/v1/projects' `
+      -Headers @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" } -ErrorAction Stop | Out-Null
+    "token OK"
+  } catch {
+    "TOKEN INVÁLIDO ($($_.Exception.Response.StatusCode.value__)) — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza: [Environment]::SetEnvironmentVariable('SUPABASE_ACCESS_TOKEN','<novo>','User')"
+  }
+  ```
+
+  Se não retornar `token OK`, ainda dá pra fazer a auditoria estática (Passos 1-3), mas o dry-run (Passo 4) vai falhar — avisar o user e pedir rotação do token.
 - Main worktree em `C:/Users/André Luthold/Projetos/RPG` no `main` atualizado
 
 ## Processo (5 passos)
