@@ -24,6 +24,7 @@ import {
   useRegisterRecoveryListener,
   useSession,
 } from '@/lib/auth';
+import { useNotificationsSetup } from '@/lib/notifications/useNotificationsSetup';
 import { useLoadOnboarding } from '@/lib/onboarding';
 
 export const unstable_settings = {
@@ -77,6 +78,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [queryClient] = useState(() => new QueryClient());
+  // Push-notification system — installs the foreground handler, reacts
+  // to the Settings master switch, and re-stamps the daily "open" on
+  // foreground events. No-op until the user toggles notifications on.
+  useNotificationsSetup();
   const [fontsLoaded] = useFonts({
     Manrope_500Medium,
     Manrope_600SemiBold,
