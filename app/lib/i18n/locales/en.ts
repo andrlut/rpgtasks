@@ -194,6 +194,32 @@ const en = {
       feedbackUp: 'Helpful',
       feedbackDown: 'Not for me',
     },
+    feedback: {
+      title: 'Tell us more',
+      subtitle: 'Optional. Helps tune what comes next.',
+      chipsLabel: 'Pick what fits',
+      commentLabel: 'Anything else?',
+      placeholder: 'Write a note (optional)…',
+      save: 'Save',
+      skip: 'Skip',
+      editExisting: 'Edit my feedback',
+      tags: {
+        // Positive
+        well_explained: 'Well explained',
+        useful: 'Useful for me',
+        good_structure: 'Good structure',
+        trusted_sources: 'Trustworthy sources',
+        right_tone: 'Right tone',
+        // Negative
+        confusing: 'Confusing',
+        jargon: 'Too much jargon',
+        too_long: 'Too long',
+        too_short: 'Too short',
+        shallow: 'Shallow',
+        mismatch: 'Doesn’t match my reality',
+        weak_sources: 'Weak sources',
+      },
+    },
   },
 
   /**

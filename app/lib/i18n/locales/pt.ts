@@ -184,6 +184,32 @@ const pt: Translations = {
       feedbackUp: 'Foi bom',
       feedbackDown: 'Não foi pra mim',
     },
+    feedback: {
+      title: 'Conta mais',
+      subtitle: 'Opcional. Ajuda a calibrar o que vem em seguida.',
+      chipsLabel: 'Marca o que se aplica',
+      commentLabel: 'Mais alguma coisa?',
+      placeholder: 'Escreve uma nota (opcional)…',
+      save: 'Salvar',
+      skip: 'Pular',
+      editExisting: 'Editar meu feedback',
+      tags: {
+        // Positivo
+        well_explained: 'Bem explicado',
+        useful: 'Útil pra mim',
+        good_structure: 'Boa estrutura',
+        trusted_sources: 'Fontes confiáveis',
+        right_tone: 'Tom certo',
+        // Negativo
+        confusing: 'Confuso',
+        jargon: 'Linguagem complicada',
+        too_long: 'Muito longo',
+        too_short: 'Muito curto',
+        shallow: 'Conteúdo raso',
+        mismatch: 'Não bate com minha realidade',
+        weak_sources: 'Fontes fracas',
+      },
+    },
   },
 
   /**
