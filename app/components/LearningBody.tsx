@@ -141,6 +141,22 @@ function parseBlocks(body: string): Block[] {
       continue;
     }
 
+    // Single-line directives — checked BEFORE fenced directives because
+    // `:::source` shares the `:::` prefix. If the fence handler ran first it
+    // would treat `:::source` as a block opener and swallow everything up to
+    // the next standalone `:::` (eating headings/callouts that follow). A
+    // source row is always a single self-contained line, so handle it here.
+    if (line.startsWith(':::source')) {
+      const m = line.match(/^:::source\[([^\]]*)\](?:\(([^)]*)\))?\s*$/);
+      blocks.push({
+        kind: 'source',
+        label: m?.[1]?.trim() ?? '',
+        url: m?.[2]?.trim() || null,
+      });
+      i++;
+      continue;
+    }
+
     // Fenced directives
     const fenceHeader = isFenceStart(line);
     if (fenceHeader) {
@@ -155,18 +171,6 @@ function parseBlocks(body: string): Block[] {
       const content = buf.join('\n').trim();
       const block = renderFenced(name, inline, params, content);
       if (block) blocks.push(block);
-      continue;
-    }
-
-    // Single-line directives (legacy)
-    if (line.startsWith(':::source')) {
-      const m = line.match(/^:::source\[([^\]]*)\](?:\(([^)]*)\))?\s*$/);
-      blocks.push({
-        kind: 'source',
-        label: m?.[1]?.trim() ?? '',
-        url: m?.[2]?.trim() || null,
-      });
-      i++;
       continue;
     }
 
