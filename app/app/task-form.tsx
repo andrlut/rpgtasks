@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,8 @@ import { RecurrencePicker } from '@/components/RecurrencePicker';
 import { SubPicker } from '@/components/SubPicker';
 import { TourModule } from '@/components/tour/TourModule';
 import { buildM1Steps } from '@/lib/tour/m1Steps';
-import { useTourStore } from '@/lib/tour/store';
+import { buildM2Steps } from '@/lib/tour/m2Steps';
+import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { useT } from '@/lib/i18n';
 import { SUB_META } from '@/theme/dimensions';
 import {
@@ -107,27 +108,46 @@ export default function TaskFormScreen() {
   const { t } = useT();
   const params = useLocalSearchParams<{ id?: string; from_template?: string }>();
 
-  // Auto-advance M1 when the user leaves this screen without acting on
-  // the tooltip. Covers the screen's own X, save, archive, hardware
-  // back — any path that closes the form while M1 step 2 (which lives
-  // on this screen) is still the current step. Without this the tour
-  // gets stranded: state stays at "step 2 on detail" but no detail is
+  const isEdit = !!params.id;
+  const fromTemplateId = params.from_template;
+  const isCreateMode = !isEdit && !fromTemplateId;
+  const isM2Current = useIsCurrentTourModule('M2');
+
+  // Auto-advance M1 / M2 when the user leaves this screen without
+  // acting on the active tooltip. Covers the screen's own X, save,
+  // archive, hardware back — any path that closes the form while a
+  // step that lives on this screen is still current. Without this the
+  // tour gets stranded: state stays at "step N on form" but no form is
   // mounted, so nothing renders and the user reads it as "tour ended".
+  //
+  //   M1 step 2 (detail mode)            → idx 1
+  //   M2 steps 3, 4, 5 (create mode)     → idx 2, 3, 4 — last one
+  //                                         finishes the module
   useFocusEffect(
     useCallback(() => {
       return () => {
         const state = useTourStore.getState();
-        const stepIdx = state.stepIndices.M1 ?? 0;
+
         const m1Status = state.modules.M1?.status;
-        // step index 1 == M1 step 2 (the only detail-screen step)
-        if (m1Status === 'in_progress' && stepIdx === 1) {
-          state.setStepIndex('M1', stepIdx + 1);
+        const m1Idx = state.stepIndices.M1 ?? 0;
+        if (m1Status === 'in_progress' && m1Idx === 1) {
+          state.setStepIndex('M1', m1Idx + 1);
+        }
+
+        // M2 steps 3-5 all live on this form (subs / recurrence /
+        // wrap-up). If the user closes the form via the screen's own
+        // X (or hardware back) while any of those is active, the
+        // remaining steps have nowhere to render — so just mark M2
+        // completed instead of stranding the tour state.
+        const m2Status = state.modules.M2?.status;
+        const m2Idx = state.stepIndices.M2 ?? 0;
+        if (m2Status === 'in_progress' && m2Idx >= 2 && m2Idx <= 4) {
+          void state.setStatus('M2', 'completed');
+          state.setStepIndex('M2', 0);
         }
       };
     }, []),
   );
-  const isEdit = !!params.id;
-  const fromTemplateId = params.from_template;
 
   const existing = useTask(params.id);
   const templates = useTaskTemplates();
@@ -158,6 +178,39 @@ export default function TaskFormScreen() {
   // doesn't always include the keyboard's tool/suggestion bar, so we add a
   // generous buffer below.
   const keyboardHeight = useKeyboardHeight();
+
+  // M2 tour auto-scroll: steps 3 (subs) and 4 (recurrence) live below
+  // the title/description/icon fold, so the tour scrolls them into view
+  // as each step opens instead of leaving the user staring at a tooltip
+  // that points at off-screen content.
+  const scrollRef = useRef<ScrollView>(null);
+  const subsY = useRef(0);
+  const recurrenceY = useRef(0);
+  const m2StepIndex = useTourStore((s) => s.stepIndices.M2 ?? 0);
+  const m2Status = useTourStore((s) => s.modules.M2?.status);
+  // Steps 3 (subs, idx 2) and 4 (recurrence, idx 3) sit low in the form
+  // and use a bottom tooltip. Without extra scroll room the auto-scroll
+  // can't lift the recurrence picker above the card (the list is too
+  // short to scroll that far). This bump adds the room.
+  const m2FormBump =
+    isCreateMode &&
+    isM2Current &&
+    m2Status === 'in_progress' &&
+    (m2StepIndex === 2 || m2StepIndex === 3)
+      ? 245
+      : 0;
+  useEffect(() => {
+    if (!isCreateMode || !isM2Current || m2Status !== 'in_progress') return;
+    // step index 2 == M2 step 3 (subs); 3 == step 4 (recurrence)
+    const targetY =
+      m2StepIndex === 2 ? subsY.current : m2StepIndex === 3 ? recurrenceY.current : null;
+    if (targetY == null) return;
+    const id = setTimeout(
+      () => scrollRef.current?.scrollTo({ y: Math.max(targetY - 72, 0), animated: true }),
+      150,
+    );
+    return () => clearTimeout(id);
+  }, [isCreateMode, isM2Current, m2Status, m2StepIndex]);
 
   // Hydrate from server when editing
   useEffect(() => {
@@ -327,8 +380,10 @@ export default function TaskFormScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.content,
+            m2FormBump > 0 && { paddingBottom: tokens.space[10] + m2FormBump },
             keyboardHeight > 0 && { paddingBottom: keyboardHeight + tokens.space[10] },
           ]}
           keyboardShouldPersistTaps="handled"
@@ -353,7 +408,10 @@ export default function TaskFormScreen() {
               style={styles.input}
               placeholder="Morning routine, 20 push-ups, ..."
               placeholderTextColor={tokens.text.faint}
-              autoFocus={!isEdit}
+              // Skip the auto-keyboard while the M2 tour walks the form
+              // — the user is reading tooltips, not typing yet, and a
+              // popped keyboard would shove the spotlight off-screen.
+              autoFocus={!isEdit && !(isCreateMode && isM2Current)}
               returnKeyType="next"
             />
           </View>
@@ -429,7 +487,12 @@ export default function TaskFormScreen() {
             </View>
           </View>
 
-          <View style={styles.field}>
+          <View
+            style={styles.field}
+            onLayout={(e) => {
+              subsY.current = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.label}>Sub-dimensions + stars</Text>
             <Text style={styles.hint}>
               Pick which subs this task contributes to and how heavy each
@@ -462,7 +525,12 @@ export default function TaskFormScreen() {
             )}
           </View>
 
-          <View style={styles.field}>
+          <View
+            style={styles.field}
+            onLayout={(e) => {
+              recurrenceY.current = e.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.label}>How often</Text>
             <RecurrencePicker
               recurrence={recurrence}
@@ -502,8 +570,24 @@ export default function TaskFormScreen() {
         module="M1"
         screen="detail"
         steps={buildM1Steps(t)}
+        flatNav
         onExitScreen={() => router.back()}
       />
+
+      {/* M2 steps 3-5 (subs / recurrence / wrap) live here when the
+         form is in CREATE mode (no id, no template prefill). Step 5's
+         Next closes the form to send the user back to Home where
+         the next module would pick up. */}
+      {isCreateMode && (
+        <TourModule
+          module="M2"
+          screen="create"
+          steps={buildM2Steps(t)}
+          enabled={isM2Current}
+          flatNav
+          onExitScreen={() => router.back()}
+        />
+      )}
     </SafeAreaView>
   );
 }

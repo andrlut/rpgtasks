@@ -2,7 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useBottomNavClearance } from '@/components/BottomNavBar';
+import {
+  useBottomNavClearance,
+  useBottomSafeClearance,
+} from '@/components/BottomNavBar';
 import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
@@ -44,6 +47,11 @@ interface Props extends TourStepData {
   /** 1-indexed step number for the N/M progress label. */
   stepIndex: number;
   totalSteps: number;
+  /**
+   * When true, use the smaller safe-area clearance instead of the
+   * floating-nav clearance — for screens without a BottomNavBar.
+   */
+  flatNav?: boolean;
   onNext: () => void;
   /** Called by both the X button and the "Pular este módulo" link. */
   onSkip: () => void;
@@ -64,14 +72,20 @@ export function TourStep({
   awaitEvent,
   stepIndex,
   totalSteps,
+  flatNav = false,
   onNext,
   onSkip,
   onSkipStep,
 }: Props) {
   const { t } = useT();
-  // Tooltips pinned to the bottom must clear the floating BottomNavBar;
-  // top tooltips just need a comfortable status-bar offset.
+  // Tooltips pinned to the bottom must clear whatever sits at the
+  // bottom of THIS screen: the floating BottomNavBar on tab screens,
+  // or just the safe-area inset on Stack-pushed screens (task-form,
+  // /tasks) that don't render the bar. Both hooks run unconditionally
+  // (rules-of-hooks); we pick the value with `flatNav`.
   const navClearance = useBottomNavClearance();
+  const safeClearance = useBottomSafeClearance();
+  const bottomClearance = flatNav ? safeClearance : navClearance;
 
   const handleNext = () => {
     Haptics.selectionAsync().catch(() => {});
@@ -104,7 +118,7 @@ export function TourStep({
         style={[
           styles.cardWrap,
           position === 'bottom'
-            ? { paddingBottom: navClearance + tokens.space[2] }
+            ? { paddingBottom: bottomClearance + tokens.space[2] }
             : { paddingTop: tokens.space[8] },
         ]}
         pointerEvents="box-none"

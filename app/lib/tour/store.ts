@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 
-import type { TourModule, TourModuleStatus } from './constants';
+import { TOUR_MODULES, type TourModule, type TourModuleStatus } from './constants';
 
 /**
  * Per-device, per-user post-login tour state. Tracks per-module status
@@ -134,6 +134,29 @@ export function useTourReady(characterId: string | null | undefined): boolean {
 /** Convenience: status for a single module (defaults to `pending`). */
 export function useModuleStatus(module: TourModule): TourModuleStatus {
   return useTourStore((s) => s.modules[module]?.status ?? 'pending');
+}
+
+/**
+ * True only when `module` is the first module in `TOUR_MODULES` order
+ * that is still `pending` or `in_progress`. This is the gate every
+ * inline `<TourModule>` mount uses to make sure only ONE module's
+ * tooltips render at a time — e.g. M2's tooltip won't pop on Home
+ * while M1 is mid-flow on the detail screen.
+ *
+ * M0 / M0_5 are typically completed via dedicated routes before any
+ * inline module is reachable, but this selector still works for them
+ * if we ever change that.
+ */
+export function useIsCurrentTourModule(module: TourModule): boolean {
+  return useTourStore((s) => {
+    for (const m of TOUR_MODULES) {
+      const status = s.modules[m]?.status ?? 'pending';
+      if (status === 'pending' || status === 'in_progress') {
+        return m === module;
+      }
+    }
+    return false;
+  });
 }
 
 /**

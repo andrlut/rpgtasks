@@ -44,6 +44,10 @@ import type {
 } from '@/lib/db/types';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { describeRecurrence } from '@/lib/recurrence';
+import { TourModule } from '@/components/tour/TourModule';
+import { emitTourEvent } from '@/lib/tour/eventBus';
+import { buildM2Steps, M2_EVENTS } from '@/lib/tour/m2Steps';
+import { useIsCurrentTourModule } from '@/lib/tour/store';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
 import {
@@ -113,6 +117,7 @@ export default function TasksHubScreen() {
   const tasks = useActiveTasks();
   const templates = useTaskTemplates();
   const startFromTemplate = useStartTaskFromTemplate();
+  const isM2Current = useIsCurrentTourModule('M2');
 
   const [tab, setTab] = useState<Tab>('allocated');
   const [query, setQuery] = useState('');
@@ -289,7 +294,10 @@ export default function TasksHubScreen() {
               />
             </Pressable>
             <Pressable
-              onPress={() => router.push('/task-form')}
+              onPress={() => {
+                emitTourEvent(M2_EVENTS.CREATE_TASK_TAPPED);
+                router.push('/task-form');
+              }}
               style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
               hitSlop={8}
               accessibilityLabel={t('tasksHub.newTask')}
@@ -430,6 +438,20 @@ export default function TasksHubScreen() {
         templateDefaultType={pickerTemplate?.task_type}
         onCancel={() => setPickerTemplate(null)}
         onConfirm={handleAdoptConfirm}
+      />
+
+      {/* M2 step 2 lives here — spotlight the `+` icon. The mount on
+         Home covers step 1; the mount on task-form covers steps 3-5.
+         `flatNav` because this Stack screen has no floating BottomNavBar.
+         Tapping `+` fires CREATE_TASK_TAPPED + navigates; tapping the
+         tooltip's Próximo / skip walks the user to the form instead. */}
+      <TourModule
+        module="M2"
+        screen="tasks"
+        steps={buildM2Steps(t)}
+        enabled={isM2Current}
+        flatNav
+        onAdvanceToNextScreen={() => router.push('/task-form')}
       />
     </SafeAreaView>
   );

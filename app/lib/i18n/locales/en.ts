@@ -180,6 +180,28 @@ const en = {
         body: "Scroll to the end of the list. There's a panel of what you finished today — in case you want to undo something.",
       },
     },
+    m2: {
+      step1: {
+        title: 'Make your own',
+        body: 'The right tasks for you are the ones you define. Tap Manage tasks to get started.',
+      },
+      step2: {
+        title: 'Tap the +',
+        body: "This is where creation lives. It'll open an empty form — no rush to fill it in.",
+      },
+      step3: {
+        title: 'What it trains',
+        body: 'Further down, past the title, description and icon, are the areas. Spread up to 5 stars across the ones this task touches — more stars, more Dedication per completion.',
+      },
+      step4: {
+        title: 'How often',
+        body: 'Once, every day, or specific days of the week — you choose the cadence.',
+      },
+      step5: {
+        title: 'No rush to save',
+        body: "Close without creating — you already have your starter tasks to practice. Come back when you actually want to build one.",
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Welcome, {{name}}.',

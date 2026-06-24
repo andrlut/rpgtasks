@@ -14,7 +14,14 @@ import type { TourModule as TourModuleId } from '@/lib/tour/constants';
  *  `<TourModule>` mount carries a matching `screen` prop and only
  *  renders the current step when the two agree. Steps default to
  *  'home' when omitted. */
-export type TourScreen = 'home' | 'detail' | 'rewards' | 'me' | 'learn';
+export type TourScreen =
+  | 'home'
+  | 'detail'
+  | 'tasks'
+  | 'create'
+  | 'rewards'
+  | 'me'
+  | 'learn';
 
 /**
  * Step config extension with a screen tag — re-exported so modules can
@@ -40,12 +47,28 @@ interface Props {
    */
   enabled?: boolean;
   /**
-   * Fired after EITHER advance or skip when the current step belongs
-   * to this mount's screen. Use it to navigate away from a modal-ish
-   * screen (e.g. task-form back to Home) so the user isn't stranded
-   * with the next step waiting on a different surface.
+   * Fired when the user leaves THIS mount's screen because the tour
+   * moved on — i.e. they advanced past the last step that lives here,
+   * or they skipped the whole module. Use it to CLOSE a modal-ish
+   * screen (e.g. task-form → router.back()) so the user isn't stranded.
+   * Not fired between two consecutive steps on the same screen.
    */
   onExitScreen?: () => void;
+  /**
+   * Fired when advancing (Próximo / "Pular este passo") moves to a step
+   * that lives on a DIFFERENT, deeper screen the user hasn't opened yet.
+   * Use it to navigate FORWARD (e.g. Home → push('/tasks')). Unlike
+   * `onExitScreen`, this does NOT fire when the module is skipped — a
+   * skip should dismiss the tour in place, not walk the user deeper.
+   */
+  onAdvanceToNextScreen?: () => void;
+  /**
+   * When true, the tooltip uses the smaller safe-area bottom clearance
+   * instead of the floating-nav clearance. Set on Stack-pushed screens
+   * (task-form, /tasks) that don't render the BottomNavBar — otherwise
+   * the card floats with a phantom gap where the nav bar would be.
+   */
+  flatNav?: boolean;
   onComplete?: (outcome: 'completed' | 'skipped') => void;
 }
 
@@ -66,6 +89,8 @@ export function TourModule({
   screen = 'home',
   enabled = true,
   onExitScreen,
+  onAdvanceToNextScreen,
+  flatNav = false,
   onComplete,
 }: Props) {
   const status = useModuleStatus(module);
@@ -140,9 +165,24 @@ export function TourModule({
   // step is already current by the time we navigate away. Same handler
   // for X and Próximo so the user is never trapped on a screen the
   // tour walked them onto.
+  //
+  // Subtlety: when MULTIPLE consecutive steps live on the same screen
+  // (M2 steps 3/4/5 all on the create form), `onExitScreen` would
+  // close the form prematurely between steps. Only fire it when the
+  // NEXT step belongs to a different screen, or when this advance
+  // ends the module entirely.
+  const currentScreen = step?.screen ?? 'home';
+  const nextStepScreen = steps[stepIndex + 1]?.screen ?? 'home';
+  const willEndModule = stepIndex >= steps.length - 1;
+  const screenChangesOnAdvance =
+    !willEndModule && nextStepScreen !== currentScreen;
   const handleNext = () => {
     void advance().then(() => {
-      onExitScreen?.();
+      // Close this (modal-ish) screen when the tour leaves it: either
+      // the module ended, or the next step lives elsewhere.
+      if (willEndModule || screenChangesOnAdvance) onExitScreen?.();
+      // Walk the user forward to the deeper screen the next step needs.
+      if (screenChangesOnAdvance) onAdvanceToNextScreen?.();
     });
   };
   const handleSkip = () => {
@@ -154,6 +194,7 @@ export function TourModule({
   return (
     <TourStep
       {...step}
+      flatNav={flatNav}
       stepIndex={stepIndex + 1}
       totalSteps={steps.length}
       onNext={handleNext}
