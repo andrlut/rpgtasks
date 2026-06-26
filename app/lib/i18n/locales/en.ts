@@ -230,6 +230,28 @@ const en = {
         body: 'Suggestions like a movie, a dinner, or some rest. Each costs coins: you redeem it to your bank and use it whenever you like — or refund it, and the coins come back.',
       },
     },
+    m5: {
+      step1: {
+        title: 'Who you are',
+        body: 'This tab is the picture of who you are. Tap Me to open it.',
+      },
+      step2: {
+        title: 'Three portraits',
+        body: 'Three portraits of you: how you perceive yourself, what you practice, and who you want to become. You switch between them up here.',
+      },
+      step3: {
+        title: 'Perceived identity',
+        body: 'How you see yourself today: your map of areas (tap one for details) plus questionnaires to know yourself better.',
+      },
+      step4: {
+        title: 'Practiced identity',
+        body: 'What your actions train: the Dedication each area earns and your Momentum over time.',
+      },
+      step5: {
+        title: 'Desired identity',
+        body: 'Who you want to become: Skills you track and longer-term Goals.',
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Welcome, {{name}}.',

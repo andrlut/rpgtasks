@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -25,6 +25,10 @@ import { useCharacter } from '@/lib/api/character';
 import { useMomentum } from '@/lib/api/momentum';
 import { useSkillStates } from '@/lib/api/skills';
 import { useT } from '@/lib/i18n';
+import { TourModule } from '@/components/tour/TourModule';
+import { emitTourEvent } from '@/lib/tour/eventBus';
+import { buildM5Steps, M5_EVENTS } from '@/lib/tour/m5Steps';
+import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { tokens } from '@/theme';
 
 // Sub-pillar key types per pilar — kept narrow so TS catches mis-typings.
@@ -71,6 +75,7 @@ const PILLAR_TONE: Record<PillarKey, { accent: string; halo: string; border: str
  */
 export default function CharacterScreen() {
   const { t } = useT();
+  const router = useRouter();
   const character = useCharacter();
   const skillStates = useSkillStates();
   const momentum = useMomentum();
@@ -97,6 +102,60 @@ export default function CharacterScreen() {
   });
   const bottomClearance = useBottomNavClearance();
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // ── M5 tour plumbing ────────────────────────────────────────────────
+  const isM5Current = useIsCurrentTourModule('M5');
+  const m5StepIndex = useTourStore((s) => s.stepIndices.M5 ?? 0);
+  const m5Status = useTourStore((s) => s.modules.M5?.status);
+  // Measured for the step-3 partial scroll: drop the user ~70% down so the
+  // Avaliação sub-score boxes land in the open space above the tooltip.
+  const contentH = useRef(0);
+  const viewportH = useRef(0);
+
+  // While an M5 tooltip is open on this tab (steps 2-5, all bottom-pinned)
+  // add extra bottom room so the user can scroll content clear of the
+  // tooltip card — same buffer pattern as the other modules.
+  const m5OnMeStep =
+    isM5Current && m5Status === 'in_progress' && m5StepIndex >= 1 && m5StepIndex <= 4;
+  const m5Bump = m5OnMeStep ? 260 : 0;
+
+  // M5 step 1 lives on Home and waits for the user to reach this tab.
+  // Emit ME_NAVIGATED when the screen gains focus while step 1 is still
+  // current, so the Home tooltip advances to step 2 (which renders here).
+  useFocusEffect(
+    useCallback(() => {
+      const state = useTourStore.getState();
+      const status = state.modules.M5?.status ?? 'pending';
+      const idx = state.stepIndices.M5 ?? 0;
+      if (isM5Current && idx === 0 && status !== 'completed' && status !== 'skipped') {
+        emitTourEvent(M5_EVENTS.ME_NAVIGATED);
+      }
+    }, [isM5Current]),
+  );
+
+  // Drive the active pillar off the M5 step index so tapping Próximo
+  // flips the portrait under the tooltip (steps 3-5 = the three pillars).
+  // Scroll: step 3 (Percebida) drops ~70% down to the sub-score boxes;
+  // every other step returns to the top so the switcher is in view.
+  useEffect(() => {
+    if (!isM5Current || m5Status !== 'in_progress') return;
+    if (m5StepIndex === 3) setActivePillar('praticada');
+    else if (m5StepIndex === 4) setActivePillar('desejada');
+    else if (m5StepIndex === 1 || m5StepIndex === 2) setActivePillar('percebida');
+    const id = setTimeout(() => {
+      if (m5StepIndex === 2) {
+        // Drop down to the Avaliação sub boxes. 70% of the real scroll
+        // range wasn't quite enough in testing, so double it (1.4×); the
+        // extra m5Bump buffer gives the room to go further without
+        // clamping short.
+        const range = Math.max(0, contentH.current - viewportH.current - m5Bump);
+        scrollViewRef.current?.scrollTo({ y: range * 1.4, animated: true });
+      } else {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+    }, 180);
+    return () => clearTimeout(id);
+  }, [isM5Current, m5Status, m5StepIndex, m5Bump]);
 
   if (character.isLoading) {
     return (
@@ -147,8 +206,14 @@ export default function CharacterScreen() {
       <ScreenBackground>
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={{ paddingBottom: bottomClearance }}
+          contentContainerStyle={{ paddingBottom: bottomClearance + m5Bump }}
           showsVerticalScrollIndicator={false}
+          onLayout={(e) => {
+            viewportH.current = e.nativeEvent.layout.height;
+          }}
+          onContentSizeChange={(_w, h) => {
+            contentH.current = h;
+          }}
           refreshControl={
             <RefreshControl
               refreshing={
@@ -207,6 +272,18 @@ export default function CharacterScreen() {
           </View>
         </ScrollView>
       </ScreenBackground>
+
+      {/* M5 steps 2-5 live here (pillar switcher + the three portraits).
+         Step 1 is on Home (Eu tab spotlight). Finishing returns the user
+         to the Tasks home so the next module's Home-anchored step 1 can
+         show. No `flatNav` — this is a tab screen WITH the BottomNavBar. */}
+      <TourModule
+        module="M5"
+        screen="me"
+        steps={buildM5Steps(t)}
+        enabled={isM5Current}
+        onExitScreen={() => router.navigate('/(tabs)')}
+      />
     </SafeAreaView>
   );
 }

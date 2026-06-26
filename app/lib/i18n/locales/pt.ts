@@ -223,6 +223,28 @@ const pt: Translations = {
         body: 'Sugestões como um filme, um jantar ou um descanso. Cada uma custa moedas: você resgata pro seu banco e usa quando quiser — ou refunda, e as moedas voltam.',
       },
     },
+    m5: {
+      step1: {
+        title: 'Quem você é',
+        body: 'Essa aba é o retrato de quem você é. Toque em Eu pra abrir.',
+      },
+      step2: {
+        title: 'Três retratos',
+        body: 'Três retratos seus: como você se percebe, o que pratica e quem quer se tornar. Você alterna entre eles aqui em cima.',
+      },
+      step3: {
+        title: 'Identidade Percebida',
+        body: 'Como você se vê hoje: seu mapa de áreas (toque numa pra ver detalhes) e questionários pra se conhecer melhor.',
+      },
+      step4: {
+        title: 'Identidade Praticada',
+        body: 'O que suas ações treinam: a Dedicação que cada área recebe e seu Momentum ao longo do tempo.',
+      },
+      step5: {
+        title: 'Identidade Desejada',
+        body: 'Quem você quer se tornar: Skills que você acompanha e Metas de longo prazo.',
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Bem-vindo, {{name}}.',

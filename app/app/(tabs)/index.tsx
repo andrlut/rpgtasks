@@ -35,6 +35,7 @@ import { buildM1Steps, M1_EVENTS } from '@/lib/tour/m1Steps';
 import { buildM2Steps, M2_EVENTS } from '@/lib/tour/m2Steps';
 import { buildM3Steps } from '@/lib/tour/m3Steps';
 import { buildM4Steps } from '@/lib/tour/m4Steps';
+import { buildM5Steps } from '@/lib/tour/m5Steps';
 import { useActiveTourStep, useIsCurrentTourModule } from '@/lib/tour/store';
 import {
   useActiveTasks,
@@ -129,6 +130,7 @@ export default function HomeScreen() {
   const isM2Current = useIsCurrentTourModule('M2');
   const isM3Current = useIsCurrentTourModule('M3');
   const isM4Current = useIsCurrentTourModule('M4');
+  const isM5Current = useIsCurrentTourModule('M5');
 
   // Tour auto-scroll on Home:
   //   - M2 step 1 targets the bottom-most "Gerenciar tarefas" button →
@@ -634,6 +636,16 @@ export default function HomeScreen() {
         steps={buildM4Steps(t)}
         enabled={isM4Current}
         onAdvanceToNextScreen={() => router.navigate('/(tabs)/rewards')}
+      />
+
+      {/* M5 step 1 lives here (Eu/Hero bottom-nav tab). Switching to the
+         Hero tab fires ME_NAVIGATED from that screen; Próximo / skip
+         switches there ourselves so steps 2-5 have their surface. */}
+      <TourModule
+        module="M5"
+        steps={buildM5Steps(t)}
+        enabled={isM5Current}
+        onAdvanceToNextScreen={() => router.navigate('/(tabs)/character')}
       />
     </SafeAreaView>
   );
