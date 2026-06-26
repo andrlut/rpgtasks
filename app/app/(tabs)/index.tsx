@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,7 +32,8 @@ import { useLoadedSettings } from '@/lib/settings';
 import { TourModule } from '@/components/tour/TourModule';
 import { emitTourEvent } from '@/lib/tour/eventBus';
 import { buildM1Steps, M1_EVENTS } from '@/lib/tour/m1Steps';
-import { useActiveTourStep } from '@/lib/tour/store';
+import { buildM2Steps, M2_EVENTS } from '@/lib/tour/m2Steps';
+import { useActiveTourStep, useIsCurrentTourModule } from '@/lib/tour/store';
 import {
   useActiveTasks,
   useCompleteTask,
@@ -111,8 +112,33 @@ export default function HomeScreen() {
   // baked into navClearance; matches the visible gap users expected
   // when testing M1 step 5.
   const activeTourStep = useActiveTourStep();
-  const tourBottomBump = activeTourStep?.position === 'bottom' ? 160 : 0;
+  // M2 step 1 spotlights the "Gerenciar tarefas" button — the very last
+  // row of the scroll. It needs more bottom room than the M1 drawer
+  // (which is mid-list) so the button clears the full tooltip card
+  // height once we scroll to the end.
+  const tourBottomBump =
+    activeTourStep?.position === 'bottom'
+      ? activeTourStep.module === 'M2'
+        ? 245
+        : 160
+      : 0;
   const bottomClearance = navClearance + tourBottomBump;
+  const isM1Current = useIsCurrentTourModule('M1');
+  const isM2Current = useIsCurrentTourModule('M2');
+
+  // When M2 step 1 appears, auto-scroll to the end so its target (the
+  // bottom-most "Gerenciar tarefas" button) settles into the gap above
+  // the tooltip instead of hiding behind it.
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (activeTourStep?.module === 'M2') {
+      const id = setTimeout(
+        () => scrollRef.current?.scrollToEnd({ animated: true }),
+        120,
+      );
+      return () => clearTimeout(id);
+    }
+  }, [activeTourStep?.module]);
 
   // ── Mutation handlers ─────────────────────────────────────────────────
   const fireCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
@@ -373,6 +399,7 @@ export default function HomeScreen() {
       <TodayAmbient />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
         showsVerticalScrollIndicator={false}
@@ -505,7 +532,10 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => router.push('/tasks')}
+                onPress={() => {
+                  emitTourEvent(M2_EVENTS.TASKS_NAVIGATED);
+                  router.push('/tasks');
+                }}
                 style={({ pressed }) => [
                   styles.bottomBtn,
                   pressed && styles.bottomBtnPressed,
@@ -552,13 +582,24 @@ export default function HomeScreen() {
       />
 
       {/* Post-login tour — M1 (Tasks). Only renders when the user has
-         tasks visible behind the spotlight; gated on M0 already being
-         past so a fresh user goes M0 → M0.5 → Home (with M1 firing).
-         Status flows to `completed` after the 6th step. */}
+         tasks visible behind the spotlight and M1 is the current
+         (first-unfinished) module — keeps later modules from leaking
+         their tooltips onto Home before their turn. */}
       <TourModule
         module="M1"
         steps={buildM1Steps(t)}
-        enabled={(allActiveTasks.data?.length ?? 0) > 0}
+        enabled={isM1Current && (allActiveTasks.data?.length ?? 0) > 0}
+      />
+
+      {/* M2 step 1 lives here (manage-tasks button). Tapping the real
+         button fires TASKS_NAVIGATED + navigates; if the user instead
+         taps Próximo / "Pular este passo" on the tooltip, walk them to
+         /tasks ourselves so step 2 has its surface. */}
+      <TourModule
+        module="M2"
+        steps={buildM2Steps(t)}
+        enabled={isM2Current}
+        onAdvanceToNextScreen={() => router.push('/tasks')}
       />
     </SafeAreaView>
   );

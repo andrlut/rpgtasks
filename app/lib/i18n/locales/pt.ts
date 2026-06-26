@@ -173,6 +173,28 @@ const pt: Translations = {
         body: 'Role até o fim da lista. Tem um painel das tarefas feitas hoje — caso queira desfazer alguma.',
       },
     },
+    m2: {
+      step1: {
+        title: 'Crie as suas próprias',
+        body: 'As tarefas certas pra você são as que você define. Toque em Gerenciar tarefas pra começar.',
+      },
+      step2: {
+        title: 'Toque no +',
+        body: 'É aqui que mora a criação. Vai abrir um formulário vazio — sem pressa pra preencher.',
+      },
+      step3: {
+        title: 'O que ela treina',
+        body: 'Mais abaixo, depois do título, descrição e ícone, ficam as áreas. Distribua até 5 estrelas entre as que a tarefa toca — mais estrelas, mais Dedicação por conclusão.',
+      },
+      step4: {
+        title: 'Com qual frequência',
+        body: 'Uma vez só, todo dia, ou em dias específicos da semana. Você decide a cadência.',
+      },
+      step5: {
+        title: 'Sem pressa pra salvar',
+        body: 'Pode fechar sem criar — você já tem suas tarefas iniciais pra praticar. Volta quando quiser criar de verdade.',
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Bem-vindo, {{name}}.',
