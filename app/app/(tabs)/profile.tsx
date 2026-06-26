@@ -18,7 +18,6 @@ import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { useCharacter } from '@/lib/api/character';
 import { useSession } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
-import { useOnboardingStore } from '@/lib/onboarding';
 import {
   useLoadedSettings,
   useSettingsStore,
@@ -27,7 +26,6 @@ import {
   type WeekStart,
 } from '@/lib/settings';
 import { supabase } from '@/lib/supabase';
-import { useTourStore } from '@/lib/tour/store';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
@@ -37,8 +35,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const character = useCharacter();
   const session = useSession();
-  const resetOnboarding = useOnboardingStore((s) => s.reset);
-  const resetTour = useTourStore((s) => s.resetAll);
   const settings = useLoadedSettings();
   const setSetting = useSettingsStore((s) => s.set);
   const { t } = useT();
@@ -80,13 +76,11 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleReplayOnboarding = async () => {
-    // Temporary catch-all: also resets every post-login tour module so
-    // the user is dropped back at M0 right after the pre-login slides.
-    // When we add a per-module "Refazer X" Settings list, this should
-    // narrow to the slides-only reset.
-    await Promise.all([resetOnboarding(), resetTour()]);
-    router.push('/onboarding');
+  const handleReplayOnboarding = () => {
+    // Opens the per-module replay screen (M0…M6 + "Refazer tour
+    // completo"). Each module's reset + navigation is handled there, so
+    // this no longer wipes onboarding/tour state up front.
+    router.push('/tour-replay');
   };
 
   const handleCheckForUpdate = async () => {

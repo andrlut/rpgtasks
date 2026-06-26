@@ -49,6 +49,11 @@ interface TourState {
   /** Reset every module to pending — used by the "Refazer tour completo"
    *  button in Settings. */
   resetAll: () => Promise<void>;
+  /** Replay a single module in isolation: set it to `pending` and every
+   *  OTHER module to `completed`, so the sequential "current module" gate
+   *  surfaces only this one and nothing else fires before or after it.
+   *  Used by the per-module "Refazer" buttons in Settings. */
+  replayModule: (module: TourModule) => Promise<void>;
 }
 
 function storageKey(characterId: string | null): string {
@@ -102,6 +107,19 @@ export const useTourStore = create<TourState>((set, get) => ({
   resetAll: async () => {
     set({ modules: {}, stepIndices: {} });
     await persistModules(get().characterId, {});
+  },
+
+  replayModule: async (module) => {
+    const now = new Date().toISOString();
+    const next: TourState['modules'] = {};
+    for (const m of TOUR_MODULES) {
+      next[m] = {
+        status: m === module ? 'pending' : 'completed',
+        updatedAt: now,
+      };
+    }
+    set({ modules: next, stepIndices: {} });
+    await persistModules(get().characterId, next);
   },
 }));
 

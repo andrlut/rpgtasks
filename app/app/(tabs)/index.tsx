@@ -36,7 +36,12 @@ import { buildM2Steps, M2_EVENTS } from '@/lib/tour/m2Steps';
 import { buildM3Steps } from '@/lib/tour/m3Steps';
 import { buildM4Steps } from '@/lib/tour/m4Steps';
 import { buildM5Steps } from '@/lib/tour/m5Steps';
-import { useActiveTourStep, useIsCurrentTourModule } from '@/lib/tour/store';
+import { buildM6Steps } from '@/lib/tour/m6Steps';
+import {
+  useActiveTourStep,
+  useIsCurrentTourModule,
+  useTourStore,
+} from '@/lib/tour/store';
 import {
   useActiveTasks,
   useCompleteTask,
@@ -131,6 +136,17 @@ export default function HomeScreen() {
   const isM3Current = useIsCurrentTourModule('M3');
   const isM4Current = useIsCurrentTourModule('M4');
   const isM5Current = useIsCurrentTourModule('M5');
+  const isM6Current = useIsCurrentTourModule('M6');
+
+  // M6 completes (or is skipped) → the always-runs Wrap-up. Guard on the
+  // wrap module still being pending so an isolated M6 replay (which marks
+  // wrap completed) just returns Home instead of replaying the closer.
+  const finishM6 = () => {
+    const wrapPending =
+      (useTourStore.getState().modules.wrap?.status ?? 'pending') === 'pending';
+    if (wrapPending) router.push('/tour/wrap');
+    else router.navigate('/(tabs)');
+  };
 
   // Tour auto-scroll on Home:
   //   - M2 step 1 targets the bottom-most "Gerenciar tarefas" button →
@@ -646,6 +662,17 @@ export default function HomeScreen() {
         steps={buildM5Steps(t)}
         enabled={isM5Current}
         onAdvanceToNextScreen={() => router.navigate('/(tabs)/character')}
+      />
+
+      {/* M6 step 1 lives here (Learn bottom-nav tab). Switching to the
+         Learn tab fires LEARN_NAVIGATED from that screen. Skipping at
+         this step ends M6 → Wrap-up (finishM6). */}
+      <TourModule
+        module="M6"
+        steps={buildM6Steps(t)}
+        enabled={isM6Current}
+        onAdvanceToNextScreen={() => router.navigate('/(tabs)/learning')}
+        onComplete={finishM6}
       />
     </SafeAreaView>
   );

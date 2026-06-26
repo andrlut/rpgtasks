@@ -252,6 +252,16 @@ const en = {
         body: 'Who you want to become: Skills you track and longer-term Goals.',
       },
     },
+    m6: {
+      step1: {
+        title: 'Learn',
+        body: 'Articles to understand the why behind it all — habits, identity, the 6 dimensions, and practices for each area. Tap the Learn tab.',
+      },
+      step2: {
+        title: 'Always something new',
+        body: 'Short, visual explainers, with fresh material every week. Read at your own pace.',
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Welcome, {{name}}.',
@@ -273,6 +283,29 @@ const en = {
       title: 'All set.',
       body: 'The tour is just the start. What makes a difference is what you practice. Every task you check off is a vote for who you want to become. You can revisit any module from Settings.',
       primary: 'Start practicing',
+    },
+    replay: {
+      title: 'Replay tutorial',
+      subtitle: 'Revisit any tour module. Replaying one takes you straight to it.',
+      replayBtn: 'Replay',
+      allTitle: 'Replay the whole tour',
+      allDesc: 'Starts over from the welcome screen.',
+      status: {
+        pending: 'Not seen',
+        in_progress: 'In progress',
+        completed: 'Done',
+        skipped: 'Skipped',
+      },
+      modules: {
+        M0: { name: 'Welcome', desc: "The tour's opening screen." },
+        M0_5: { name: 'Starter tasks', desc: 'Pick 3 practices to begin.' },
+        M1: { name: 'Tasks', desc: 'Complete, adjust and undo tasks.' },
+        M2: { name: 'Create a task', desc: 'Build your own tasks.' },
+        M3: { name: 'Quests', desc: 'Bigger journeys with a deadline.' },
+        M4: { name: 'Rewards', desc: 'Redeem and bank rewards.' },
+        M5: { name: 'Me', desc: 'The three portraits of your identity.' },
+        M6: { name: 'Learn', desc: 'Articles to understand the why.' },
+      },
     },
     errors: {
       adopt: "Couldn't add the tasks. Try again.",
@@ -1175,7 +1208,7 @@ const en = {
       footnote: 'Notifications need a small native setup pass — the toggles save your choice now and will start firing once that ships.',
     },
     actions: {
-      replayOnboarding: 'Replay onboarding',
+      replayOnboarding: 'Replay tutorial',
       checkForUpdates: 'Check for updates',
       checking: 'Checking…',
       signOut: 'Sign out',

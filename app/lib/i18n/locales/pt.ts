@@ -245,6 +245,16 @@ const pt: Translations = {
         body: 'Quem você quer se tornar: Skills que você acompanha e Metas de longo prazo.',
       },
     },
+    m6: {
+      step1: {
+        title: 'Aprender',
+        body: 'Artigos pra entender o porquê das coisas — hábitos, identidade, as 6 dimensões e práticas pra cada área. Toque na aba Aprender.',
+      },
+      step2: {
+        title: 'Sempre tem novidade',
+        body: 'Explicações curtas e visuais, com material novo toda semana. Leia no seu ritmo.',
+      },
+    },
     m0: {
       eyebrow: 'TOUR',
       title: 'Bem-vindo, {{name}}.',
@@ -266,6 +276,29 @@ const pt: Translations = {
       title: 'Tudo certo.',
       body: 'O tour é só o começo. O que faz diferença é o que você pratica. Cada tarefa marcada é um voto em quem você quer se tornar. Pode revisitar qualquer módulo em Ajustes.',
       primary: 'Começar a praticar',
+    },
+    replay: {
+      title: 'Refazer tutorial',
+      subtitle: 'Revisite qualquer módulo do tour. Refazer um leva você direto pra ele.',
+      replayBtn: 'Refazer',
+      allTitle: 'Refazer o tour completo',
+      allDesc: 'Começa do zero, da tela de boas-vindas.',
+      status: {
+        pending: 'Não visto',
+        in_progress: 'Em andamento',
+        completed: 'Concluído',
+        skipped: 'Pulado',
+      },
+      modules: {
+        M0: { name: 'Boas-vindas', desc: 'A tela de abertura do tour.' },
+        M0_5: { name: 'Tarefas iniciais', desc: 'Escolher 3 práticas pra começar.' },
+        M1: { name: 'Tarefas', desc: 'Concluir, ajustar e desfazer tarefas.' },
+        M2: { name: 'Criar tarefa', desc: 'Montar suas próprias tarefas.' },
+        M3: { name: 'Missões', desc: 'Jornadas maiores com prazo.' },
+        M4: { name: 'Recompensas', desc: 'Resgatar e bancar recompensas.' },
+        M5: { name: 'Eu', desc: 'Os três retratos da sua identidade.' },
+        M6: { name: 'Aprender', desc: 'Artigos pra entender o porquê.' },
+      },
     },
     errors: {
       adopt: 'Não foi possível adicionar as tarefas. Tente de novo.',
@@ -1172,7 +1205,7 @@ const pt: Translations = {
       footnote: 'As notificações precisam de uma pequena configuração nativa — os toggles já salvam sua escolha e começam a disparar quando rolar.',
     },
     actions: {
-      replayOnboarding: 'Refazer onboarding',
+      replayOnboarding: 'Refazer tutorial',
       checkForUpdates: 'Buscar atualizações',
       checking: 'Verificando…',
       signOut: 'Sair',

@@ -142,6 +142,8 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="tour/m0" options={{ headerShown: false }} />
             <Stack.Screen name="tour/m0-5" options={{ headerShown: false }} />
+            <Stack.Screen name="tour/wrap" options={{ headerShown: false }} />
+            <Stack.Screen name="tour-replay" options={{ headerShown: false }} />
             <Stack.Screen
               name="task-form"
               options={{ presentation: 'modal', headerShown: false }}
