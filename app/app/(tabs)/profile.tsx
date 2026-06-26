@@ -18,7 +18,6 @@ import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { useCharacter } from '@/lib/api/character';
 import { useSession } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
-import { useOnboardingStore } from '@/lib/onboarding';
 import {
   useLoadedSettings,
   useSettingsStore,
@@ -36,7 +35,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const character = useCharacter();
   const session = useSession();
-  const resetOnboarding = useOnboardingStore((s) => s.reset);
   const settings = useLoadedSettings();
   const setSetting = useSettingsStore((s) => s.set);
   const { t } = useT();
@@ -78,9 +76,11 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleReplayOnboarding = async () => {
-    await resetOnboarding();
-    router.push('/onboarding');
+  const handleReplayOnboarding = () => {
+    // Opens the per-module replay screen (M0…M6 + "Refazer tour
+    // completo"). Each module's reset + navigation is handled there, so
+    // this no longer wipes onboarding/tour state up front.
+    router.push('/tour-replay');
   };
 
   const handleCheckForUpdate = async () => {

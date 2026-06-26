@@ -26,17 +26,23 @@ import {
 } from '@/lib/auth';
 import { useNotificationsSetup } from '@/lib/notifications/useNotificationsSetup';
 import { useLoadOnboarding } from '@/lib/onboarding';
+import { useModuleStatus, useTourReady } from '@/lib/tour/store';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useSession();
+  const { isAuthenticated, isLoading, user } = useSession();
   const isRecovering = useRecoveryStore((s) => s.isRecovering);
   const segments = useSegments();
   const router = useRouter();
   const onboardingStatus = useLoadOnboarding();
+  // Hydrate the post-login tour store keyed on the current user id —
+  // status reads default to `pending` until ready, so the redirect
+  // never fires with stale data from a previous account.
+  const tourReady = useTourReady(user?.id ?? null);
+  const m0Status = useModuleStatus('M0');
   useAuthDeepLink();
   useRegisterRecoveryListener();
 
@@ -47,6 +53,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const onOnboarding = top === 'onboarding';
     const onForgot = top === 'forgot-password';
     const onReset = top === 'reset-password';
+    const onTour = top === 'tour';
 
     // Password recovery overrides everything else: the user has a session
     // (set by the email link) but they need to choose a new password before
@@ -61,6 +68,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       // Allow deliberate replay: if onboardingStatus was reset to 'unseen',
       // an authenticated user can sit on /onboarding until they finish it.
       if (onOnboarding && onboardingStatus === 'seen') router.replace('/');
+      // Post-login product tour — gate on first M0 status only. Once
+      // the user finishes or skips M0, we never auto-redirect again.
+      // tourReady prevents flashing /tour on cold start before the
+      // store hydrates from AsyncStorage.
+      if (
+        tourReady &&
+        m0Status === 'pending' &&
+        !onTour &&
+        !onOnboarding &&
+        onboardingStatus === 'seen'
+      ) {
+        router.replace('/tour/m0');
+      }
       return;
     }
 
@@ -70,7 +90,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     } else {
       if (!onLogin && !onForgot) router.replace('/login');
     }
-  }, [isAuthenticated, isRecovering, isLoading, onboardingStatus, segments, router]);
+  }, [
+    isAuthenticated,
+    isRecovering,
+    isLoading,
+    onboardingStatus,
+    segments,
+    router,
+    tourReady,
+    m0Status,
+  ]);
 
   return <>{children}</>;
 }
@@ -111,6 +140,10 @@ export default function RootLayout() {
             <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
             <Stack.Screen name="reset-password" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="tour/m0" options={{ headerShown: false }} />
+            <Stack.Screen name="tour/m0-5" options={{ headerShown: false }} />
+            <Stack.Screen name="tour/wrap" options={{ headerShown: false }} />
+            <Stack.Screen name="tour-replay" options={{ headerShown: false }} />
             <Stack.Screen
               name="task-form"
               options={{ presentation: 'modal', headerShown: false }}

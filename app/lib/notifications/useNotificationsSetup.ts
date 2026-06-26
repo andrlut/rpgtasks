@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 
 import { useT } from '@/lib/i18n';
 import { useLoadedSettings, useSettingsStore } from '@/lib/settings';
@@ -13,6 +13,15 @@ import {
   cancelAllNotifications,
 } from './index';
 import { requestNotificationPermissions } from './permissions';
+
+/**
+ * `expo-notifications` has no web shim — calling any schedule/cancel
+ * helper crashes the JS bundle with a "method not available on web"
+ * error. We're a mobile-first app; the web target exists only for
+ * local Metro debugging, where notifications are out of scope anyway.
+ * Short-circuit the whole hook there.
+ */
+const NOTIFICATIONS_SUPPORTED = Platform.OS !== 'web';
 
 /**
  * Boots the Perceva notification system.
@@ -40,6 +49,7 @@ export function useNotificationsSetup() {
 
   // ── 1. Install the foreground handler once ─────────────────────────
   useEffect(() => {
+    if (!NOTIFICATIONS_SUPPORTED) return;
     if (handlerInstalled.current) return;
     configureNotificationHandler();
     handlerInstalled.current = true;
@@ -47,6 +57,7 @@ export function useNotificationsSetup() {
 
   // ── 2. React to the master-switch and locale ───────────────────────
   useEffect(() => {
+    if (!NOTIFICATIONS_SUPPORTED) return;
     if (settingsStatus !== 'ready') return;
     let cancelled = false;
 
@@ -67,6 +78,7 @@ export function useNotificationsSetup() {
 
   // ── 3. AppState — foreground = register open + drop checkpoint ─────
   useEffect(() => {
+    if (!NOTIFICATIONS_SUPPORTED) return;
     const onChange = async (state: AppStateStatus) => {
       if (state !== 'active') return;
       await registerAppOpen();

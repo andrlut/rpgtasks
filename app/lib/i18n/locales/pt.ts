@@ -137,6 +137,174 @@ const pt: Translations = {
     settings: 'Ajustes',
   },
 
+  // Post-login product tour (M0 → Wrap-up). Pre-login slides live above
+  // under `onboarding`. Keep the namespaces separate — same shape, two
+  // different gating concerns.
+  tour: {
+    common: {
+      next: 'Próximo',
+      skipModule: 'Pular este módulo',
+      skipStep: 'Pular este passo',
+      tryIt: 'Faça isso pra continuar',
+    },
+    m1: {
+      step1: {
+        title: 'Suas tarefas do dia',
+        body: 'Essas são as 3 tarefas que você escolheu. Toque numa delas pra explorar — depois volte aqui.',
+      },
+      step2: {
+        title: 'Por que vale',
+        body: 'No detalhe você vê quais áreas a tarefa treina e quanta Dedicação ela rende.',
+      },
+      step3: {
+        title: 'Pressione e segure',
+        body: 'Mantenha o dedo numa tarefa pra abrir o menu: ajustar estrelas, pular o dia ou editar.',
+      },
+      step4: {
+        title: 'Marcar como feita',
+        body: 'Toque no check pra registrar a prática. É o gesto que move tudo aqui.',
+      },
+      step5: {
+        title: 'Sua identidade praticada',
+        body: 'Cada ação fortalece áreas específicas. Você vai vendo isso crescer com o tempo.',
+      },
+      step6: {
+        title: 'Concluídas hoje',
+        body: 'Role até o fim da lista. Tem um painel das tarefas feitas hoje — caso queira desfazer alguma.',
+      },
+    },
+    m2: {
+      step1: {
+        title: 'Crie as suas próprias',
+        body: 'As tarefas certas pra você são as que você define. Toque em Gerenciar tarefas pra começar.',
+      },
+      step2: {
+        title: 'Toque no +',
+        body: 'É aqui que mora a criação. Vai abrir um formulário vazio — sem pressa pra preencher.',
+      },
+      step3: {
+        title: 'O que ela treina',
+        body: 'Mais abaixo, depois do título, descrição e ícone, ficam as áreas. Distribua até 5 estrelas entre as que a tarefa toca — mais estrelas, mais Dedicação por conclusão.',
+      },
+      step4: {
+        title: 'Com qual frequência',
+        body: 'Uma vez só, todo dia, ou em dias específicos da semana. Você decide a cadência.',
+      },
+      step5: {
+        title: 'Sem pressa pra salvar',
+        body: 'Pode fechar sem criar — você já tem suas tarefas iniciais pra praticar. Volta quando quiser criar de verdade.',
+      },
+    },
+    m3: {
+      step1: {
+        title: 'Missões e Metas',
+        body: 'Aqui em cima ficam atalhos pras suas jornadas. Toque em + Missões pra ver as disponíveis.',
+      },
+      step2: {
+        title: 'Jornadas maiores',
+        body: 'Objetivos que duram dias ou semanas e rendem Dedicação e moedas no fim. Segure uma das disponíveis pra abrir os detalhes.',
+      },
+      step3: {
+        title: 'Os critérios',
+        body: 'Veja o que ela pede — completar tarefas, manter dias ou atingir um valor. Aceite quando quiser; depois o progresso anda sozinho com suas tarefas. Por ora, pode voltar sem aceitar.',
+      },
+    },
+    m4: {
+      step1: {
+        title: 'Recompensas',
+        body: 'Recompensas reais que você define pra celebrar suas práticas. Toque na aba Recompensas pra ver.',
+      },
+      step2: {
+        title: 'Suas moedas',
+        body: 'Esse é seu saldo, ganho completando tarefas. Suas recompensas ficam aqui — por enquanto, role até as sugestões prontas logo abaixo.',
+      },
+      step3: {
+        title: 'Resgate e banco',
+        body: 'Sugestões como um filme, um jantar ou um descanso. Cada uma custa moedas: você resgata pro seu banco e usa quando quiser — ou refunda, e as moedas voltam.',
+      },
+    },
+    m5: {
+      step1: {
+        title: 'Quem você é',
+        body: 'Essa aba é o retrato de quem você é. Toque em Eu pra abrir.',
+      },
+      step2: {
+        title: 'Três retratos',
+        body: 'Três retratos seus: como você se percebe, o que pratica e quem quer se tornar. Você alterna entre eles aqui em cima.',
+      },
+      step3: {
+        title: 'Identidade Percebida',
+        body: 'Como você se vê hoje: seu mapa de áreas (toque numa pra ver detalhes) e questionários pra se conhecer melhor.',
+      },
+      step4: {
+        title: 'Identidade Praticada',
+        body: 'O que suas ações treinam: a Dedicação que cada área recebe e seu Momentum ao longo do tempo.',
+      },
+      step5: {
+        title: 'Identidade Desejada',
+        body: 'Quem você quer se tornar: Skills que você acompanha e Metas de longo prazo.',
+      },
+    },
+    m6: {
+      step1: {
+        title: 'Aprender',
+        body: 'Artigos pra entender o porquê das coisas — hábitos, identidade, as 6 dimensões e práticas pra cada área. Toque na aba Aprender.',
+      },
+      step2: {
+        title: 'Sempre tem novidade',
+        body: 'Explicações curtas e visuais, com material novo toda semana. Leia no seu ritmo.',
+      },
+    },
+    m0: {
+      eyebrow: 'TOUR',
+      title: 'Bem-vindo, {{name}}.',
+      body: 'Vamos fazer um tour rápido pelas partes principais do app. Se quiser pular algo, pode revisitar depois em Ajustes.',
+      primary: 'Começar',
+      secondary: 'Pular',
+    },
+    m0_5: {
+      eyebrow: 'POR ONDE COMEÇAR',
+      title: 'Escolha 3 tarefas pra começar',
+      body: 'Pegue 3 práticas pra cultivar nas próximas semanas. Você pode trocar e adicionar mais quando quiser.',
+      counter: '{{count}} de {{target}} selecionadas',
+      primary: 'Continuar',
+      secondary: 'Pular esta etapa',
+      skipFallbackHint: 'Vamos adicionar 3 tarefas padrão pra você começar.',
+    },
+    wrap: {
+      eyebrow: 'PRONTO',
+      title: 'Tudo certo.',
+      body: 'O tour é só o começo. O que faz diferença é o que você pratica. Cada tarefa marcada é um voto em quem você quer se tornar. Pode revisitar qualquer módulo em Ajustes.',
+      primary: 'Começar a praticar',
+    },
+    replay: {
+      title: 'Refazer tutorial',
+      subtitle: 'Revisite qualquer módulo do tour. Refazer um leva você direto pra ele.',
+      replayBtn: 'Refazer',
+      allTitle: 'Refazer o tour completo',
+      allDesc: 'Começa do zero, da tela de boas-vindas.',
+      status: {
+        pending: 'Não visto',
+        in_progress: 'Em andamento',
+        completed: 'Concluído',
+        skipped: 'Pulado',
+      },
+      modules: {
+        M0: { name: 'Boas-vindas', desc: 'A tela de abertura do tour.' },
+        M0_5: { name: 'Tarefas iniciais', desc: 'Escolher 3 práticas pra começar.' },
+        M1: { name: 'Tarefas', desc: 'Concluir, ajustar e desfazer tarefas.' },
+        M2: { name: 'Criar tarefa', desc: 'Montar suas próprias tarefas.' },
+        M3: { name: 'Missões', desc: 'Jornadas maiores com prazo.' },
+        M4: { name: 'Recompensas', desc: 'Resgatar e bancar recompensas.' },
+        M5: { name: 'Eu', desc: 'Os três retratos da sua identidade.' },
+        M6: { name: 'Aprender', desc: 'Artigos pra entender o porquê.' },
+      },
+    },
+    errors: {
+      adopt: 'Não foi possível adicionar as tarefas. Tente de novo.',
+    },
+  },
+
   learning: {
     eyebrow: 'Biblioteca · Sua via',
     title: 'Cantinho de leitura',
@@ -1037,7 +1205,7 @@ const pt: Translations = {
       footnote: 'As notificações precisam de uma pequena configuração nativa — os toggles já salvam sua escolha e começam a disparar quando rolar.',
     },
     actions: {
-      replayOnboarding: 'Refazer onboarding',
+      replayOnboarding: 'Refazer tutorial',
       checkForUpdates: 'Buscar atualizações',
       checking: 'Verificando…',
       signOut: 'Sair',

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useBottomNavClearance } from '@/components/BottomNavBar';
+import { TourModule } from '@/components/tour/TourModule';
+import { emitTourEvent } from '@/lib/tour/eventBus';
+import { buildM6Steps, M6_EVENTS } from '@/lib/tour/m6Steps';
+import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { CarouselRow } from '@/components/learning/CarouselRow';
 import { ContinueLendoCard } from '@/components/learning/ContinueLendoCard';
 import { LearningStatsPanel, type PillFilter } from '@/components/LearningStatsPanel';
@@ -46,6 +50,30 @@ export default function LearningScreen() {
   const [pillFilter, setPillFilter] = useState<PillFilter>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const bottomClearance = useBottomNavClearance();
+
+  // ── M6 tour plumbing ────────────────────────────────────────────────
+  const isM6Current = useIsCurrentTourModule('M6');
+  // M6 step 1 lives on Home and waits for the user to reach this tab.
+  // Emit LEARN_NAVIGATED on focus while step 1 is still current so the
+  // Home tooltip advances to step 2 (which renders here).
+  useFocusEffect(
+    useCallback(() => {
+      const state = useTourStore.getState();
+      const status = state.modules.M6?.status ?? 'pending';
+      const idx = state.stepIndices.M6 ?? 0;
+      if (isM6Current && idx === 0 && status !== 'completed' && status !== 'skipped') {
+        emitTourEvent(M6_EVENTS.LEARN_NAVIGATED);
+      }
+    }, [isM6Current]),
+  );
+  // M6 step 2 (Next) ends the module → Wrap-up. Guard on wrap still being
+  // pending so an isolated M6 replay returns Home instead.
+  const finishM6 = () => {
+    const wrapPending =
+      (useTourStore.getState().modules.wrap?.status ?? 'pending') === 'pending';
+    if (wrapPending) router.push('/tour/wrap');
+    else router.navigate('/(tabs)');
+  };
 
   // Hydrate the persisted scroll-progress store on first paint so the
   // ContinueLendoCard hero can pick the right material without flashing
@@ -235,6 +263,17 @@ export default function LearningScreen() {
           </View>
         </ScrollView>
       </ScreenBackground>
+
+      {/* M6 step 2 lives here (Learn explainer). Step 1 is on Home (Learn
+         tab spotlight). Next ends the module → Wrap-up. Tab screen, so no
+         `flatNav`. */}
+      <TourModule
+        module="M6"
+        screen="learn"
+        steps={buildM6Steps(t)}
+        enabled={isM6Current}
+        onComplete={finishM6}
+      />
     </SafeAreaView>
   );
 }

@@ -1,7 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import {
+  Stack,
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -25,6 +30,9 @@ import {
 import { useActiveTasks } from '@/lib/api/tasks';
 import { useT } from '@/lib/i18n';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
+import { TourModule } from '@/components/tour/TourModule';
+import { buildM3Steps } from '@/lib/tour/m3Steps';
+import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import type {
   QuestTemplate,
@@ -63,6 +71,25 @@ export default function QuestDetailScreen() {
   const logChallenge = useLogChallengeProgress();
   const [logValue, setLogValue] = useState('');
   const keyboardHeight = useKeyboardHeight();
+  const isM3Current = useIsCurrentTourModule('M3');
+
+  // M3 step 3 (criteria) is the last step and lives here. If the user
+  // leaves via the screen's own back arrow / hardware back instead of
+  // the tooltip, complete M3 so the tour doesn't strand at "step 3 on
+  // quest-detail" with no detail mounted.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const state = useTourStore.getState();
+        const m3Status = state.modules.M3?.status;
+        const m3Idx = state.stepIndices.M3 ?? 0;
+        if (m3Status === 'in_progress' && m3Idx === 2) {
+          void state.setStatus('M3', 'completed');
+          state.setStepIndex('M3', 0);
+        }
+      };
+    }, []),
+  );
 
   const quest: QuestWithProgress | null = useMemo(() => {
     if (inferredKind !== 'quest') return null;
@@ -540,6 +567,22 @@ export default function QuestDetailScreen() {
           </Pressable>
         ) : null}
       </ScrollView>
+
+      {/* M3 step 3 lives here — read the criteria, then head back without
+         accepting. Próximo / X ends the module and sends the user to the
+         Tasks home. `replace('/(tabs)')` (the same target M0/M0.5 use)
+         both selects the Home tab and clears the pushed quest screens,
+         so the user always lands on Tasks regardless of where they
+         entered the tour from (e.g. the Settings "replay" button).
+         `flatNav` because this Stack screen has no floating BottomNavBar. */}
+      <TourModule
+        module="M3"
+        screen="quest-detail"
+        steps={buildM3Steps(t)}
+        enabled={isM3Current}
+        flatNav
+        onExitScreen={() => router.replace('/(tabs)')}
+      />
     </SafeAreaView>
   );
 }

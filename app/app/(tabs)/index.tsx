@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +29,19 @@ import { useCharacter } from '@/lib/api/character';
 import { useT } from '@/lib/i18n';
 import { useTrackedReward } from '@/lib/api/rewards';
 import { useLoadedSettings } from '@/lib/settings';
+import { TourModule } from '@/components/tour/TourModule';
+import { emitTourEvent } from '@/lib/tour/eventBus';
+import { buildM1Steps, M1_EVENTS } from '@/lib/tour/m1Steps';
+import { buildM2Steps, M2_EVENTS } from '@/lib/tour/m2Steps';
+import { buildM3Steps } from '@/lib/tour/m3Steps';
+import { buildM4Steps } from '@/lib/tour/m4Steps';
+import { buildM5Steps } from '@/lib/tour/m5Steps';
+import { buildM6Steps } from '@/lib/tour/m6Steps';
+import {
+  useActiveTourStep,
+  useIsCurrentTourModule,
+  useTourStore,
+} from '@/lib/tour/store';
 import {
   useActiveTasks,
   useCompleteTask,
@@ -98,7 +111,66 @@ export default function HomeScreen() {
   const [floats, setFloats] = useState<FloatItem[]>([]);
   const [actionTask, setActionTask] = useState<TaskWithSubs | null>(null);
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
-  const bottomClearance = useBottomNavClearance();
+  const navClearance = useBottomNavClearance();
+  // While a bottom-positioned tour tooltip is visible, the Home scroll
+  // needs extra room so the user can scroll content above the overlay
+  // — but only just enough that the relevant section (e.g. M1 step 5
+  // "Concluídas hoje" drawer) settles in the open space JUST above
+  // the tooltip card. 160px ≈ card height minus the navbar already
+  // baked into navClearance; matches the visible gap users expected
+  // when testing M1 step 5.
+  const activeTourStep = useActiveTourStep();
+  // M2 step 1 spotlights the "Gerenciar tarefas" button — the very last
+  // row of the scroll. It needs more bottom room than the M1 drawer
+  // (which is mid-list) so the button clears the full tooltip card
+  // height once we scroll to the end.
+  const tourBottomBump =
+    activeTourStep?.position === 'bottom'
+      ? activeTourStep.module === 'M2'
+        ? 245
+        : 160
+      : 0;
+  const bottomClearance = navClearance + tourBottomBump;
+  const isM1Current = useIsCurrentTourModule('M1');
+  const isM2Current = useIsCurrentTourModule('M2');
+  const isM3Current = useIsCurrentTourModule('M3');
+  const isM4Current = useIsCurrentTourModule('M4');
+  const isM5Current = useIsCurrentTourModule('M5');
+  const isM6Current = useIsCurrentTourModule('M6');
+
+  // M6 completes (or is skipped) → the always-runs Wrap-up. Guard on the
+  // wrap module still being pending so an isolated M6 replay (which marks
+  // wrap completed) just returns Home instead of replaying the closer.
+  const finishM6 = () => {
+    const wrapPending =
+      (useTourStore.getState().modules.wrap?.status ?? 'pending') === 'pending';
+    if (wrapPending) router.push('/tour/wrap');
+    else router.navigate('/(tabs)');
+  };
+
+  // Tour auto-scroll on Home:
+  //   - M2 step 1 targets the bottom-most "Gerenciar tarefas" button →
+  //     scroll to the END so it settles in the gap above the tooltip.
+  //   - M3 step 1 targets the quest chips strip near the TOP → scroll to
+  //     the top so the strip is in view (the user may be scrolled down
+  //     after finishing M2 on the create form).
+  const scrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (activeTourStep?.module === 'M2') {
+      const id = setTimeout(
+        () => scrollRef.current?.scrollToEnd({ animated: true }),
+        120,
+      );
+      return () => clearTimeout(id);
+    }
+    if (activeTourStep?.module === 'M3') {
+      const id = setTimeout(
+        () => scrollRef.current?.scrollTo({ y: 0, animated: true }),
+        120,
+      );
+      return () => clearTimeout(id);
+    }
+  }, [activeTourStep?.module]);
 
   // ── Mutation handlers ─────────────────────────────────────────────────
   const fireCompletion = (task: TaskWithSubs, subs: TaskSub[]) => {
@@ -116,6 +188,9 @@ export default function HomeScreen() {
     completeTask.mutate(
       { task, subs },
       {
+        onSuccess: () => {
+          emitTourEvent(M1_EVENTS.TASK_COMPLETED);
+        },
         onError: (err) => {
           const e = err as { message?: string; code?: string; details?: string };
           console.error('[complete_task] failed', e);
@@ -136,6 +211,7 @@ export default function HomeScreen() {
   const handleLongPress = (task: TaskWithSubs) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setActionTask(task);
+    emitTourEvent(M1_EVENTS.TASK_LONG_PRESSED);
   };
 
   const handleSheetConfirm = (subs: TaskSub[]) => {
@@ -355,6 +431,7 @@ export default function HomeScreen() {
       <TodayAmbient />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomClearance }]}
         showsVerticalScrollIndicator={false}
@@ -437,9 +514,10 @@ export default function HomeScreen() {
                     onLongPress={() => handleLongPress(task)}
                     onSkip={() => handleSwipeSkip(task)}
                     onSwipeComplete={() => setSheetTask(task)}
-                    onEdit={() =>
-                      router.push({ pathname: '/task-form', params: { id: task.id } })
-                    }
+                    onEdit={() => {
+                      emitTourEvent(M1_EVENTS.TASK_TAPPED);
+                      router.push({ pathname: '/task-form', params: { id: task.id } });
+                    }}
                   />
                 ))
               )}
@@ -455,6 +533,9 @@ export default function HomeScreen() {
                 title={completedBucketTitle}
                 onUndo={handleUndo}
                 onExtra={(task) => handleQuickComplete(task)}
+                onToggle={(open) => {
+                  if (open) emitTourEvent(M1_EVENTS.DRAWER_EXPANDED);
+                }}
               />
               <CompletedBucket
                 items={skippedTodayItems}
@@ -483,7 +564,10 @@ export default function HomeScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={() => router.push('/tasks')}
+                onPress={() => {
+                  emitTourEvent(M2_EVENTS.TASKS_NAVIGATED);
+                  router.push('/tasks');
+                }}
                 style={({ pressed }) => [
                   styles.bottomBtn,
                   pressed && styles.bottomBtnPressed,
@@ -527,6 +611,68 @@ export default function HomeScreen() {
         onAdjustStars={handleActionAdjust}
         onSkipToday={handleActionSkip}
         onEdit={handleActionEdit}
+      />
+
+      {/* Post-login tour — M1 (Tasks). Only renders when the user has
+         tasks visible behind the spotlight and M1 is the current
+         (first-unfinished) module — keeps later modules from leaking
+         their tooltips onto Home before their turn. */}
+      <TourModule
+        module="M1"
+        steps={buildM1Steps(t)}
+        enabled={isM1Current && (allActiveTasks.data?.length ?? 0) > 0}
+      />
+
+      {/* M2 step 1 lives here (manage-tasks button). Tapping the real
+         button fires TASKS_NAVIGATED + navigates; if the user instead
+         taps Próximo / "Pular este passo" on the tooltip, walk them to
+         /tasks ourselves so step 2 has its surface. */}
+      <TourModule
+        module="M2"
+        steps={buildM2Steps(t)}
+        enabled={isM2Current}
+        onAdvanceToNextScreen={() => router.push('/tasks')}
+      />
+
+      {/* M3 step 1 lives here (quest chips strip). Tapping "+ Missões"
+         fires QUESTS_NAVIGATED + navigates; Próximo / skip walks the
+         user to /quests so step 2 has its surface. */}
+      <TourModule
+        module="M3"
+        steps={buildM3Steps(t)}
+        enabled={isM3Current}
+        onAdvanceToNextScreen={() => router.push('/quests')}
+      />
+
+      {/* M4 step 1 lives here (Rewards bottom-nav tab). Switching to the
+         Rewards tab fires REWARDS_NAVIGATED from that screen; Próximo /
+         skip switches there ourselves so steps 2-3 have their surface. */}
+      <TourModule
+        module="M4"
+        steps={buildM4Steps(t)}
+        enabled={isM4Current}
+        onAdvanceToNextScreen={() => router.navigate('/(tabs)/rewards')}
+      />
+
+      {/* M5 step 1 lives here (Eu/Hero bottom-nav tab). Switching to the
+         Hero tab fires ME_NAVIGATED from that screen; Próximo / skip
+         switches there ourselves so steps 2-5 have their surface. */}
+      <TourModule
+        module="M5"
+        steps={buildM5Steps(t)}
+        enabled={isM5Current}
+        onAdvanceToNextScreen={() => router.navigate('/(tabs)/character')}
+      />
+
+      {/* M6 step 1 lives here (Learn bottom-nav tab). Switching to the
+         Learn tab fires LEARN_NAVIGATED from that screen. Skipping at
+         this step ends M6 → Wrap-up (finishM6). */}
+      <TourModule
+        module="M6"
+        steps={buildM6Steps(t)}
+        enabled={isM6Current}
+        onAdvanceToNextScreen={() => router.navigate('/(tabs)/learning')}
+        onComplete={finishM6}
       />
     </SafeAreaView>
   );

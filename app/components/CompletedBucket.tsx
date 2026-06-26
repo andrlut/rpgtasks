@@ -31,6 +31,9 @@ interface Props {
    * no pill renders and the row behaves like before.
    */
   onExtra?: (task: TaskWithSubs) => void;
+  /** Fires on every header tap with the next open/closed state. Useful
+   *  for analytics / the post-login tour event bus. */
+  onToggle?: (open: boolean) => void;
 }
 
 /**
@@ -53,6 +56,7 @@ export function CompletedBucket({
   onUndo,
   onUnskip,
   onExtra,
+  onToggle,
 }: Props) {
   const [open, setOpen] = useState(false);
   const meta = useMetaLookup();
@@ -61,7 +65,11 @@ export function CompletedBucket({
 
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen((v) => !v);
+    setOpen((v) => {
+      const next = !v;
+      onToggle?.(next);
+      return next;
+    });
   };
 
   return (

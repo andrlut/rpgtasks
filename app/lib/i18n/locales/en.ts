@@ -147,6 +147,171 @@ const en = {
     settings: 'Settings',
   },
 
+  tour: {
+    common: {
+      next: 'Next',
+      skipModule: 'Skip this module',
+      skipStep: 'Skip this step',
+      tryIt: 'Try it to continue',
+    },
+    m1: {
+      step1: {
+        title: 'Your tasks for today',
+        body: 'These are the 3 tasks you picked. Tap one to explore — then come back here.',
+      },
+      step2: {
+        title: 'Why it counts',
+        body: 'On the detail screen you can see which areas the task trains and how much Dedication it pays.',
+      },
+      step3: {
+        title: 'Press and hold',
+        body: 'Long-press a task to open the menu: adjust stars, skip today, or edit.',
+      },
+      step4: {
+        title: 'Mark as done',
+        body: 'Tap the check to log a completion. This is the gesture that drives everything here.',
+      },
+      step5: {
+        title: 'Identity in practice',
+        body: 'Each action strengthens specific areas. You can watch this grow over time.',
+      },
+      step6: {
+        title: 'Done today',
+        body: "Scroll to the end of the list. There's a panel of what you finished today — in case you want to undo something.",
+      },
+    },
+    m2: {
+      step1: {
+        title: 'Make your own',
+        body: 'The right tasks for you are the ones you define. Tap Manage tasks to get started.',
+      },
+      step2: {
+        title: 'Tap the +',
+        body: "This is where creation lives. It'll open an empty form — no rush to fill it in.",
+      },
+      step3: {
+        title: 'What it trains',
+        body: 'Further down, past the title, description and icon, are the areas. Spread up to 5 stars across the ones this task touches — more stars, more Dedication per completion.',
+      },
+      step4: {
+        title: 'How often',
+        body: 'Once, every day, or specific days of the week — you choose the cadence.',
+      },
+      step5: {
+        title: 'No rush to save',
+        body: "Close without creating — you already have your starter tasks to practice. Come back when you actually want to build one.",
+      },
+    },
+    m3: {
+      step1: {
+        title: 'Quests and Goals',
+        body: 'Up here are shortcuts to your journeys. Tap + Quests to see the ones available.',
+      },
+      step2: {
+        title: 'Bigger journeys',
+        body: 'Objectives that span days or weeks and pay Dedication and coins at the end. Long-press one of the available ones to open its details.',
+      },
+      step3: {
+        title: 'The criteria',
+        body: "See what it asks — completing tasks, keeping a streak, or hitting a value. Accept whenever you're ready; after that the progress moves on its own with your tasks. For now, you can head back without accepting.",
+      },
+    },
+    m4: {
+      step1: {
+        title: 'Rewards',
+        body: 'Real rewards you define to celebrate your practice. Tap the Rewards tab to see them.',
+      },
+      step2: {
+        title: 'Your coins',
+        body: 'This is your balance, earned by completing tasks. Your rewards live here — for now, scroll down to the ready-made suggestions below.',
+      },
+      step3: {
+        title: 'Redeem and bank',
+        body: 'Suggestions like a movie, a dinner, or some rest. Each costs coins: you redeem it to your bank and use it whenever you like — or refund it, and the coins come back.',
+      },
+    },
+    m5: {
+      step1: {
+        title: 'Who you are',
+        body: 'This tab is the picture of who you are. Tap Me to open it.',
+      },
+      step2: {
+        title: 'Three portraits',
+        body: 'Three portraits of you: how you perceive yourself, what you practice, and who you want to become. You switch between them up here.',
+      },
+      step3: {
+        title: 'Perceived identity',
+        body: 'How you see yourself today: your map of areas (tap one for details) plus questionnaires to know yourself better.',
+      },
+      step4: {
+        title: 'Practiced identity',
+        body: 'What your actions train: the Dedication each area earns and your Momentum over time.',
+      },
+      step5: {
+        title: 'Desired identity',
+        body: 'Who you want to become: Skills you track and longer-term Goals.',
+      },
+    },
+    m6: {
+      step1: {
+        title: 'Learn',
+        body: 'Articles to understand the why behind it all — habits, identity, the 6 dimensions, and practices for each area. Tap the Learn tab.',
+      },
+      step2: {
+        title: 'Always something new',
+        body: 'Short, visual explainers, with fresh material every week. Read at your own pace.',
+      },
+    },
+    m0: {
+      eyebrow: 'TOUR',
+      title: 'Welcome, {{name}}.',
+      body: "Let's run a quick tour through the main parts of the app. You can skip anything and revisit it later from Settings.",
+      primary: 'Start',
+      secondary: 'Skip',
+    },
+    m0_5: {
+      eyebrow: 'WHERE TO START',
+      title: 'Pick 3 tasks to begin',
+      body: 'Choose 3 practices to cultivate over the next few weeks. You can swap or add more whenever you want.',
+      counter: '{{count}} of {{target}} selected',
+      primary: 'Continue',
+      secondary: 'Skip this step',
+      skipFallbackHint: "We'll add 3 default tasks so you have something to start with.",
+    },
+    wrap: {
+      eyebrow: 'READY',
+      title: 'All set.',
+      body: 'The tour is just the start. What makes a difference is what you practice. Every task you check off is a vote for who you want to become. You can revisit any module from Settings.',
+      primary: 'Start practicing',
+    },
+    replay: {
+      title: 'Replay tutorial',
+      subtitle: 'Revisit any tour module. Replaying one takes you straight to it.',
+      replayBtn: 'Replay',
+      allTitle: 'Replay the whole tour',
+      allDesc: 'Starts over from the welcome screen.',
+      status: {
+        pending: 'Not seen',
+        in_progress: 'In progress',
+        completed: 'Done',
+        skipped: 'Skipped',
+      },
+      modules: {
+        M0: { name: 'Welcome', desc: "The tour's opening screen." },
+        M0_5: { name: 'Starter tasks', desc: 'Pick 3 practices to begin.' },
+        M1: { name: 'Tasks', desc: 'Complete, adjust and undo tasks.' },
+        M2: { name: 'Create a task', desc: 'Build your own tasks.' },
+        M3: { name: 'Quests', desc: 'Bigger journeys with a deadline.' },
+        M4: { name: 'Rewards', desc: 'Redeem and bank rewards.' },
+        M5: { name: 'Me', desc: 'The three portraits of your identity.' },
+        M6: { name: 'Learn', desc: 'Articles to understand the why.' },
+      },
+    },
+    errors: {
+      adopt: "Couldn't add the tasks. Try again.",
+    },
+  },
+
   learning: {
     eyebrow: 'Library · Your path',
     title: 'Reading nook',
@@ -1043,7 +1208,7 @@ const en = {
       footnote: 'Notifications need a small native setup pass — the toggles save your choice now and will start firing once that ships.',
     },
     actions: {
-      replayOnboarding: 'Replay onboarding',
+      replayOnboarding: 'Replay tutorial',
       checkForUpdates: 'Check for updates',
       checking: 'Checking…',
       signOut: 'Sign out',

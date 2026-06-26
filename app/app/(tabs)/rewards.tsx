@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -38,6 +38,10 @@ import {
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { TourModule } from '@/components/tour/TourModule';
+import { emitTourEvent } from '@/lib/tour/eventBus';
+import { buildM4Steps, M4_EVENTS } from '@/lib/tour/m4Steps';
+import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META, REWARD_CATEGORY_ORDER } from '@/theme/rewards';
@@ -99,6 +103,38 @@ export default function RewardsScreen() {
     bankAfter: number;
   } | null>(null);
   const bottomClearance = useBottomNavClearance();
+
+  // ── M4 tour plumbing ────────────────────────────────────────────────
+  const isM4Current = useIsCurrentTourModule('M4');
+  const m4StepIndex = useTourStore((s) => s.stepIndices.M4 ?? 0);
+  const m4Status = useTourStore((s) => s.modules.M4?.status);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // M4 step 1 lives on Home and waits for the user to reach this tab.
+  // Emit REWARDS_NAVIGATED when the screen gains focus while step 1 is
+  // still current, so the Home tooltip advances to step 2 (which renders
+  // here). Guarded by step index 0 so re-focusing later doesn't re-fire.
+  useFocusEffect(
+    useCallback(() => {
+      const state = useTourStore.getState();
+      const status = state.modules.M4?.status ?? 'pending';
+      const idx = state.stepIndices.M4 ?? 0;
+      if (isM4Current && idx === 0 && status !== 'completed' && status !== 'skipped') {
+        emitTourEvent(M4_EVENTS.REWARDS_NAVIGATED);
+      }
+    }, [isM4Current]),
+  );
+
+  // Auto-scroll as the M4 steps open: step 2 (balance) → top, step 3
+  // (Inspiration, which sits at the bottom of the scroll) → end.
+  useEffect(() => {
+    if (!isM4Current || m4Status !== 'in_progress') return;
+    const id = setTimeout(() => {
+      if (m4StepIndex === 1) scrollRef.current?.scrollTo({ y: 0, animated: true });
+      else if (m4StepIndex === 2) scrollRef.current?.scrollToEnd({ animated: true });
+    }, 150);
+    return () => clearTimeout(id);
+  }, [isM4Current, m4Status, m4StepIndex]);
 
   const coins = character.data?.character.coins ?? 0;
   const bankCount = banked.data?.length ?? 0;
@@ -315,6 +351,7 @@ export default function RewardsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenBackground>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -640,6 +677,18 @@ export default function RewardsScreen() {
           }}
         />
       )}
+
+      {/* M4 steps 2-3 live here (balance + Inspiration). Step 1 is on
+         Home (Rewards tab spotlight). Finishing returns the user to the
+         Tasks home so the next module's Home-anchored step 1 can show.
+         No `flatNav` — this is a tab screen WITH the floating BottomNavBar. */}
+      <TourModule
+        module="M4"
+        screen="rewards"
+        steps={buildM4Steps(t)}
+        enabled={isM4Current}
+        onExitScreen={() => router.navigate('/(tabs)')}
+      />
     </SafeAreaView>
   );
 }
