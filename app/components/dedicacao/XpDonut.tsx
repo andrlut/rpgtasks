@@ -10,6 +10,7 @@ import Svg, { Circle, G, Path } from 'react-native-svg';
 
 import { PercevaGlyph } from '@/components/PercevaGlyph';
 import type { DimensionId } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 import { DIMENSION_META } from '@/theme/dimensions';
 
@@ -73,6 +74,7 @@ export function XpDonut({
   size = 168,
   onSlicePress,
 }: Props) {
+  const { t } = useT();
   const cx = size / 2;
   const cy = size / 2;
   const r = (size - STROKE_W) / 2;
@@ -128,7 +130,7 @@ export function XpDonut({
       onPress={handleTap}
       style={{ width: size, height: size }}
       accessibilityRole="button"
-      accessibilityLabel="XP distribution by dimension"
+      accessibilityLabel={t('a11y.xpByDimension')}
     >
       {/* Engraved Perceva mark inside the hole — same visual vocabulary
           as Vault cards. */}

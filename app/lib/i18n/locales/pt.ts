@@ -37,6 +37,17 @@ const pt: Translations = {
     trend: 'TENDÊNCIA',
   },
 
+  a11y: {
+    prevMonth: 'Mês anterior',
+    nextMonth: 'Próximo mês',
+    prevPeriod: 'Período anterior',
+    nextPeriod: 'Próximo período',
+    decreaseQty: 'Diminuir quantidade',
+    increaseQty: 'Aumentar quantidade',
+    xpByDimension: 'Distribuição de XP por dimensão',
+    stopTracking: 'Parar de acompanhar esta recompensa',
+  },
+
   taskForm: {
     newTitle: 'Nova tarefa',
     editTitle: 'Editar tarefa',

@@ -138,7 +138,7 @@ function formatWindowLabel(
  */
 export default function DedicacaoHistoryScreen() {
   const router = useRouter();
-  const { locale } = useT();
+  const { t, locale } = useT();
   const settings = useLoadedSettings();
   const params = useLocalSearchParams<{
     granularity?: string;
@@ -265,7 +265,7 @@ export default function DedicacaoHistoryScreen() {
               pressed && { opacity: 0.7 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Voltar"
+            accessibilityLabel={t('common.back')}
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>

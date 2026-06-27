@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Granularity, WindowSpec } from '@/lib/api/dedicacao';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 interface Props {
@@ -35,6 +36,7 @@ export function PeriodSelector({
   border,
   labels,
 }: Props) {
+  const { t } = useT();
   const changeGranularity = (g: Granularity) => {
     if (g === spec.granularity) return;
     Haptics.selectionAsync().catch(() => {});
@@ -90,7 +92,7 @@ export function PeriodSelector({
             style={({ pressed }) => [styles.arrow, pressed && { opacity: 0.6 }]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Período anterior"
+            accessibilityLabel={t('a11y.prevPeriod')}
           >
             <Ionicons name="chevron-back" size={16} color={tokens.text.mid} />
           </Pressable>
@@ -107,7 +109,7 @@ export function PeriodSelector({
             ]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Próximo período"
+            accessibilityLabel={t('a11y.nextPeriod')}
             accessibilityState={{ disabled: !canGoForward }}
           >
             <Ionicons
