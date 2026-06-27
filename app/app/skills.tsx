@@ -16,6 +16,7 @@ import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
 import { useSkillStates } from '@/lib/api/skills';
 import type { DimensionId, SkillState, SubId, TierName } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
@@ -64,6 +65,7 @@ function totals(states: SkillState[]): MedalTotals {
  */
 export default function SkillsHubScreen() {
   const router = useRouter();
+  const { t } = useT();
   const metaLookup = useMetaLookup();
   const { pick } = useLocalizedPick();
   const skillStates = useSkillStates();
@@ -137,7 +139,7 @@ export default function SkillsHubScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Text style={styles.title}>All Skills</Text>
+          <Text style={styles.title}>{t('skills.allTitle')}</Text>
           <Pressable
             onPress={() => router.push({ pathname: '/skill-form', params: {} })}
             style={({ pressed }) => [
@@ -159,14 +161,14 @@ export default function SkillsHubScreen() {
           <View style={styles.statsStrip}>
             <View style={styles.statBlock}>
               <Text style={styles.statValue}>{summary.tracked}</Text>
-              <Text style={styles.statLabel}>Skills tracked</Text>
+              <Text style={styles.statLabel}>{t('skills.statTracked')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
               <Text style={[styles.statValue, { color: tokens.semantic.coin }]}>
                 {summary.medals}
               </Text>
-              <Text style={styles.statLabel}>Medals earned</Text>
+              <Text style={styles.statLabel}>{t('skills.statMedals')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={[styles.statBlock, { alignItems: 'center' }]}>
@@ -176,7 +178,7 @@ export default function SkillsHubScreen() {
                 size={32}
                 showGlyph={false}
               />
-              <Text style={styles.statLabel}>Best tier</Text>
+              <Text style={styles.statLabel}>{t('skills.statBestTier')}</Text>
             </View>
           </View>
 
@@ -234,7 +236,7 @@ export default function SkillsHubScreen() {
                 pressed && { opacity: 0.7 },
               ]}
               hitSlop={2}
-              accessibilityLabel="Search"
+              accessibilityLabel={t('common.search')}
             >
               <Ionicons
                 name={searchOpen ? 'close' : 'search'}
@@ -351,7 +353,7 @@ export default function SkillsHubScreen() {
                                 {isCustom && (
                                   <View style={styles.customChip}>
                                     <Text style={styles.customChipText}>
-                                      CUSTOM
+                                      {t('tasksHub.customChip')}
                                     </Text>
                                   </View>
                                 )}

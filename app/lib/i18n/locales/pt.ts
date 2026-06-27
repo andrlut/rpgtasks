@@ -87,6 +87,14 @@ const pt: Translations = {
       'Meses sem o dia {{day}} rodam no último dia do mês.',
   },
 
+  usernameModal: {
+    title: 'Nome de usuário',
+    label: 'Como podemos te chamar?',
+    placeholder: 'Aventureiro(a)',
+    hint: 'Esse é o nome mostrado no cabeçalho do seu personagem e nas saudações. {{count}} caracteres restantes.',
+    saveError: 'Não foi possível salvar',
+  },
+
   auth: {
     brand: {
       title: 'Perceva',
@@ -1005,6 +1013,8 @@ const pt: Translations = {
   historyScreen: {
     eyebrow: 'HISTÓRICO',
     title: 'Sua trilha',
+    statDone: 'Feitas',
+    statSkipped: 'Puladas',
     errUndo: 'Não foi possível desfazer',
     errLog: 'Não foi possível registrar',
     errSkip: 'Não foi possível pular',
@@ -1331,6 +1341,10 @@ const pt: Translations = {
 
   skills: {
     title: 'Habilidades',
+    allTitle: 'Todas as Skills',
+    statTracked: 'Skills acompanhadas',
+    statMedals: 'Medalhas ganhas',
+    statBestTier: 'Melhor tier',
     new: 'Nova habilidade',
     edit: 'Editar habilidade',
     fields: {

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
  * coins == XP in the current model.
  */
 export function DayStatsCard({ xp, completed, skipped }: Props) {
+  const { t } = useT();
   return (
     <View style={styles.card}>
       <LinearGradient
@@ -44,14 +46,14 @@ export function DayStatsCard({ xp, completed, skipped }: Props) {
         <StatBlock
           icon="checkmark-circle"
           value={completed}
-          label="Done"
+          label={t('historyScreen.statDone')}
           color={tokens.brand.violet2}
         />
         <View style={styles.divider} />
         <StatBlock
           icon="play-skip-forward"
           value={skipped}
-          label="Skipped"
+          label={t('historyScreen.statSkipped')}
           color={tokens.semantic.coin}
         />
       </View>

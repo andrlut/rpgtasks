@@ -97,6 +97,14 @@ const en = {
       'Months without day {{day}} run on the last day of the month instead.',
   },
 
+  usernameModal: {
+    title: 'Username',
+    label: 'What should we call you?',
+    placeholder: 'Adventurer',
+    hint: 'This is the name shown on your character header and greetings. {{count}} characters left.',
+    saveError: 'Could not save',
+  },
+
   auth: {
     brand: {
       title: 'Perceva',
@@ -1012,6 +1020,8 @@ const en = {
   historyScreen: {
     eyebrow: 'HISTORY',
     title: 'Your trail',
+    statDone: 'Done',
+    statSkipped: 'Skipped',
     errUndo: 'Could not undo',
     errLog: 'Could not log',
     errSkip: 'Could not skip',
@@ -1334,6 +1344,10 @@ const en = {
 
   skills: {
     title: 'Skills',
+    allTitle: 'All Skills',
+    statTracked: 'Skills tracked',
+    statMedals: 'Medals earned',
+    statBestTier: 'Best tier',
     new: 'New skill',
     edit: 'Edit skill',
     fields: {

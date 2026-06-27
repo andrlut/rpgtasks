@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useUpdateDisplayName } from '@/lib/api/profile';
+import { useT } from '@/lib/i18n';
 import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function UsernameEditModal({ visible, currentValue, onClose }: Props) {
+  const { t } = useT();
   const [value, setValue] = useState(currentValue);
   const updateDisplayName = useUpdateDisplayName();
 
@@ -41,8 +43,8 @@ export function UsernameEditModal({ visible, currentValue, onClose }: Props) {
       await updateDisplayName.mutateAsync(value.trim());
       onClose();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not save', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      showInfo(t('usernameModal.saveError'), msg);
     }
   };
 
@@ -62,7 +64,7 @@ export function UsernameEditModal({ visible, currentValue, onClose }: Props) {
           >
             <Ionicons name="close" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Text style={styles.title}>Username</Text>
+          <Text style={styles.title}>{t('usernameModal.title')}</Text>
           <Pressable
             onPress={handleSave}
             disabled={!canSave}
@@ -76,7 +78,7 @@ export function UsernameEditModal({ visible, currentValue, onClose }: Props) {
             {updateDisplayName.isPending ? (
               <ActivityIndicator color={tokens.text.hi} size="small" />
             ) : (
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>{t('common.save')}</Text>
             )}
           </Pressable>
         </View>
@@ -86,22 +88,21 @@ export function UsernameEditModal({ visible, currentValue, onClose }: Props) {
           style={{ flex: 1 }}
         >
           <View style={styles.body}>
-            <Text style={styles.label}>What should we call you?</Text>
+            <Text style={styles.label}>{t('usernameModal.label')}</Text>
             <TextInput
               value={value}
               onChangeText={setValue}
               autoFocus
               autoCapitalize="words"
               maxLength={40}
-              placeholder="Adventurer"
+              placeholder={t('usernameModal.placeholder')}
               placeholderTextColor={tokens.text.faint}
               style={styles.input}
               returnKeyType="done"
               onSubmitEditing={handleSave}
             />
             <Text style={styles.hint}>
-              This is the name shown on your character header and greetings. {40 - value.length}{' '}
-              characters left.
+              {t('usernameModal.hint', { count: 40 - value.length })}
             </Text>
           </View>
         </KeyboardAvoidingView>
