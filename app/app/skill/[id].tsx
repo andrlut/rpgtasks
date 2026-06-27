@@ -166,7 +166,10 @@ export default function SkillDetailScreen() {
   const handleSubmit = async () => {
     const v = parseInt(valueStr, 10);
     if (!Number.isFinite(v) || v < 0) {
-      Alert.alert('Invalid value', `Enter a number of ${state.skill.unit}.`);
+      Alert.alert(
+        t('skill.detail.invalidValue'),
+        t('skill.detail.invalidValueBody', { unit: state.skill.unit }),
+      );
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -183,15 +186,21 @@ export default function SkillDetailScreen() {
           () => {},
         );
         Alert.alert(
-          'Tier up!',
-          `You reached ${result.newTier.toUpperCase()} in ${state.skill.display_name}.`,
+          t('skill.detail.tierUp'),
+          t('skill.detail.tierUpBody', {
+            tier: result.newTier.toUpperCase(),
+            name: state.skill.display_name,
+          }),
         );
       } else if (result.isPR) {
-        Alert.alert('New PR', `${v} ${state.skill.unit} — your best yet.`);
+        Alert.alert(
+          t('skill.detail.newPr'),
+          t('skill.detail.newPrBody', { value: v, unit: state.skill.unit }),
+        );
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not log', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      Alert.alert(t('skill.detail.errLog'), msg);
     }
   };
 
@@ -235,8 +244,8 @@ export default function SkillDetailScreen() {
                             router.back();
                           },
                           onError: (err) => {
-                            const msg = err instanceof Error ? err.message : 'Unknown error';
-                            Alert.alert('Could not delete', msg);
+                            const msg = err instanceof Error ? err.message : t('common.unknownError');
+                            Alert.alert(t('skill.detail.errDelete'), msg);
                           },
                         });
                       },
@@ -369,15 +378,15 @@ export default function SkillDetailScreen() {
             <View style={styles.statStrip}>
               <View style={styles.statTile}>
                 <Text style={styles.statTileNum}>{state.currentPr}</Text>
-                <Text style={styles.statTileLabel}>CURRENT PR</Text>
+                <Text style={styles.statTileLabel}>{t('skill.detail.statCurrentPr')}</Text>
               </View>
               <View style={styles.statTile}>
                 <Text style={styles.statTileNum}>{daysSinceLastPr}d</Text>
-                <Text style={styles.statTileLabel}>SINCE LAST PR</Text>
+                <Text style={styles.statTileLabel}>{t('skill.detail.statSinceLastPr')}</Text>
               </View>
               <View style={styles.statTile}>
                 <Text style={styles.statTileNum}>{totalLogs}</Text>
-                <Text style={styles.statTileLabel}>TOTAL LOGS</Text>
+                <Text style={styles.statTileLabel}>{t('skill.detail.statTotalLogs')}</Text>
               </View>
             </View>
 
@@ -541,7 +550,7 @@ export default function SkillDetailScreen() {
                 ) : (
                   <>
                     <Ionicons name="add" size={18} color="#3D2A00" />
-                    <Text style={styles.ctaText}>Log</Text>
+                    <Text style={styles.ctaText}>{t('skill.detail.logBtn')}</Text>
                   </>
                 )}
               </LinearGradient>

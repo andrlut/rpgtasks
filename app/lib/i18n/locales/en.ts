@@ -44,6 +44,7 @@ const en = {
     clear: 'Clear',
     search: 'Search',
     gotIt: 'Got it',
+    trend: 'TREND',
   },
 
   taskForm: {
@@ -103,6 +104,20 @@ const en = {
     placeholder: 'Adventurer',
     hint: 'This is the name shown on your character header and greetings. {{count}} characters left.',
     saveError: 'Could not save',
+  },
+
+  calendarModal: {
+    title: 'Calendar',
+    legendSelected: 'Selected',
+    legendActivity: 'Activity',
+  },
+
+  trackPicker: {
+    title: 'Pick one to track',
+    subtitle:
+      "Tap a reward to keep it close. We'll show progress at the top of your shop.",
+    emptyTitle: 'No rewards yet',
+    emptyBody: 'Add a reward to your shop first, then come back to track it.',
   },
 
   auth: {
@@ -616,6 +631,21 @@ const en = {
       tiersAscendBody: '{{tier}} threshold ({{value}}) must be greater than {{prevTier}} ({{prevValue}}).',
       badPercentileTitle: 'Bad percentile',
       badPercentileBody: 'Tier {{tier}}: percentile must be 0–100 or empty.',
+      createFail: 'Could not create skill',
+    },
+    detail: {
+      invalidValue: 'Invalid value',
+      invalidValueBody: 'Enter a number of {{unit}}.',
+      tierUp: 'Tier up!',
+      tierUpBody: 'You reached {{tier}} in {{name}}.',
+      newPr: 'New PR',
+      newPrBody: '{{value}} {{unit}} — your best yet.',
+      errLog: 'Could not log',
+      errDelete: 'Could not delete',
+      statCurrentPr: 'CURRENT PR',
+      statSinceLastPr: 'SINCE LAST PR',
+      statTotalLogs: 'TOTAL LOGS',
+      logBtn: 'Log',
     },
   },
 

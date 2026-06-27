@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { dateKeyFromLocal, useDailySummary } from '@/lib/api/history';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 interface Props {
@@ -21,8 +22,6 @@ interface Props {
   /** Day to highlight as the active selection. */
   selected: Date;
 }
-
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function startOfMonth(d: Date): Date {
   const x = new Date(d);
@@ -52,6 +51,8 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 export function CalendarMonthModal({ visible, onClose, onSelectDay, selected }: Props) {
+  const { t } = useT();
+  const weekdayLabels = t('recurrencePicker.weekdays').split(',');
   // Track which month is currently being browsed. Defaults to the
   // selected day's month each time the modal opens.
   const [cursorMonth, setCursorMonth] = useState<Date>(() => startOfMonth(selected));
@@ -97,7 +98,7 @@ export function CalendarMonthModal({ visible, onClose, onSelectDay, selected }: 
           >
             <Ionicons name="close" size={22} color={tokens.text.hi} />
           </Pressable>
-          <Text style={styles.title}>Calendar</Text>
+          <Text style={styles.title}>{t('calendarModal.title')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -131,7 +132,7 @@ export function CalendarMonthModal({ visible, onClose, onSelectDay, selected }: 
 
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.weekdayHeader}>
-            {WEEKDAY_LABELS.map((l, i) => (
+            {weekdayLabels.map((l, i) => (
               <Text key={i} style={styles.weekdayLabel}>
                 {l}
               </Text>
@@ -176,15 +177,15 @@ export function CalendarMonthModal({ visible, onClose, onSelectDay, selected }: 
           <View style={styles.legend}>
             <View style={styles.legendItem}>
               <View style={[styles.legendSwatch, styles.cellToday]} />
-              <Text style={styles.legendText}>Today</Text>
+              <Text style={styles.legendText}>{t('common.today')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendSwatch, styles.cellSelected]} />
-              <Text style={styles.legendText}>Selected</Text>
+              <Text style={styles.legendText}>{t('calendarModal.legendSelected')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendSwatch, styles.cellHasActivity]} />
-              <Text style={styles.legendText}>Activity</Text>
+              <Text style={styles.legendText}>{t('calendarModal.legendActivity')}</Text>
             </View>
           </View>
         </ScrollView>

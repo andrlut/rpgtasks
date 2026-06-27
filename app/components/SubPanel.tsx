@@ -175,7 +175,7 @@ export function SubPanel({
         </View>
         {trendValues.length >= 2 && (
           <View style={styles.sparklineWrap}>
-            <Text style={styles.trendEyebrow}>TREND</Text>
+            <Text style={styles.trendEyebrow}>{t('common.trend')}</Text>
             <Sparkline
               values={trendValues}
               max={5}

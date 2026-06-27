@@ -34,6 +34,7 @@ const pt: Translations = {
     clear: 'Limpar',
     search: 'Buscar',
     gotIt: 'Entendi',
+    trend: 'TENDÊNCIA',
   },
 
   taskForm: {
@@ -93,6 +94,20 @@ const pt: Translations = {
     placeholder: 'Aventureiro(a)',
     hint: 'Esse é o nome mostrado no cabeçalho do seu personagem e nas saudações. {{count}} caracteres restantes.',
     saveError: 'Não foi possível salvar',
+  },
+
+  calendarModal: {
+    title: 'Calendário',
+    legendSelected: 'Selecionado',
+    legendActivity: 'Atividade',
+  },
+
+  trackPicker: {
+    title: 'Escolha uma pra mirar',
+    subtitle:
+      'Toque numa recompensa pra mantê-la por perto. Mostramos o progresso no topo da loja.',
+    emptyTitle: 'Nenhuma recompensa ainda',
+    emptyBody: 'Adicione uma recompensa à loja primeiro, depois volte pra mirar nela.',
   },
 
   auth: {
@@ -609,6 +624,21 @@ const pt: Translations = {
       tiersAscendBody: 'Tier {{tier}} ({{value}}) tem que ser maior que {{prevTier}} ({{prevValue}}).',
       badPercentileTitle: 'Percentil inválido',
       badPercentileBody: 'Tier {{tier}}: percentil tem que estar entre 0 e 100, ou vazio.',
+      createFail: 'Não foi possível criar a skill',
+    },
+    detail: {
+      invalidValue: 'Valor inválido',
+      invalidValueBody: 'Digite um número de {{unit}}.',
+      tierUp: 'Subiu de tier!',
+      tierUpBody: 'Você alcançou {{tier}} em {{name}}.',
+      newPr: 'Novo recorde',
+      newPrBody: '{{value}} {{unit}} — seu melhor até agora.',
+      errLog: 'Não foi possível registrar',
+      errDelete: 'Não foi possível excluir',
+      statCurrentPr: 'RECORDE ATUAL',
+      statSinceLastPr: 'DESDE O ÚLTIMO',
+      statTotalLogs: 'TOTAL DE REGISTROS',
+      logBtn: 'Registrar',
     },
   },
 

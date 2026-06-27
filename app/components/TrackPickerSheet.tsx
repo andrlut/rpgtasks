@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Reward } from '@/lib/db/types';
+import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
 
@@ -33,6 +34,7 @@ export function TrackPickerSheet({
   currentTrackedId,
   onPick,
 }: Props) {
+  const { t } = useT();
   const handlePick = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     onPick(id);
@@ -52,10 +54,8 @@ export function TrackPickerSheet({
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Pick one to track</Text>
-              <Text style={styles.subtitle}>
-                Tap a reward to keep it close. We&apos;ll show progress at the top of your shop.
-              </Text>
+              <Text style={styles.title}>{t('trackPicker.title')}</Text>
+              <Text style={styles.subtitle}>{t('trackPicker.subtitle')}</Text>
             </View>
             <Pressable
               onPress={onClose}
@@ -72,10 +72,8 @@ export function TrackPickerSheet({
           {rewards.length === 0 ? (
             <View style={styles.emptyBox}>
               <Ionicons name="gift-outline" size={32} color={tokens.text.dim} />
-              <Text style={styles.emptyTitle}>No rewards yet</Text>
-              <Text style={styles.emptySub}>
-                Add a reward to your shop first, then come back to track it.
-              </Text>
+              <Text style={styles.emptyTitle}>{t('trackPicker.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('trackPicker.emptyBody')}</Text>
             </View>
           ) : (
             <ScrollView

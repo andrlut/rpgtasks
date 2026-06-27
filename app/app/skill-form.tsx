@@ -150,8 +150,8 @@ export default function SkillFormScreen() {
       });
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Could not create skill', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      Alert.alert(t('skill.form.createFail'), msg);
     }
   };
 
