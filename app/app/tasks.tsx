@@ -757,6 +757,7 @@ function AllocatedDraggableBody({
  * minus the chevron / drag handle which the parent draws.
  */
 function DragRowInner({ task }: { task: TaskWithSubs }) {
+  const { t } = useT();
   const meta = useMetaLookup();
   const primarySubMeta = meta.sub(task.primary_sub_id);
   const dimMeta = meta.dim(task.primary_dimension_id);
@@ -787,7 +788,7 @@ function DragRowInner({ task }: { task: TaskWithSubs }) {
           <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           {isCustom && (
             <View style={styles.customChip}>
-              <Text style={styles.customChipText}>CUSTOM</Text>
+              <Text style={styles.customChipText}>{t('tasksHub.customChip')}</Text>
             </View>
           )}
         </View>

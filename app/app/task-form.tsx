@@ -289,14 +289,11 @@ export default function TaskFormScreen() {
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Title required', 'Give your task a title.');
+      Alert.alert(t('taskForm.titleRequired'), t('taskForm.titleRequiredBody'));
       return;
     }
     if (subs.length === 0 || !formInput) {
-      Alert.alert(
-        'Pick at least one sub',
-        'Tasks contribute to one or more sub-dimensions. Pick the ones this task touches and how many stars each gets.',
-      );
+      Alert.alert(t('taskForm.subRequired'), t('taskForm.subRequiredBody'));
       return;
     }
     try {
@@ -313,25 +310,25 @@ export default function TaskFormScreen() {
       }
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Save failed', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      Alert.alert(t('taskForm.saveFailed'), msg);
     }
   };
 
   const handleArchive = async () => {
     if (!params.id) return;
     const ok = await confirmAction(
-      'Archive task?',
-      'Archived tasks stop appearing on Home.',
-      { okText: 'Archive', cancelText: 'Cancel', destructive: true },
+      t('taskForm.archiveConfirmTitle'),
+      t('taskForm.archiveConfirmBody'),
+      { okText: t('common.archive'), cancelText: t('common.cancel'), destructive: true },
     );
     if (!ok) return;
     try {
       await archiveTask.mutateAsync(params.id);
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      Alert.alert('Archive failed', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      Alert.alert(t('taskForm.archiveFailed'), msg);
     }
   };
 
@@ -357,7 +354,9 @@ export default function TaskFormScreen() {
         >
           <Ionicons name="close" size={24} color={tokens.text.hi} />
         </Pressable>
-        <Text style={styles.headerTitle}>{isEdit ? 'Edit task' : 'New task'}</Text>
+        <Text style={styles.headerTitle}>
+          {isEdit ? t('taskForm.editTitle') : t('taskForm.newTitle')}
+        </Text>
         <Pressable
           onPress={handleSave}
           disabled={isSubmitting}
@@ -370,7 +369,7 @@ export default function TaskFormScreen() {
           {isSubmitting ? (
             <ActivityIndicator color={tokens.text.hi} size="small" />
           ) : (
-            <Text style={styles.saveText}>Save</Text>
+            <Text style={styles.saveText}>{t('common.save')}</Text>
           )}
         </Pressable>
       </View>
@@ -393,20 +392,18 @@ export default function TaskFormScreen() {
             <View style={styles.breakWarning}>
               <Ionicons name="information-circle" size={18} color={tokens.semantic.warn} />
               <Text style={styles.breakWarningText}>
-                Editar título, descrição ou subs vai desvincular esta task do
-                template — ela vira uma criação sua. Só mudar periodicidade
-                preserva o vínculo.
+                {t('taskForm.breakWarning')}
               </Text>
             </View>
           )}
 
           <View style={styles.field}>
-            <Text style={styles.label}>Title</Text>
+            <Text style={styles.label}>{t('taskForm.titleLabel')}</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               style={styles.input}
-              placeholder="Morning routine, 20 push-ups, ..."
+              placeholder={t('taskForm.titlePlaceholder')}
               placeholderTextColor={tokens.text.faint}
               // Skip the auto-keyboard while the M2 tour walks the form
               // — the user is reading tooltips, not typing yet, and a
@@ -417,12 +414,12 @@ export default function TaskFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Description (optional)</Text>
+            <Text style={styles.label}>{t('taskForm.descLabel')}</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
               style={[styles.input, styles.inputMultiline]}
-              placeholder="Notes, reminders…"
+              placeholder={t('taskForm.descPlaceholder')}
               placeholderTextColor={tokens.text.faint}
               multiline
               numberOfLines={3}
@@ -431,11 +428,8 @@ export default function TaskFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Icon</Text>
-            <Text style={styles.hint}>
-              Pick the glyph the card shows. Leave on default to inherit
-              from the primary sub.
-            </Text>
+            <Text style={styles.label}>{t('taskForm.iconLabel')}</Text>
+            <Text style={styles.hint}>{t('taskForm.iconHint')}</Text>
             <View style={styles.iconGrid}>
               {/* "Auto" pick — clears the override, falls back to
                   primary sub icon at render time. */}
@@ -445,7 +439,7 @@ export default function TaskFormScreen() {
                   styles.iconCell,
                   icon === null && styles.iconCellSelected,
                 ]}
-                accessibilityLabel="Use primary sub icon"
+                accessibilityLabel={t('taskForm.iconAutoA11y')}
               >
                 {(() => {
                   const primarySubId = subs[0]?.sub_id;
@@ -493,11 +487,8 @@ export default function TaskFormScreen() {
               subsY.current = e.nativeEvent.layout.y;
             }}
           >
-            <Text style={styles.label}>Sub-dimensions + stars</Text>
-            <Text style={styles.hint}>
-              Pick which subs this task contributes to and how heavy each
-              effort is. Per-sub stars cap at 5 — distribute honestly.
-            </Text>
+            <Text style={styles.label}>{t('taskForm.subsLabel')}</Text>
+            <Text style={styles.hint}>{t('taskForm.subsHint')}</Text>
             <SubPicker value={subs} onChange={setSubs} />
             {subs.length > 0 && (
               <View style={styles.rewardPreview}>
@@ -531,7 +522,7 @@ export default function TaskFormScreen() {
               recurrenceY.current = e.nativeEvent.layout.y;
             }}
           >
-            <Text style={styles.label}>How often</Text>
+            <Text style={styles.label}>{t('taskForm.recurrenceLabel')}</Text>
             <RecurrencePicker
               recurrence={recurrence}
               onChange={setRecurrence}
@@ -554,7 +545,7 @@ export default function TaskFormScreen() {
                 size={18}
                 color={tokens.semantic.danger}
               />
-              <Text style={styles.archiveText}>Archive task</Text>
+              <Text style={styles.archiveText}>{t('taskForm.archiveBtn')}</Text>
             </Pressable>
           )}
         </ScrollView>

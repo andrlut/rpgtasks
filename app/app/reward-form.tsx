@@ -144,7 +144,7 @@ export default function RewardFormScreen() {
       }
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
       Alert.alert(t('reward.form.saveFailTitle'), msg);
     }
   };
@@ -165,7 +165,7 @@ export default function RewardFormScreen() {
       await archiveReward.mutateAsync(params.id);
       router.back();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
       Alert.alert(t('reward.form.archiveFailTitle'), msg);
     }
   };
@@ -192,7 +192,9 @@ export default function RewardFormScreen() {
         >
           <Ionicons name="close" size={24} color={tokens.text.hi} />
         </Pressable>
-        <Text style={styles.headerTitle}>{isEdit ? 'Edit reward' : 'New reward'}</Text>
+        <Text style={styles.headerTitle}>
+          {isEdit ? t('reward.form.editTitle') : t('reward.form.newTitle')}
+        </Text>
         <Pressable
           onPress={handleSave}
           disabled={isSubmitting}
@@ -205,7 +207,7 @@ export default function RewardFormScreen() {
           {isSubmitting ? (
             <ActivityIndicator color={tokens.text.hi} size="small" />
           ) : (
-            <Text style={styles.saveText}>Save</Text>
+            <Text style={styles.saveText}>{t('common.save')}</Text>
           )}
         </Pressable>
       </View>
@@ -223,7 +225,7 @@ export default function RewardFormScreen() {
           keyboardDismissMode="interactive"
         >
           <View style={styles.field}>
-            <Text style={styles.label}>Category</Text>
+            <Text style={styles.label}>{t('reward.form.categoryLabel')}</Text>
             <View style={styles.categoryRow}>
               {REWARD_CATEGORY_ORDER.map((cat) => {
                 const meta = REWARD_CATEGORY_META[cat];
@@ -260,12 +262,12 @@ export default function RewardFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Title</Text>
+            <Text style={styles.label}>{t('reward.form.titleLabel')}</Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               style={styles.input}
-              placeholder="1 hour of gaming"
+              placeholder={t('reward.form.titlePlaceholder')}
               placeholderTextColor={tokens.text.faint}
               autoFocus={!isEdit}
               returnKeyType="next"
@@ -273,12 +275,12 @@ export default function RewardFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Description (optional)</Text>
+            <Text style={styles.label}>{t('reward.form.descLabel')}</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
               style={[styles.input, styles.inputMultiline]}
-              placeholder="What it really means…"
+              placeholder={t('reward.form.descPlaceholder')}
               placeholderTextColor={tokens.text.faint}
               multiline
               numberOfLines={3}
@@ -287,7 +289,7 @@ export default function RewardFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Cost (coins)</Text>
+            <Text style={styles.label}>{t('reward.form.costLabel')}</Text>
             <TextInput
               value={costStr}
               onChangeText={(v) => setCostStr(v.replace(/[^0-9]/g, ''))}
@@ -299,7 +301,7 @@ export default function RewardFormScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Icon</Text>
+            <Text style={styles.label}>{t('reward.form.iconLabel')}</Text>
             <View style={styles.iconGrid}>
               {ICON_CHOICES.map((name) => {
                 const selected = name === icon;
@@ -330,7 +332,7 @@ export default function RewardFormScreen() {
               ]}
             >
               <Ionicons name="archive-outline" size={18} color={tokens.semantic.danger} />
-              <Text style={styles.archiveText}>Archive reward</Text>
+              <Text style={styles.archiveText}>{t('reward.form.archiveBtn')}</Text>
             </Pressable>
           )}
         </ScrollView>

@@ -307,8 +307,8 @@ export default function RewardsScreen() {
     try {
       await addTemplate.mutateAsync(template);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
-      showInfo('Could not add', msg);
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      showInfo(t('rewards.vault.couldNotAdd'), msg);
     } finally {
       setAddingTemplateId(null);
     }
@@ -437,9 +437,9 @@ export default function RewardsScreen() {
                   <Ionicons name="bookmark" size={18} color={tokens.brand.violet2} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.trackCtaTitle}>Track a reward</Text>
+                  <Text style={styles.trackCtaTitle}>{t('rewards.vault.trackCtaTitle')}</Text>
                   <Text style={styles.trackCtaSub}>
-                    Pin one to keep its progress close.
+                    {t('rewards.vault.trackCtaSub')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={tokens.text.mid} />
@@ -510,9 +510,9 @@ export default function RewardsScreen() {
             ) : noRewardsAtAll ? (
               <View style={styles.emptyBox}>
                 <Ionicons name="gift-outline" size={40} color={tokens.brand.violet2} />
-                <Text style={styles.emptyTitle}>Your shop is empty</Text>
+                <Text style={styles.emptyTitle}>{t('rewards.vault.emptyTitle')}</Text>
                 <Text style={styles.emptySub}>
-                  Tap a suggestion below to add it, or create your own.
+                  {t('rewards.vault.emptyBody')}
                 </Text>
               </View>
             ) : (
@@ -575,8 +575,8 @@ export default function RewardsScreen() {
 
             <View style={styles.addCardWrap}>
               <AddCard
-                label="New reward"
-                sublabel="Add a custom one"
+                label={t('rewards.vault.addReward')}
+                sublabel={t('rewards.vault.addRewardSub')}
                 tint={tokens.brand.violet2}
                 onPress={() => router.push('/reward-form')}
               />
@@ -587,9 +587,9 @@ export default function RewardsScreen() {
                 <View style={styles.sectionHeader}>
                   <View style={styles.inspirationLabel}>
                     <Ionicons name="bulb" size={14} color={tokens.text.mid} />
-                    <Text style={styles.sectionTitle}>Inspiration</Text>
+                    <Text style={styles.sectionTitle}>{t('rewards.vault.inspiration')}</Text>
                   </View>
-                  <Text style={styles.sectionMeta}>tap to add</Text>
+                  <Text style={styles.sectionMeta}>{t('rewards.vault.inspirationHint')}</Text>
                 </View>
                 <View style={styles.list}>
                   {visibleTemplates.map((tmpl) => (
