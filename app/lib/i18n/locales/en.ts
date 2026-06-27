@@ -47,6 +47,17 @@ const en = {
     trend: 'TREND',
   },
 
+  a11y: {
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    prevPeriod: 'Previous period',
+    nextPeriod: 'Next period',
+    decreaseQty: 'Decrease quantity',
+    increaseQty: 'Increase quantity',
+    xpByDimension: 'XP distribution by dimension',
+    stopTracking: 'Stop tracking this reward',
+  },
+
   taskForm: {
     newTitle: 'New task',
     editTitle: 'Edit task',

@@ -172,7 +172,7 @@ export function BuyConfirmModal({
                       pressed && qty > 1 && { opacity: 0.7 },
                     ]}
                     hitSlop={6}
-                    accessibilityLabel="Decrease quantity"
+                    accessibilityLabel={t('a11y.decreaseQty')}
                   >
                     <Ionicons
                       name="remove"
@@ -190,7 +190,7 @@ export function BuyConfirmModal({
                       pressed && qty < MAX_QTY && { opacity: 0.7 },
                     ]}
                     hitSlop={6}
-                    accessibilityLabel="Increase quantity"
+                    accessibilityLabel={t('a11y.increaseQty')}
                   >
                     <Ionicons
                       name="add"

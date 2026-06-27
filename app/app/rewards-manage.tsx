@@ -321,7 +321,7 @@ export default function RewardsManageScreen() {
           onPress={() => router.push('/reward-form')}
           style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
           hitSlop={8}
-          accessibilityLabel="New reward"
+          accessibilityLabel={t('reward.form.newTitle')}
         >
           <Ionicons name="add" size={24} color={tokens.text.hi} />
         </Pressable>

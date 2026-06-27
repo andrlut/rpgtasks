@@ -95,7 +95,7 @@ export function TrackedRewardCard({
             onPress={onUntrack}
             style={({ pressed }) => [styles.untrackBtn, pressed && { opacity: 0.6 }]}
             hitSlop={10}
-            accessibilityLabel="Stop tracking this reward"
+            accessibilityLabel={t('a11y.stopTracking')}
           >
             <Ionicons name="close" size={11} color={tokens.text.mid} />
           </Pressable>

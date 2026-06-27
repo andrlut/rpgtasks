@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dateKeyFromLocal, type DailySummaryEntry } from '@/lib/api/history';
-import { getCurrentLocale } from '@/lib/i18n';
+import { getCurrentLocale, useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
 
 interface Props {
@@ -69,6 +69,7 @@ export function MonthGrid({
   onNextMonth,
   canGoNext,
 }: Props) {
+  const { t } = useT();
   const rows = useMemo(() => buildMonthRows(monthDate), [monthDate]);
   const todayKey = dateKeyFromLocal(new Date());
   const selectedKey = dateKeyFromLocal(selected);
@@ -93,7 +94,7 @@ export function MonthGrid({
             styles.chev,
             pressed && styles.chevPressed,
           ]}
-          accessibilityLabel="Previous month"
+          accessibilityLabel={t('a11y.prevMonth')}
         >
           <Ionicons name="chevron-back" size={18} color={tokens.text.hi} />
         </Pressable>
@@ -107,7 +108,7 @@ export function MonthGrid({
             !canGoNext && styles.chevDisabled,
             pressed && canGoNext && styles.chevPressed,
           ]}
-          accessibilityLabel="Next month"
+          accessibilityLabel={t('a11y.nextMonth')}
         >
           <Ionicons
             name="chevron-forward"
