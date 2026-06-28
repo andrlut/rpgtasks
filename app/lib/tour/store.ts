@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { create } from 'zustand';
 
 import { TOUR_MODULES, type TourModule, type TourModuleStatus } from './constants';
@@ -129,24 +129,26 @@ export const useTourStore = create<TourState>((set, get) => ({
  * when the store is ready to read.
  */
 export function useTourReady(characterId: string | null | undefined): boolean {
+  const normalizedId = characterId ?? null;
   const status = useTourStore((s) => s.status);
   const currentCharacterId = useTourStore((s) => s.characterId);
   const hydrate = useTourStore((s) => s.hydrate);
-  const [ready, setReady] = useState(
-    status === 'ready' && currentCharacterId === characterId,
-  );
 
+  // Hydrate (or re-hydrate on account change) for this character.
   useEffect(() => {
-    const matches = status === 'ready' && currentCharacterId === characterId;
-    if (matches) {
-      setReady(true);
-      return;
-    }
-    setReady(false);
-    void hydrate(characterId ?? null).then(() => setReady(true));
-  }, [status, currentCharacterId, characterId, hydrate]);
+    void hydrate(normalizedId);
+  }, [normalizedId, hydrate]);
 
-  return ready;
+  // Derive readiness straight from the store so it can NEVER report
+  // "ready" while the store still holds another character's data.
+  //
+  // A lagging local `useState` here caused a cold-boot race: during the
+  // `null → user.id` transition (session resolving), the hook briefly
+  // returned `true` while the store still held the empty "anonymous"
+  // modules, so `m0Status` read `pending` and the AuthGate redirected an
+  // already-onboarded user into the tour — on every launch. Dev never
+  // hit it because Fast Refresh keeps the store hydrated across reloads.
+  return status === 'ready' && currentCharacterId === normalizedId;
 }
 
 /** Convenience: status for a single module (defaults to `pending`). */
