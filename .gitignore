@@ -28,6 +28,10 @@ supabase/.branches
 supabase/.temp
 supabase/.env
 
+# Store submission secrets (EAS Submit for Google Play) — NEVER commit
+google-service-account.json
+**/google-service-account.json
+
 # Logs
 *.log
 npm-debug.log*
