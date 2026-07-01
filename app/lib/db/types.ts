@@ -238,6 +238,8 @@ export interface Profile {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  /** Cosmetic Premium flag (beta). Granted manually via Supabase Studio. */
+  subscription_tier: 'free' | 'premium';
   created_at: string;
   updated_at: string;
 }

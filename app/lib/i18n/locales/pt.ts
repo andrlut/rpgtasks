@@ -226,6 +226,10 @@ const pt: Translations = {
     settings: 'Ajustes',
   },
 
+  premium: {
+    badge: 'Premium',
+  },
+
   // Post-login product tour (M0 → Wrap-up). Pre-login slides live above
   // under `onboarding`. Keep the namespaces separate — same shape, two
   // different gating concerns.

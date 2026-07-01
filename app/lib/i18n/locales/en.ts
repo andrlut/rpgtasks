@@ -236,6 +236,10 @@ const en = {
     settings: 'Settings',
   },
 
+  premium: {
+    badge: 'Premium',
+  },
+
   tour: {
     common: {
       next: 'Next',

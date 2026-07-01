@@ -29,6 +29,7 @@ import { supabase } from '@/lib/supabase';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 
+import { PremiumBadge } from '@/components/PremiumBadge';
 import { UsernameEditModal } from '@/components/UsernameEditModal';
 
 export default function SettingsScreen() {
@@ -117,7 +118,10 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomClearance }]} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>{t('profile.title')}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.screenTitle}>{t('profile.title')}</Text>
+          {profile?.subscription_tier === 'premium' && <PremiumBadge size="sm" />}
+        </View>
 
         {/* ───── ACCOUNT ───── */}
         <SectionHeader icon="person-outline" label={t('profile.sections.account')} />
@@ -451,11 +455,17 @@ const styles = StyleSheet.create({
   content: {
     padding: tokens.space[4],
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.space[3],
+    flexWrap: 'wrap',
+    marginTop: tokens.space[2],
+    marginBottom: tokens.space[5],
+  },
   screenTitle: {
     ...tokens.type.h1,
     color: tokens.text.hi,
-    marginTop: tokens.space[2],
-    marginBottom: tokens.space[5],
   },
   sectionHeader: {
     flexDirection: 'row',
