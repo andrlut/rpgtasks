@@ -180,19 +180,23 @@ export function rewardForTaskSubs(
 }
 
 /**
- * Quadratic curve: each level requires more XP than the last.
- * level 1 = 0, level 2 = 100, level 3 = 400, level 4 = 900, level 5 = 1600...
+ * Linear curve: every level costs a flat 100 XP. Recalibrated from the
+ * old quadratic (level-1)²×100, which was tuned for the pre-rebalance
+ * reward curve (~3× larger) and left leveling punishingly slow after the
+ * XP rebalance (reward ratio 50×→8×). Flat-linear keeps the math trivial
+ * and the inverse exact — no off-by-one at level boundaries.
  *
- * Inverse: level = floor(sqrt(xp / 100)) + 1
+ * level 1 = 0, 2 = 100, 3 = 200, 5 = 400, 10 = 900, 20 = 1900 XP.
+ * Inverse: level = floor(xp / 100) + 1
  */
 export function xpForLevel(level: number): number {
   if (level <= 1) return 0;
-  return (level - 1) ** 2 * 100;
+  return (level - 1) * 100;
 }
 
 export function levelForXp(xp: number): number {
   if (xp < 0) return 1;
-  return Math.floor(Math.sqrt(xp / 100)) + 1;
+  return Math.floor(xp / 100) + 1;
 }
 
 /**
