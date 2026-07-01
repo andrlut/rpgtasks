@@ -1,6 +1,6 @@
 # RPG Tasks
 
-Habit + wellness app for Android. **V2 in production** — multi-sub tasks, 4 psychometric instruments (Avaliação v1, Big Five 120, Schwartz Values, ECR-R Attachment), bilingual UI (pt-BR + en-US), quest system, skills with tier ladders, reward bank. **V3 refactor in planning** — see "V3 Roadmap" below for the 3-pillar repositioning.
+Habit + wellness app for Android. **V2 in production** — multi-sub tasks, 4 psychometric instruments (Avaliação v1, Big Five 120, Schwartz Values, ECR-R Attachment), bilingual UI (pt-BR + en-US), quest system, skills with tier ladders, reward bank. **V3 largely shipped** (brand **Perceva**, Today Hub, Eu 3-pillar tab, Learning, Missões, Vault, notifications) — see "V3 Roadmap" → *V3 status snapshot* below.
 
 Sandbox project; primary user is the maintainer's brother (testing) and eventual second contributor (not active yet).
 
@@ -25,25 +25,35 @@ This applies to **velocity and ceremony only** — security, RLS, secret hygiene
 
 The app is being repositioned around **3 pillars of identity** (filosofia v3):
 
-1. **Identidade Percebida** — *how the user sees themselves now*. Built via autoavaliação (sub sliders) + the 4 psych instruments. Mostly done.
-2. **Identidade Praticada** — *what their actions are training in them*. Tasks done; Quests partial; **Dedicação** (XP) needs window-based reads; **Momentum** (streak v2) needs full design.
-3. **Identidade Desejada** — *who they want to become*. Skills mostly done; **Goals** doesn't exist yet.
+1. **Identidade Percebida** — *how the user sees themselves now*. Built via autoavaliação (sub sliders) + the 4 psych instruments. Done; surfaced in the **Eu** tab (Avaliação + Autoconhecimento panels).
+2. **Identidade Praticada** — *what their actions are training in them*. Tasks done; Quests→**Missões** shipped (skill/challenge types, partial rewards); **Dedicação** (XP) has windowed reads (period selector + donut + sparklines); **Momentum** shipped as the streak-v2 successor — a 30-day exponentially-decayed per-sub bonus (cap +25%) applied in `complete_task`/`complete_template`. It **replaced** the old `streak_multiplier` (now fully removed) — do NOT re-add streak on top of Momentum.
+3. **Identidade Desejada** — *who they want to become*. Skills done; **Goals→Metas** exists as a preview (GoalsPreview) — full CRUD still Phase 2.
 
 **Phase 1 (current) — fundação + polimento without new big features:**
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Rewrite CLAUDE.md to reflect V2 state | this PR |
-| 2 | Audit system/personal pattern across all entities; add `released_at`/`version` to template tables to support periodic content drops | next |
-| 3 | Nav refactor — rename Profile → Settings, add Learning placeholder tab, embed History inside Tasks | |
-| 4 | PT/EN audit + apply new glossary (Dedicação, Momentum, the 3 pillars) | |
-| 5 | Skills CRUD polishing | |
-| 6 | Rewards visual polish | |
-| 7 | Transversal UI bugs (scroll w/ fixed buttons overlapping content) | |
+| 1 | Rewrite CLAUDE.md to reflect V2 state | ✅ (kept current; last refresh 2026-07-01) |
+| 2 | Audit system/personal pattern; add `released_at`/`version` to template tables | ✅ shipped |
+| 3 | Nav refactor — Profile → Settings, Learning tab, History inside Tasks | ✅ shipped |
+| 4 | PT/EN audit + new glossary (Dedicação, Momentum, the 3 pillars) | ✅ shipped (#251/#252, 969 keys) |
+| 5 | Skills CRUD polishing | 🟢 mostly — i18n gaps on Skills tab + pillar panel closed (#260); a few `skill/[id]` detail strings still hardcoded |
+| 6 | Rewards visual polish | ✅ shipped (Vault redesign, editable cards, drag-reorder, Buy/Sell modals, celebration) |
+| 7 | Transversal UI bugs (scroll behind fixed buttons) | 🟢 audited 2026-07-01 — the form modals already reserve `space[10]`; self-assessment is the one borderline case (deferred) |
 
-**Phase 2+** — Quests completo, Goals (do zero), Momentum (nova fórmula), Onboarding completo recalibrável por categoria via Settings, Learning content (materiais semanais), Hero/Avatar exploration, Insights, Social.
+**Phase 2+** — Missões completo, **Metas** CRUD (do preview → full), Onboarding recalibrável por categoria via Settings, Learning content contínuo, Hero/Avatar exploration, Insights, Social.
 
-**App name**: stays `RPG Tasks` for now. The slug `rpgtasks`, package `com.andrlut.rpgtasks`, and deep-link `rpgtasks://` are all internal; renaming is a final-polish task that doesn't gate anything.
+**Brand**: the product brand is now **Perceva** (PercevaGlyph, Vault rewards, Iris identity). The technical identifiers stay internal for now — slug `rpgtasks`, package `com.andrlut.rpgtasks`, deep-link `rpgtasks://`, EAS project `rpgtasks`. Renaming those is a final-polish task that doesn't gate anything.
+
+### V3 status snapshot (updated 2026-07-01)
+
+Much of what earlier docs list as "pending" has **shipped to production** — don't re-investigate from scratch:
+
+- **Perceva rebrand**, V3 **Today Hub** home, **Eu** tab (3-pillar switcher), **Learning** feed (Netflix-style carousel + publisher infra + 5 learning sub-agents in `.claude/agents/`), **Missões** (quest v3), **Vault** rewards.
+- **Notifications** (`app/lib/notifications/`): Daily Brief (08:00 default) + 12:30 Checkpoint. Boot-order bug fixed 2026-07-01 (checkpoint is now armed for *tomorrow* and re-armed per open). Native module needs an `eas build` to activate (OTA can't).
+- **XP curve**: rewards rebalanced (ratio 50×→8×, `base_xp_for_stars`); level curve recalibrated to flat-linear `(level-1)×100` (2026-07-01, client-only `xp.ts`).
+- **Premium badge** (2026-07-01): cosmetic flag `profile.subscription_tier` (`free`/`premium`, default free) with a `lock_subscription_tier` trigger blocking self-grant. Granted manually via Studio. **Not** a tiered entitlement system.
+- **Post-login tour** (M0–M6 + wrap) in prod; cold-boot re-trigger fixed (#253).
 
 **Live content lever**: periodic drops of new system templates (and promoting popular user-created entities to system) are explicit retention bets. The system/personal split makes this cheap; the schema audit in Phase 1 includes prep (`released_at`/`version`).
 
