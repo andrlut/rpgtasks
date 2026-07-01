@@ -18,9 +18,11 @@ export async function maybeConfirmHardCompletion(
 ): Promise<boolean> {
   const enabled = useSettingsStore.getState().settings.confirmHighDifficultyComplete;
   if (!enabled || difficulty < 4) return true;
+  // Reward values mirror the post-rebalance curve in `lib/xp.ts`
+  // (REWARD_BY_DIFFICULTY) — keep in lockstep if the curve changes again.
   return confirmAction(
     `Complete "${title}"?`,
-    `This is a ${difficulty}★ task. Make sure you actually did it — it'll grant ${difficulty === 5 ? '250 XP / 250 coins' : '100 XP / 100 coins'}.`,
+    `This is a ${difficulty}★ task. Make sure you actually did it — it'll grant ${difficulty === 5 ? '80 XP / 80 coins' : '55 XP / 55 coins'}.`,
     { okText: 'Complete', cancelText: 'Cancel' },
   );
 }
