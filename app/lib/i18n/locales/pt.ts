@@ -518,6 +518,8 @@ const pt: Translations = {
       identity: 'Identidade Desejada',
       viewAll: 'Ver todas as skills',
       count: { one: 'skill', other: 'skills' },
+      empty: 'Comece a registrar PRs no Skills Hub pra ganhar medalhas.',
+      medals: { one: 'medalha no total', other: 'medalhas no total' },
     },
   },
 
@@ -1390,6 +1392,12 @@ const pt: Translations = {
     statTracked: 'Skills acompanhadas',
     statMedals: 'Medalhas ganhas',
     statBestTier: 'Melhor tier',
+    searchPlaceholder: 'Buscar em {{dimension}}...',
+    emptyNoResults: 'Sem resultados',
+    emptyNoMatch: 'Nada combina com "{{query}}"',
+    emptyNoSkills: 'Nada em {{dimension}}',
+    emptyCta: 'Toque + pra criar uma skill nessa categoria.',
+    othersLabel: 'Outros',
     new: 'Nova habilidade',
     edit: 'Editar habilidade',
     fields: {

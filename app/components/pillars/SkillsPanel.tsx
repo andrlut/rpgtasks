@@ -51,9 +51,7 @@ export function SkillsPanel({ skills }: Props) {
       {subRows.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="trophy-outline" size={28} color={tokens.text.dim} />
-          <Text style={styles.emptyText}>
-            Comece a registrar PRs no Skills Hub pra ganhar medalhas.
-          </Text>
+          <Text style={styles.emptyText}>{t('pillar.skills.empty')}</Text>
         </View>
       ) : (
         <View style={styles.list}>
@@ -106,7 +104,7 @@ export function SkillsPanel({ skills }: Props) {
       <View style={styles.footerRow}>
         <Text style={styles.footerText}>
           <Text style={styles.footerNum}>{totalMedals}</Text>{' '}
-          {totalMedals === 1 ? 'medalha' : 'medalhas'} no total
+          {t('pillar.skills.medals', { count: totalMedals })}
         </Text>
         <Text style={styles.footerText}>
           <Text style={styles.footerNum}>{totalSkills}</Text>{' '}

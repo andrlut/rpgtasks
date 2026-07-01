@@ -525,6 +525,8 @@ const en = {
       identity: 'Desired Identity',
       viewAll: 'See all skills',
       count: { one: 'skill', other: 'skills' },
+      empty: 'Start logging PRs in the Skills Hub to earn medals.',
+      medals: { one: 'medal total', other: 'medals total' },
     },
   },
 
@@ -1393,6 +1395,12 @@ const en = {
     statTracked: 'Skills tracked',
     statMedals: 'Medals earned',
     statBestTier: 'Best tier',
+    searchPlaceholder: 'Search in {{dimension}}...',
+    emptyNoResults: 'No results',
+    emptyNoMatch: 'Nothing matches "{{query}}"',
+    emptyNoSkills: 'Nothing in {{dimension}}',
+    emptyCta: 'Tap + to create a skill in this category.',
+    othersLabel: 'Others',
     new: 'New skill',
     edit: 'Edit skill',
     fields: {
