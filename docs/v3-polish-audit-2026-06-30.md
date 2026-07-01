@@ -194,3 +194,26 @@ Rebrand Perceva: 🟢 saiu.
 - `app/lib/util/confirmCompletion.ts`: curva antiga `250/100` → `80/55`.
 
 Sem migration, sem balance, sem tocar nas decisões fechadas.
+
+---
+
+# Resolução — sessão autônoma 2026-07-01 (Claude Code do André)
+
+Decisões travadas no batch: **D1** = recalibrar curva mais linear/simples · **D3** = subscription vira só badge cosmético atrás de flag (pode pushar) · **D6** = eas build liberado · **Push policy** = pode pushar migration se dry-run limpo, sem backfill. D4/D5/D7 nos defaults.
+
+| Item | Resolução | PR / artefato |
+|---|---|---|
+| **1a** Curva de nível | Recalibrada pra **flat-linear `(level-1)×100`** (client-only, inverso exato verificado níveis 1–50). L10 caiu de 8100 XP (~231 tasks) → 900 XP (~26). | #256 (merged) |
+| **1b** `complete_task` streak | 🔴→🟢 **FALSO POSITIVO.** O Momentum **substituiu** o streak_multiplier *de propósito* — documentado no header da migration `20260514000002` ("After the Artur+André spec round closed, the decision is: Momentum bonus DOES affect XP and coins") e confirmado por `grep streak_multiplier` = **0 ocorrências no repo** (funções de streak removidas). Restaurar o streak duplicaria o bônus de consistência e inflaria XP de dado vivo. **Nada alterado.** | — (dismiss) |
+| **1c** `confirmCompletion.ts` | Já feito pelo Artur. `maybeConfirmHardCompletion` segue dead code (i18n gap) — não removido nesta rodada. | — |
+| **3** Notificações | Bug real de ordem no boot: o Checkpoint era agendado (hoje) e **cancelado 3 linhas depois** em toda abertura → nunca disparava. Corrigido: agora armado pra **amanhã** 12h30 e re-armado por abertura (cancela-e-reagenda). Fix do agente ("remover a linha do cancel") estava errado (dispararia com app aberto). Requer rebuild nativo. | #257 (merged) + `eas build` |
+| **4/D3** Subscription | Simplificado pra **badge Premium cosmético** (`profile.subscription_tier` free/premium + trigger `lock_subscription_tier` anti-auto-concessão). Migration **aplicada na cloud** (dry-run limpo). Badge nos Ajustes quando `premium`. Sem enforcement/limites. | #259 (merged) + migration `20260701000001` |
+| **5a** Skills polish | Gaps de i18n nas 2 telas mais visíveis (aba Skills + painel do pilar) fechados. Strings do `skill/[id]` detail ficaram pra follow-up. | #260 (merged) |
+| **5b/7** Scroll/botão-fixo | 🟢 Auditado — os form-modais **já reservam `space[10]`** (falso alarme do agente). Só `self-assessment` é borderline (deferido). | — |
+| **2/D4** Pipeline Learn | Deferido (não rodei ingestão). Documentar o processo repetível fica pra próxima sessão. | — (follow-up) |
+| **5c/D7** CLAUDE.md | Atualizado: brand Perceva, status dos 3 pilares, tabela Phase 1, snapshot V3, badge premium, notificações, curva. | esta PR |
+| **Extra** Confirm dialogs | `window.confirm`/`Alert.alert` (dialog de sistema feio) → `ConfirmHost` estilizado. Cobre os 13 call sites de `confirmAction`/`showInfo`. | #255 (merged) |
+
+**Entregue também:** OTA update pro channel `preview` (JS já no APK atual) + `eas build --profile preview` (APK novo com notificações nativas).
+
+**Follow-ups abertos:** (a) pipeline Learn versionado (D4); (b) i18n do `skill/[id]` detail + dead code `confirmCompletion`/`QuestChip`/`modal`; (c) self-assessment clearance; (d) se quiser, backfill do XP histórico **não** foi tocado (e não deve — Momentum foi intencional).
