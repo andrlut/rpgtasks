@@ -252,7 +252,7 @@ export default function SkillsHubScreen() {
               <TextInput
                 value={query}
                 onChangeText={setQuery}
-                placeholder={`Search in ${activeMeta.label}...`}
+                placeholder={t('skills.searchPlaceholder', { dimension: activeMeta.label })}
                 placeholderTextColor={tokens.text.faint}
                 style={styles.searchInput}
                 autoCorrect={false}
@@ -284,12 +284,14 @@ export default function SkillsHubScreen() {
                 color={tokens.text.dim}
               />
               <Text style={styles.emptyTitle}>
-                {query ? 'Sem resultados' : `Nada em ${activeMeta.label}`}
+                {query
+                  ? t('skills.emptyNoResults')
+                  : t('skills.emptyNoSkills', { dimension: activeMeta.label })}
               </Text>
               <Text style={styles.emptySub}>
                 {query
-                  ? `Nada combina com "${query}"`
-                  : 'Toque + pra criar uma skill nessa categoria.'}
+                  ? t('skills.emptyNoMatch', { query })
+                  : t('skills.emptyCta')}
               </Text>
             </View>
           ) : (
@@ -297,7 +299,7 @@ export default function SkillsHubScreen() {
               {groupedBySub.map(({ key, skills }) => {
                 const subLabel =
                   key === 'outros'
-                    ? 'Outros'
+                    ? t('skills.othersLabel')
                     : metaLookup.sub(key as SubId).label;
                 const subIconName =
                   key === 'outros'
