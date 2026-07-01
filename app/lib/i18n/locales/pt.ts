@@ -545,7 +545,7 @@ const pt: Translations = {
   },
 
   autoconhecimento: {
-    lead: 'Inventários mais profundos que medem personalidade, valores, estilo de apego e comportamento. Não afetam o hex de Avaliação.',
+    lead: 'Inventários mais profundos que medem personalidade, valores, estilo de apego, comportamento e forças de caráter. Não afetam o hex de Avaliação.',
   },
 
   adoptSheet: {

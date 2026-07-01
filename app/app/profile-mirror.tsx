@@ -51,6 +51,12 @@ import {
   type DiscFactor,
   type DiscLocale,
 } from '@/lib/psych/disc-content';
+import {
+  getStrengthContent,
+  strengthFromFacetId,
+  type StrengthSlug,
+  type StrengthsLocale,
+} from '@/lib/psych/strengths-content';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
@@ -222,6 +228,9 @@ export default function ProfileMirrorScreen() {
 
             {/* ─── DISC ────────────────────────────────────────────────── */}
             <DiscCard onOpen={() => router.replace('/disc')} />
+
+            {/* ─── Forças de Caráter ───────────────────────────────────── */}
+            <StrengthsCard onOpen={() => router.replace('/strengths')} />
 
             <View style={{ height: tokens.space[6] }} />
           </ScrollView>
@@ -708,6 +717,90 @@ export function DiscCard({ onOpen }: { onOpen: () => void }) {
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
             {isPt ? 'Fazer DISC (7-14 min)' : 'Take DISC (7-14 min)'}
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
+  const { locale } = useT();
+  const stLocale: StrengthsLocale = locale === 'en' ? 'en' : 'pt';
+  const isPt = stLocale === 'pt';
+
+  const lastSession = useLastPsychSession('strengths');
+  const scoresQ = useSessionScores(lastSession.data?.id);
+
+  const top3 = useMemo(() => {
+    const rows: { slug: StrengthSlug; score: number }[] = [];
+    for (const s of scoresQ.data ?? []) {
+      const st = strengthFromFacetId(s.facet_id);
+      if (st) rows.push({ slug: st, score: Number(s.score_decimal) });
+    }
+    rows.sort((a, b) => b.score - a.score);
+    return rows.slice(0, 3);
+  }, [scoresQ.data]);
+
+  const hasScores = top3.length > 0;
+  const sinceDays = daysSince(lastSession.data?.taken_at);
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.card,
+        styles.cardActive,
+        pressed && { opacity: 0.92 },
+      ]}
+      hitSlop={4}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <Ionicons name="sparkles" size={18} color={tokens.brand.violet2} />
+          <Text style={styles.cardTitle}>
+            {isPt ? 'Forças' : 'Strengths'}
+          </Text>
+        </View>
+        <Text style={styles.cardSub}>
+          {isPt
+            ? 'No que eu brilho · força · ao longo dos anos'
+            : 'Where I shine · strength · over the years'}
+        </Text>
+      </View>
+
+      {hasScores ? (
+        <>
+          <Text style={styles.cardLede}>
+            {isPt ? 'Forças-assinatura:' : 'Signature strengths:'}
+          </Text>
+          <View style={styles.bfTraitGrid}>
+            {top3.map((row, i) => {
+              const content = getStrengthContent(row.slug, stLocale);
+              return (
+                <View key={row.slug} style={swCardStyles.row}>
+                  <Text style={swCardStyles.rank}>{i + 1}</Text>
+                  <Text style={swCardStyles.label}>{content.label}</Text>
+                </View>
+              );
+            })}
+          </View>
+          <View style={styles.refazerBtn}>
+            <Ionicons name="refresh" size={14} color={tokens.brand.violet2} />
+            <Text style={styles.refazerText}>
+              {sinceDays === null
+                ? isPt ? 'Ver detalhes' : 'See details'
+                : sinceDays === 0
+                  ? isPt ? 'Refeito hoje · ver detalhes' : 'Done today · see details'
+                  : isPt ? `Ver detalhes · ${sinceDays}d atrás` : `See details · ${sinceDays}d ago`}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>
+            {isPt ? 'Fazer Forças (10-15 min)' : 'Take Strengths (10-15 min)'}
           </Text>
           <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
         </View>

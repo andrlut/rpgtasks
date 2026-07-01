@@ -230,6 +230,10 @@ export default function RootLayout() {
               name="disc"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="strengths"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>
