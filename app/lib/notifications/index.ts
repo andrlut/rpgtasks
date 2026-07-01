@@ -14,7 +14,7 @@ export {
   cancelCheckpoint,
   configureNotificationHandler,
   getBriefTime,
-  scheduleCheckpointIfNeeded,
+  scheduleCheckpoint,
   scheduleDailyBrief,
   setBriefTime,
 } from './scheduler';
@@ -25,12 +25,11 @@ export {
   type NotificationLocale,
 } from './constants';
 
-import { hasOpenedToday, registerAppOpen } from './session';
+import { registerAppOpen } from './session';
 import {
   cancelAllNotifications,
-  cancelCheckpoint,
   getBriefTime,
-  scheduleCheckpointIfNeeded,
+  scheduleCheckpoint,
   scheduleDailyBrief,
 } from './scheduler';
 import type { NotificationLocale } from './constants';
@@ -42,24 +41,18 @@ import type { NotificationLocale } from './constants';
  *
  *   1. Schedule the recurring Daily Brief at the user's saved time
  *      (defaults 08:00) — cancels any previous one first.
- *   2. If the user hasn't already opened the app today, schedule
- *      the 12:30 checkpoint.
- *   3. Stamp today's open and cancel any leftover checkpoint —
- *      the user IS inside the app right now, no need to nag them
- *      at 12:30.
+ *   2. Stamp today's open.
+ *   3. Arm the 12:30 checkpoint for TOMORROW (see scheduleCheckpoint):
+ *      the user is here now, so today is covered; tomorrow's nudge only
+ *      survives if they don't open the app before it.
  */
 export async function setupNotifications(
   locale: NotificationLocale,
 ): Promise<void> {
   const { hour, minute } = await getBriefTime();
   await scheduleDailyBrief(hour, minute, locale);
-
-  const openedToday = await hasOpenedToday();
-  if (!openedToday) {
-    await scheduleCheckpointIfNeeded(locale);
-  }
   await registerAppOpen();
-  await cancelCheckpoint();
+  await scheduleCheckpoint(locale);
 }
 
 /** Toggle handler for the Settings master switch. */

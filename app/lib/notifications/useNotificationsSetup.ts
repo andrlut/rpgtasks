@@ -8,7 +8,7 @@ import type { NotificationLocale } from './constants';
 import {
   configureNotificationHandler,
   registerAppOpen,
-  cancelCheckpoint,
+  scheduleCheckpoint,
   setupNotifications,
   cancelAllNotifications,
 } from './index';
@@ -32,7 +32,8 @@ const NOTIFICATIONS_SUPPORTED = Platform.OS !== 'web';
  *      current locale, and registers today's open. When it flips OFF,
  *      cancels everything pending.
  *   3. Watches AppState — every time the app comes back to foreground,
- *      re-stamps today's open and cancels the lunchtime checkpoint.
+ *      re-stamps today's open and re-arms tomorrow's 12:30 checkpoint
+ *      (pushing the "no open today" nudge one more day ahead).
  *
  * Call from RootLayout so it lives for the app's lifetime. No-op when
  * settings are still hydrating.
@@ -76,15 +77,15 @@ export function useNotificationsSetup() {
     };
   }, [settingsStatus, settings.notificationsEnabled, osLocale]);
 
-  // ── 3. AppState — foreground = register open + drop checkpoint ─────
+  // ── 3. AppState — foreground = register open + re-arm checkpoint ───
   useEffect(() => {
     if (!NOTIFICATIONS_SUPPORTED) return;
     const onChange = async (state: AppStateStatus) => {
       if (state !== 'active') return;
       await registerAppOpen();
-      await cancelCheckpoint();
+      await scheduleCheckpoint(osLocale);
     };
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
-  }, []);
+  }, [osLocale]);
 }

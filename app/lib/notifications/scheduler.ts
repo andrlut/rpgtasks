@@ -81,20 +81,25 @@ export async function scheduleDailyBrief(
 }
 
 /**
- * Checkpoint — one-shot fire at 12:30 TODAY if the user hasn't opened
- * the app yet. Caller is responsible for the "hasn't opened yet" gate
- * via `hasOpenedToday()` from ./session. We just refuse to schedule
- * when the trigger is in the past (e.g. user opens the app at 14:00).
+ * Checkpoint — the 12:30 "haven't seen you today?" nudge. Armed for the
+ * NEXT day's 12:30 and re-armed on every app open (cancel-and-reschedule).
+ *
+ * Why tomorrow and not today: setup + every foreground run *because* the
+ * user just opened the app, so today is already "covered". A checkpoint
+ * for today would either be cancelled immediately (the old bug) or fire
+ * despite the user having shown up. Arming tomorrow gives the correct
+ * "no open today" semantics: if the user opens again before tomorrow
+ * 12:30, that open pushes it to the day after; if they DON'T open
+ * tomorrow, it fires at 12:30.
  */
-export async function scheduleCheckpointIfNeeded(
+export async function scheduleCheckpoint(
   locale: NotificationLocale = 'pt-BR',
 ): Promise<void> {
   await cancelById(NOTIFICATION_IDS.CHECKPOINT);
 
-  const now = new Date();
   const trigger = new Date();
+  trigger.setDate(trigger.getDate() + 1);
   trigger.setHours(CHECKPOINT_HOUR, CHECKPOINT_MINUTE, 0, 0);
-  if (now >= trigger) return;
 
   const msg = pickRandom(getMessages(locale).checkpoint);
 
