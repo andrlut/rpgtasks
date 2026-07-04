@@ -7,6 +7,7 @@ import {
   EcrRCard,
   SchwartzCard,
   StrengthsCard,
+  TypesCard,
 } from '@/app/profile-mirror';
 import { useT } from '@/lib/i18n';
 import { tokens } from '@/theme';
@@ -36,6 +37,7 @@ export function AutoconhecimentoView() {
         <EcrRCard onOpen={() => router.push('/ecr-r')} />
         <DiscCard onOpen={() => router.push('/disc')} />
         <StrengthsCard onOpen={() => router.push('/strengths')} />
+        <TypesCard onOpen={() => router.push('/types')} />
       </View>
     </View>
   );

@@ -57,6 +57,14 @@ import {
   type StrengthSlug,
   type StrengthsLocale,
 } from '@/lib/psych/strengths-content';
+import {
+  AXIS_ORDER,
+  axisFromFacetId,
+  codeFromAxisMeans,
+  getTypeContent,
+  type AxisSlug,
+  type TypesLocale,
+} from '@/lib/psych/types-content';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
@@ -231,6 +239,9 @@ export default function ProfileMirrorScreen() {
 
             {/* ─── Forças de Caráter ───────────────────────────────────── */}
             <StrengthsCard onOpen={() => router.replace('/strengths')} />
+
+            {/* ─── Tipos ───────────────────────────────────────────────── */}
+            <TypesCard onOpen={() => router.replace('/types')} />
 
             <View style={{ height: tokens.space[6] }} />
           </ScrollView>
@@ -801,6 +812,76 @@ export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
             {isPt ? 'Fazer Forças (10-15 min)' : 'Take Strengths (10-15 min)'}
+          </Text>
+          <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+export function TypesCard({ onOpen }: { onOpen: () => void }) {
+  const { locale } = useT();
+  const tyLocale: TypesLocale = locale === 'en' ? 'en' : 'pt';
+  const isPt = tyLocale === 'pt';
+
+  const lastSession = useLastPsychSession('tipos');
+  const scoresQ = useSessionScores(lastSession.data?.id);
+
+  const result = useMemo(() => {
+    const means = {} as Record<AxisSlug, number>;
+    for (const s of scoresQ.data ?? []) {
+      const a = axisFromFacetId(s.facet_id);
+      if (a) means[a] = Number(s.score_decimal);
+    }
+    if (!AXIS_ORDER.every((a) => means[a] !== undefined)) return null;
+    const code = codeFromAxisMeans(means);
+    return { code, content: getTypeContent(code, tyLocale) };
+  }, [scoresQ.data, tyLocale]);
+
+  const hasScores = result !== null;
+  const sinceDays = daysSince(lastSession.data?.taken_at);
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => [styles.card, styles.cardActive, pressed && { opacity: 0.92 }]}
+      hitSlop={4}
+    >
+      <View style={styles.cardHeader}>
+        <View style={styles.cardHeaderLeft}>
+          <Ionicons name="compass-outline" size={18} color={tokens.brand.violet2} />
+          <Text style={styles.cardTitle}>{isPt ? 'Tipos' : 'Types'}</Text>
+        </View>
+        <Text style={styles.cardSub}>
+          {isPt
+            ? 'Meu tipo · preferências · ao longo dos anos'
+            : 'My type · preferences · over the years'}
+        </Text>
+      </View>
+
+      {hasScores && result ? (
+        <>
+          <Text style={styles.cardLede}>{isPt ? 'Tipo:' : 'Type:'}</Text>
+          <Text style={ecrCardStyles.styleName}>
+            {result.code} · {result.content.name}
+          </Text>
+          <Text style={ecrCardStyles.styleHeadline}>{result.content.headline}</Text>
+          <View style={styles.refazerBtn}>
+            <Ionicons name="refresh" size={14} color={tokens.brand.violet2} />
+            <Text style={styles.refazerText}>
+              {sinceDays === null
+                ? isPt ? 'Ver detalhes' : 'See details'
+                : sinceDays === 0
+                  ? isPt ? 'Refeito hoje · ver detalhes' : 'Done today · see details'
+                  : isPt ? `Ver detalhes · ${sinceDays}d atrás` : `See details · ${sinceDays}d ago`}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <View style={styles.cta}>
+          <Text style={styles.ctaText}>
+            {isPt ? 'Fazer Tipos (10-15 min)' : 'Take Types (10-15 min)'}
           </Text>
           <Ionicons name="arrow-forward" size={14} color={tokens.brand.violet2} />
         </View>
