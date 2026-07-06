@@ -28,6 +28,7 @@ import type {
   PsychSessionItem,
 } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { useInstrumentStartGate } from '@/lib/premium';
 import {
   BIG_FIVE_TRAIT_ORDER,
   bucketForTraitScore,
@@ -72,6 +73,10 @@ export default function BigFiveScreen() {
   const lastSession = useLastPsychSession(INSTRUMENT_ID);
   const startSession = useStartPsychSession();
   const submitSession = useSubmitPsychSession();
+  const { assertCanStart } = useInstrumentStartGate(INSTRUMENT_ID, {
+    ready: !lastSession.isLoading,
+    hasResult: !!lastSession.data?.id,
+  });
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [idx, setIdx] = useState(0);
@@ -99,6 +104,7 @@ export default function BigFiveScreen() {
   const current = items[idx];
 
   const handleStart = () => {
+    if (!assertCanStart()) return;
     setPhase('starting');
     startSession.mutate(INSTRUMENT_ID, {
       onSuccess: (result) => {

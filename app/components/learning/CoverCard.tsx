@@ -27,9 +27,17 @@ interface Props {
   card: LearningFeedCard;
   read: boolean;
   onPress: (card: LearningFeedCard) => void;
+  /**
+   * When true the card shows a "Premium" seal. No data source sets this yet:
+   * the `learning_material` table has no premium column (P1 §4 finding), so
+   * it is always `false` today. The prop exists so the component is ready the
+   * moment André's publishing pipeline adds the flag — at which point the tap
+   * handler also gets wired to route free users to `/premium?source=learn`.
+   */
+  isPremiumContent?: boolean;
 }
 
-export function CoverCard({ card, read, onPress }: Props) {
+export function CoverCard({ card, read, onPress, isPremiumContent = false }: Props) {
   const { t, locale } = useT();
   const meta = useMetaLookup();
 
@@ -76,6 +84,14 @@ export function CoverCard({ card, read, onPress }: Props) {
 
         {/* Top-left type sash — distinguishes explainer / summary / news */}
         <TypeSash type={card.type} />
+
+        {/* Premium seal — inert until the Learn premium column exists. */}
+        {isPremiumContent && (
+          <View style={styles.premiumSeal}>
+            <Ionicons name="sparkles" size={10} color={tokens.bg.deep} />
+            <Text style={styles.premiumSealText}>{t('premium.badge')}</Text>
+          </View>
+        )}
 
         {/* Title overlay — bottom-anchored with padding */}
         <View style={styles.titleWrap}>
@@ -202,6 +218,24 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.65)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  premiumSeal: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: tokens.semantic.coin,
+  },
+  premiumSealText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: tokens.bg.deep,
   },
   readBadge: {
     position: 'absolute',

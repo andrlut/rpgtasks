@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { ConfirmHost } from '@/components/ConfirmHost';
+import { InstrumentTeaserHost } from '@/components/premium/InstrumentTeaserHost';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   useAuthDeepLink,
@@ -238,10 +239,15 @@ export default function RootLayout() {
               name="types"
               options={{ presentation: 'modal', headerShown: false }}
             />
+            <Stack.Screen
+              name="premium"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
         </AuthGate>
         <ConfirmHost />
+        <InstrumentTeaserHost />
         <StatusBar style="light" />
       </ThemeProvider>
     </QueryClientProvider>
