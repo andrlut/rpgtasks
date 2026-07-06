@@ -228,6 +228,89 @@ const pt: Translations = {
 
   premium: {
     badge: 'Premium',
+    // Entry-point row in Settings.
+    settingsRow: 'Perceva Premium',
+    settingsRowSub: 'Instrumentos completos, sem limites',
+    screenTitle: 'Perceva Premium',
+    hero: {
+      title: 'Perceva Premium',
+      subtitle: 'Profundidade pra quem você está se tornando.',
+    },
+    benefit: {
+      instrumentsTitle: 'Instrumentos completos',
+      instrumentsDesc:
+        'Big Five, Valores de Schwartz, ECR-R e mais: o retrato profundo da sua identidade.',
+      unlimitedTitle: 'Sem limites',
+      unlimitedDesc:
+        'Tarefas, recompensas, habilidades e missões ilimitadas.',
+      learnTitle: 'Artigos exclusivos',
+      learnDesc: 'Conteúdo extra no Aprender, toda semana.',
+      supportTitle: 'Apoie o Perceva',
+      supportDesc: 'Você financia diretamente a evolução do app.',
+    },
+    compare: {
+      title: 'Free e Premium',
+      freeHeader: 'Free',
+      premiumHeader: 'Premium',
+      unlimited: 'Ilimitado',
+      tasksLabel: 'Tarefas',
+      tasksFree: '10 ativas',
+      rewardsLabel: 'Recompensas',
+      rewardsFree: '5 ativas',
+      skillsLabel: 'Habilidades',
+      skillsFree: '3',
+      questsLabel: 'Missões',
+      questsFree: '3 ativas',
+      instrumentsLabel: 'Instrumentos',
+      instrumentsFree: 'Só Avaliação',
+      instrumentsPremium: 'Todos',
+      articlesLabel: 'Artigos',
+      articlesFree: 'Base',
+      articlesPremium: '+ exclusivos',
+    },
+    plan: {
+      selectLabel: 'Escolha seu plano',
+      annualBadge: '4 meses grátis',
+      annualName: 'Anual',
+      annualPrice: 'R$ 99,90/ano',
+      annualEquiv: 'equivale a R$ 8,32/mês',
+      monthlyName: 'Mensal',
+      monthlyPrice: 'R$ 14,90/mês',
+    },
+    cta: {
+      subscribe: 'Assinar Perceva Premium',
+      soon: 'Em breve',
+    },
+    footer: {
+      cancel: 'Cancele quando quiser.',
+      terms: 'Termos',
+      privacy: 'Privacidade',
+      separator: '·',
+      restore: 'Restaurar compras',
+    },
+    active: {
+      title: 'Você é Premium',
+      desc: 'Obrigado por apoiar o Perceva.',
+      benefitsTitle: 'Ativo pra você',
+    },
+    // Locked-instrument teaser sheet (§3).
+    teaser: {
+      lockedChip: 'Premium',
+      cta: 'Disponível no Perceva Premium',
+      bigFiveTitle: 'Big Five',
+      bigFiveLine:
+        'Cinco traços que descrevem, de forma estável, quem você é.',
+      schwartzTitle: 'Valores',
+      schwartzLine: 'O mapa dos valores que, no fundo, guiam suas escolhas.',
+      ecrRTitle: 'Apego',
+      ecrRLine: 'Seu padrão de apego — como você se liga e confia nos vínculos.',
+      discTitle: 'DISC',
+      discLine: 'Seu estilo de agir e se comunicar no dia a dia.',
+      strengthsTitle: 'Forças',
+      strengthsLine: 'Suas forças-assinatura: onde sua natureza já joga a favor.',
+      typesTitle: 'Tipos',
+      typesLine: 'Seu tipo e suas preferências — as lentes por onde você percebe o mundo.',
+    },
   },
 
   // Post-login product tour (M0 → Wrap-up). Pre-login slides live above

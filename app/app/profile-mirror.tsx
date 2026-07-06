@@ -65,6 +65,7 @@ import {
   type AxisSlug,
   type TypesLocale,
 } from '@/lib/psych/types-content';
+import { useInstrumentAccess, useInstrumentTeaserStore } from '@/lib/premium';
 import { formatScore } from '@/lib/util/formatScore';
 import { tokens } from '@/theme';
 import {
@@ -338,6 +339,8 @@ export function BigFiveCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('big_five_120');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('big_five_120');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const traitScores = useMemo(() => {
     const map = new Map<BigFiveTrait, number>();
@@ -353,7 +356,7 @@ export function BigFiveCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('big_five_120') : onOpen}
       style={({ pressed }) => [
         styles.card,
         styles.cardActive,
@@ -365,6 +368,7 @@ export function BigFiveCard({ onOpen }: { onOpen: () => void }) {
         <View style={styles.cardHeaderLeft}>
           <Ionicons name="cube" size={18} color={tokens.brand.violet2} />
           <Text style={styles.cardTitle}>Big Five</Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -410,6 +414,8 @@ export function BigFiveCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -460,6 +466,8 @@ export function SchwartzCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('schwartz_pvq');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('schwartz_pvq');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const top3 = useMemo(() => {
     const rows: { value: SchwartzValue; score: number }[] = [];
@@ -476,7 +484,7 @@ export function SchwartzCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('schwartz_pvq') : onOpen}
       style={({ pressed }) => [
         styles.card,
         styles.cardActive,
@@ -490,6 +498,7 @@ export function SchwartzCard({ onOpen }: { onOpen: () => void }) {
           <Text style={styles.cardTitle}>
             {isPt ? 'Valores' : 'Values'}
           </Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -525,6 +534,8 @@ export function SchwartzCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -564,6 +575,8 @@ export function EcrRCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('ecr_r');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('ecr_r');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const { anxiety, avoidance } = useMemo(() => {
     const map = new Map<EcrScale, number>();
@@ -584,7 +597,7 @@ export function EcrRCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('ecr_r') : onOpen}
       style={({ pressed }) => [
         styles.card,
         styles.cardActive,
@@ -598,6 +611,7 @@ export function EcrRCard({ onOpen }: { onOpen: () => void }) {
           <Text style={styles.cardTitle}>
             {isPt ? 'Apego' : 'Attachment'}
           </Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -626,6 +640,8 @@ export function EcrRCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -661,6 +677,8 @@ export function DiscCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('disc');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('disc');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const blend = useMemo(() => {
     const map = new Map<DiscFactor, number>();
@@ -684,7 +702,7 @@ export function DiscCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('disc') : onOpen}
       style={({ pressed }) => [
         styles.card,
         styles.cardActive,
@@ -696,6 +714,7 @@ export function DiscCard({ onOpen }: { onOpen: () => void }) {
         <View style={styles.cardHeaderLeft}>
           <Ionicons name="shapes" size={18} color={tokens.brand.violet2} />
           <Text style={styles.cardTitle}>DISC</Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -724,6 +743,8 @@ export function DiscCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -743,6 +764,8 @@ export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('strengths');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('strengths');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const top3 = useMemo(() => {
     const rows: { slug: StrengthSlug; score: number }[] = [];
@@ -759,7 +782,7 @@ export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('strengths') : onOpen}
       style={({ pressed }) => [
         styles.card,
         styles.cardActive,
@@ -773,6 +796,7 @@ export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
           <Text style={styles.cardTitle}>
             {isPt ? 'Forças' : 'Strengths'}
           </Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -808,6 +832,8 @@ export function StrengthsCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -827,6 +853,8 @@ export function TypesCard({ onOpen }: { onOpen: () => void }) {
 
   const lastSession = useLastPsychSession('tipos');
   const scoresQ = useSessionScores(lastSession.data?.id);
+  const { locked } = useInstrumentAccess('tipos');
+  const openTeaser = useInstrumentTeaserStore((s) => s.open);
 
   const result = useMemo(() => {
     const means = {} as Record<AxisSlug, number>;
@@ -844,7 +872,7 @@ export function TypesCard({ onOpen }: { onOpen: () => void }) {
 
   return (
     <Pressable
-      onPress={onOpen}
+      onPress={locked && !hasScores ? () => openTeaser('tipos') : onOpen}
       style={({ pressed }) => [styles.card, styles.cardActive, pressed && { opacity: 0.92 }]}
       hitSlop={4}
     >
@@ -852,6 +880,7 @@ export function TypesCard({ onOpen }: { onOpen: () => void }) {
         <View style={styles.cardHeaderLeft}>
           <Ionicons name="compass-outline" size={18} color={tokens.brand.violet2} />
           <Text style={styles.cardTitle}>{isPt ? 'Tipos' : 'Types'}</Text>
+          {locked && !hasScores && <LockChip />}
         </View>
         <Text style={styles.cardSub}>
           {isPt
@@ -878,6 +907,8 @@ export function TypesCard({ onOpen }: { onOpen: () => void }) {
             </Text>
           </View>
         </>
+      ) : locked ? (
+        <LockedCta />
       ) : (
         <View style={styles.cta}>
           <Text style={styles.ctaText}>
@@ -887,6 +918,33 @@ export function TypesCard({ onOpen }: { onOpen: () => void }) {
         </View>
       )}
     </Pressable>
+  );
+}
+
+/**
+ * Small "Premium" pill shown in a locked instrument card's header, and the
+ * locked CTA that replaces the "Fazer X" button. Both are rendered only when
+ * the instrument is gated (premium instrument + free user + no prior result);
+ * a locked instrument the user already completed behaves normally so the
+ * historical result stays viewable.
+ */
+function LockChip() {
+  const { t } = useT();
+  return (
+    <View style={styles.lockChip}>
+      <Ionicons name="lock-closed" size={10} color={tokens.brand.violet2} />
+      <Text style={styles.lockChipText}>{t('premium.teaser.lockedChip')}</Text>
+    </View>
+  );
+}
+
+function LockedCta() {
+  const { t } = useT();
+  return (
+    <View style={[styles.cta, styles.ctaLocked]}>
+      <Ionicons name="lock-closed" size={14} color={tokens.brand.violet2} />
+      <Text style={styles.ctaText}>{t('premium.teaser.cta')}</Text>
+    </View>
   );
 }
 
@@ -1013,6 +1071,28 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 13,
     letterSpacing: 0.3,
+    color: tokens.brand.violet2,
+  },
+  ctaLocked: {
+    backgroundColor: 'rgba(155, 130, 255, 0.06)',
+    borderColor: 'rgba(155, 130, 255, 0.22)',
+  },
+  lockChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: tokens.radius.pill,
+    backgroundColor: 'rgba(155, 130, 255, 0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(155, 130, 255, 0.28)',
+  },
+  lockChipText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 9,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     color: tokens.brand.violet2,
   },
   pendingNote: {

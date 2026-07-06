@@ -123,6 +123,17 @@ export default function SettingsScreen() {
           {profile?.subscription_tier === 'premium' && <PremiumBadge size="sm" />}
         </View>
 
+        {/* ───── PERCEVA PREMIUM ───── */}
+        <SectionHeader icon="sparkles-outline" label={t('premium.settingsRow')} />
+        <Card>
+          <ButtonRow
+            icon="star-outline"
+            label={t('premium.settingsRowSub')}
+            onPress={() => router.push('/premium?source=settings')}
+            chevron
+          />
+        </Card>
+
         {/* ───── ACCOUNT ───── */}
         <SectionHeader icon="person-outline" label={t('profile.sections.account')} />
         <Card>

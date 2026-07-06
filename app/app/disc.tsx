@@ -28,6 +28,7 @@ import type {
   PsychSessionItem,
 } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { useInstrumentStartGate } from '@/lib/premium';
 import {
   blendFromScores,
   DISC_FACTOR_ORDER,
@@ -66,6 +67,10 @@ export default function DiscScreen() {
   const lastSession = useLastPsychSession(INSTRUMENT_ID);
   const startSession = useStartPsychSession();
   const submitSession = useSubmitPsychSession();
+  const { assertCanStart } = useInstrumentStartGate(INSTRUMENT_ID, {
+    ready: !lastSession.isLoading,
+    hasResult: !!lastSession.data?.id,
+  });
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [idx, setIdx] = useState(0);
@@ -92,6 +97,7 @@ export default function DiscScreen() {
   const current = items[idx];
 
   const handleStart = () => {
+    if (!assertCanStart()) return;
     setPhase('starting');
     startSession.mutate(INSTRUMENT_ID, {
       onSuccess: (result) => {
