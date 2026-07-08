@@ -21,6 +21,7 @@ import { useStartCustomQuest } from '@/lib/api/quests';
 import { useActiveTasks } from '@/lib/api/tasks';
 import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
+import { freeLimitEntity, useLimitModalStore } from '@/lib/premium';
 import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
@@ -112,6 +113,12 @@ export default function QuestCreateScreen() {
       );
       router.back();
     } catch (e) {
+      const limited = freeLimitEntity(e);
+      if (limited) {
+        router.back();
+        useLimitModalStore.getState().open(limited);
+        return;
+      }
       const err = e as { message?: string; code?: string; details?: string; hint?: string };
       console.error('[start_custom_quest] failed', err);
       showInfo(

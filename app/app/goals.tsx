@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/quests';
 import { useT } from '@/lib/i18n';
 import type { QuestTemplate, QuestWithProgress } from '@/lib/db/types';
+import { freeLimitEntity } from '@/lib/premium';
 import { showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { QUEST_CATEGORY_ORDER, getQuestCategoryMeta } from '@/theme/quests';
@@ -115,6 +116,7 @@ export default function GoalsBoardScreen() {
     try {
       await startTemplate.mutateAsync(templateId);
     } catch (e) {
+      if (freeLimitEntity(e)) return; // limit modal handled globally
       const err = e as {
         message?: string;
         code?: string;

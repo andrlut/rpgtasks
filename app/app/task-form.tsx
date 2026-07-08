@@ -22,6 +22,7 @@ import { buildM1Steps } from '@/lib/tour/m1Steps';
 import { buildM2Steps } from '@/lib/tour/m2Steps';
 import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
 import { useT } from '@/lib/i18n';
+import { freeLimitEntity, useLimitModalStore } from '@/lib/premium';
 import { SUB_META } from '@/theme/dimensions';
 import {
   useArchiveTask,
@@ -310,6 +311,12 @@ export default function TaskFormScreen() {
       }
       router.back();
     } catch (e) {
+      const limited = freeLimitEntity(e);
+      if (limited) {
+        router.back();
+        useLimitModalStore.getState().open(limited);
+        return;
+      }
       const msg = e instanceof Error ? e.message : t('common.unknownError');
       Alert.alert(t('taskForm.saveFailed'), msg);
     }

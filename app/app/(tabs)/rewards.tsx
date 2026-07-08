@@ -38,6 +38,7 @@ import {
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { freeLimitEntity } from '@/lib/premium';
 import { TourModule } from '@/components/tour/TourModule';
 import { emitTourEvent } from '@/lib/tour/eventBus';
 import { buildM4Steps, M4_EVENTS } from '@/lib/tour/m4Steps';
@@ -307,6 +308,7 @@ export default function RewardsScreen() {
     try {
       await addTemplate.mutateAsync(template);
     } catch (e) {
+      if (freeLimitEntity(e)) return; // limit modal handled globally
       const msg = e instanceof Error ? e.message : t('common.unknownError');
       showInfo(t('rewards.vault.couldNotAdd'), msg);
     } finally {

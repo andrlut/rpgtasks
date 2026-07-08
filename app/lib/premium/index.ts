@@ -14,3 +14,17 @@ export { useIsPremium } from './useIsPremium';
 export { useInstrumentAccess, type InstrumentAccess } from './useInstrumentAccess';
 export { useInstrumentStartGate } from './useInstrumentStartGate';
 export { useInstrumentTeaserStore } from './teaserStore';
+export {
+  FREE_LIMITS,
+  computeEntityLimit,
+  freeLimitEntity,
+  type LimitedEntity,
+  type EntityLimit,
+} from './limits';
+export {
+  useTaskLimit,
+  useRewardLimit,
+  useSkillLimit,
+  useQuestLimit,
+} from './useEntityLimit';
+export { useLimitModalStore } from './limitModalStore';

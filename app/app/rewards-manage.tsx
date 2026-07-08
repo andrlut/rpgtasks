@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CoinIcon } from '@/components/CoinIcon';
 import { EmptyHero } from '@/components/EmptyHero';
+import { LimitCounterBadge } from '@/components/premium/LimitCounterBadge';
 import {
   useArchivedRewards,
   useArchiveReward,
@@ -27,6 +28,7 @@ import {
 } from '@/lib/api/rewards';
 import type { Reward } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { useLimitModalStore, useRewardLimit } from '@/lib/premium';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
 import { REWARD_CATEGORY_META } from '@/theme/rewards';
@@ -46,6 +48,15 @@ import { REWARD_CATEGORY_META } from '@/theme/rewards';
 export default function RewardsManageScreen() {
   const router = useRouter();
   const { t } = useT();
+  const rewardLimit = useRewardLimit();
+  const openLimit = useLimitModalStore((s) => s.open);
+  const handleCreateReward = () => {
+    if (rewardLimit.atLimit) {
+      openLimit('reward');
+      return;
+    }
+    router.push('/reward-form');
+  };
   const active = useRewards();
   const archived = useArchivedRewards();
   const reorder = useReorderRewards();
@@ -317,14 +328,17 @@ export default function RewardsManageScreen() {
           <Ionicons name="close" size={24} color={tokens.text.hi} />
         </Pressable>
         <Text style={styles.headerTitle}>{t('rewards.manage.title')}</Text>
-        <Pressable
-          onPress={() => router.push('/reward-form')}
-          style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
-          hitSlop={8}
-          accessibilityLabel={t('reward.form.newTitle')}
-        >
-          <Ionicons name="add" size={24} color={tokens.text.hi} />
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+          <LimitCounterBadge limit={rewardLimit} />
+          <Pressable
+            onPress={handleCreateReward}
+            style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+            hitSlop={8}
+            accessibilityLabel={t('reward.form.newTitle')}
+          >
+            <Ionicons name="add" size={24} color={tokens.text.hi} />
+          </Pressable>
+        </View>
       </View>
 
       {isLoading ? (

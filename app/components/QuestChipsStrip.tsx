@@ -75,8 +75,8 @@ export function QuestChipsStrip() {
         }}
       />
 
-      {/* ── Divider — only between the two groups ────────────────────── */}
-      {metas.length > 0 && <View style={styles.groupDivider} />}
+      {/* ── Divider between the Missões group and the Metas group ─────── */}
+      <View style={styles.groupDivider} />
 
       {/* ── Metas (orange) ───────────────────────────────────────────── */}
       {metas.map((q) => (
@@ -93,13 +93,13 @@ export function QuestChipsStrip() {
         />
       ))}
 
-      {metas.length > 0 && (
-        <BrowsePill
-          variant="violet"
-          label={t('home.goals.browseChip')}
-          onPress={() => router.push('/goals')}
-        />
-      )}
+      {/* Always show the "+ Metas" pill so goals are discoverable even at
+         zero — mirrors the always-present "+ Missões" pill above. */}
+      <BrowsePill
+        variant="violet"
+        label={t('home.goals.browseChip')}
+        onPress={() => router.push('/goals')}
+      />
 
       {/* Pad the right edge so the last chip doesn't kiss the screen edge. */}
       <View style={{ width: tokens.space[4] }} />

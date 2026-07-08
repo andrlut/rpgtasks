@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { CategoryHeader } from '@/components/CategoryHeader';
 import { QuestCard } from '@/components/QuestCard';
+import { LimitCounterBadge } from '@/components/premium/LimitCounterBadge';
 import {
   useCompleteQuest,
   useQuestTemplates,
@@ -23,6 +24,7 @@ import {
   useStartQuestFromTemplate,
 } from '@/lib/api/quests';
 import { useT } from '@/lib/i18n';
+import { freeLimitEntity, useLimitModalStore, useQuestLimit } from '@/lib/premium';
 import { TourModule } from '@/components/tour/TourModule';
 import { emitTourEvent } from '@/lib/tour/eventBus';
 import { buildM3Steps, M3_EVENTS } from '@/lib/tour/m3Steps';
@@ -121,6 +123,7 @@ export default function QuestBoardScreen() {
     try {
       await startTemplate.mutateAsync(templateId);
     } catch (e) {
+      if (freeLimitEntity(e)) return; // limit modal handled globally
       const err = e as {
         message?: string;
         code?: string;
@@ -186,7 +189,13 @@ export default function QuestBoardScreen() {
     });
   };
 
+  const questLimit = useQuestLimit();
+  const openLimit = useLimitModalStore((s) => s.open);
   const handleCreateCustom = () => {
+    if (questLimit.atLimit) {
+      openLimit('quest');
+      return;
+    }
     router.push('/quest-create');
   };
 
@@ -327,6 +336,7 @@ export default function QuestBoardScreen() {
               <Ionicons name="add" size={14} color={tokens.brand.violet} />
             </View>
             <Text style={styles.createText}>{t('quests.board.createCta')}</Text>
+            <LimitCounterBadge limit={questLimit} />
           </Pressable>
         )}
       </ScrollView>

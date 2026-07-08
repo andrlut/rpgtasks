@@ -28,6 +28,7 @@ import { useBottomSafeClearance } from '@/components/BottomNavBar';
 import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { LimitCounterBadge } from '@/components/premium/LimitCounterBadge';
 import { useT } from '@/lib/i18n';
 import {
   useActiveTasks,
@@ -35,6 +36,7 @@ import {
   useStartTaskFromTemplate,
   useTaskTemplates,
 } from '@/lib/api/tasks';
+import { useLimitModalStore, useTaskLimit } from '@/lib/premium';
 import type {
   DimensionId,
   Recurrence,
@@ -112,6 +114,15 @@ function bucketFor(rec: Recurrence): Bucket {
 export default function TasksHubScreen() {
   const router = useRouter();
   const { t } = useT();
+  const taskLimit = useTaskLimit();
+  const openLimit = useLimitModalStore((s) => s.open);
+  const handleCreateTask = () => {
+    if (taskLimit.atLimit) {
+      openLimit('task');
+      return;
+    }
+    router.push('/task-form');
+  };
   const bottomClearance = useBottomSafeClearance();
   const reorderTasks = useReorderTasks();
   const tasks = useActiveTasks();
@@ -293,10 +304,11 @@ export default function TasksHubScreen() {
                 color={searchOpen ? tokens.brand.violet2 : tokens.text.hi}
               />
             </Pressable>
+            <LimitCounterBadge limit={taskLimit} />
             <Pressable
               onPress={() => {
                 emitTourEvent(M2_EVENTS.CREATE_TASK_TAPPED);
-                router.push('/task-form');
+                handleCreateTask();
               }}
               style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
               hitSlop={8}
@@ -376,7 +388,7 @@ export default function TasksHubScreen() {
             onTaskPress={(id) =>
               router.push({ pathname: '/task-form', params: { id } })
             }
-            onCreate={() => router.push('/task-form')}
+            onCreate={handleCreateTask}
             onReorder={(ids) => reorderTasks.mutate(ids)}
             t={t}
           />
@@ -423,7 +435,7 @@ export default function TasksHubScreen() {
                   onTaskPress={(id) =>
                     router.push({ pathname: '/task-form', params: { id } })
                   }
-                  onCreate={() => router.push('/task-form')}
+                  onCreate={handleCreateTask}
                   t={t}
                 />
               )}
@@ -1295,6 +1307,7 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: 'row',
     gap: tokens.space[2],
+    alignItems: 'center',
   },
   iconButton: {
     width: 40,

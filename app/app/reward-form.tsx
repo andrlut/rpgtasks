@@ -24,6 +24,7 @@ import {
 } from '@/lib/api/rewards';
 import type { RewardCategory } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { freeLimitEntity, useLimitModalStore } from '@/lib/premium';
 import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { confirmAction } from '@/lib/util/confirm';
 import { tokens } from '@/theme';
@@ -144,6 +145,12 @@ export default function RewardFormScreen() {
       }
       router.back();
     } catch (e) {
+      const limited = freeLimitEntity(e);
+      if (limited) {
+        router.back();
+        useLimitModalStore.getState().open(limited);
+        return;
+      }
       const msg = e instanceof Error ? e.message : t('common.unknownError');
       Alert.alert(t('reward.form.saveFailTitle'), msg);
     }
