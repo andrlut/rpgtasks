@@ -22,6 +22,7 @@ import {
 } from '@/lib/api/skills';
 import type { SubId, TierName } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { freeLimitEntity, useLimitModalStore } from '@/lib/premium';
 import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { tokens } from '@/theme';
 import { useMetaLookup } from '@/lib/i18n/meta';
@@ -150,6 +151,12 @@ export default function SkillFormScreen() {
       });
       router.back();
     } catch (e) {
+      const limited = freeLimitEntity(e);
+      if (limited) {
+        router.back();
+        useLimitModalStore.getState().open(limited);
+        return;
+      }
       const msg = e instanceof Error ? e.message : t('common.unknownError');
       Alert.alert(t('skill.form.createFail'), msg);
     }

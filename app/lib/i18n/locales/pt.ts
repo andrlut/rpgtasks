@@ -311,6 +311,16 @@ const pt: Translations = {
       typesTitle: 'Tipos',
       typesLine: 'Seu tipo e suas preferências — as lentes por onde você percebe o mundo.',
     },
+    // Modal de limite (P1.1) — reconhecimento por entidade antes do pitch.
+    limit: {
+      taskLine1: 'Suas 10 tarefas ativas estão em uso — seu sistema está cheio.',
+      rewardLine1: 'Suas 5 recompensas ativas estão em uso.',
+      skillLine1: 'Suas 3 habilidades estão em desenvolvimento.',
+      questLine1: 'Suas 3 missões ativas estão em andamento.',
+      line2: 'Continue no Premium, ou arquive algo pra abrir espaço.',
+      seePremium: 'Conhecer o Premium',
+      archive: 'Arquivar itens',
+    },
   },
 
   // Post-login product tour (M0 → Wrap-up). Pre-login slides live above

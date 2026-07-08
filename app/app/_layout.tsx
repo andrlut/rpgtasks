@@ -10,7 +10,7 @@ import {
 } from '@expo-google-fonts/manrope';
 import { PlayfairDisplay_700Bold } from '@expo-google-fonts/playfair-display';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -19,6 +19,7 @@ import 'react-native-reanimated';
 
 import { ConfirmHost } from '@/components/ConfirmHost';
 import { InstrumentTeaserHost } from '@/components/premium/InstrumentTeaserHost';
+import { LimitReachedHost } from '@/components/premium/LimitReachedHost';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   useAuthDeepLink,
@@ -29,6 +30,7 @@ import {
 import { useNotificationsSetup } from '@/lib/notifications/useNotificationsSetup';
 import { useLoadOnboarding } from '@/lib/onboarding';
 import { useModuleStatus, useTourReady } from '@/lib/tour/store';
+import { freeLimitEntity, useLimitModalStore } from '@/lib/premium';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -108,7 +110,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        // Any create/adopt mutation that trips a free-tier limit trigger
+        // pops the premium limit modal, regardless of which screen fired it.
+        // Screens still `if (freeLimitEntity(e)) return` to skip their own
+        // generic error dialog.
+        mutationCache: new MutationCache({
+          onError: (error) => {
+            const entity = freeLimitEntity(error);
+            if (entity) useLimitModalStore.getState().open(entity);
+          },
+        }),
+      }),
+  );
   // Push-notification system — installs the foreground handler, reacts
   // to the Settings master switch, and re-stamps the daily "open" on
   // foreground events. No-op until the user toggles notifications on.
@@ -248,6 +264,7 @@ export default function RootLayout() {
         </AuthGate>
         <ConfirmHost />
         <InstrumentTeaserHost />
+        <LimitReachedHost />
         <StatusBar style="light" />
       </ThemeProvider>
     </QueryClientProvider>

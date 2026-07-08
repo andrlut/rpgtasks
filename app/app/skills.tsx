@@ -14,9 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SkillMedallionOrbital } from '@/components/SkillMedallionOrbital';
+import { LimitCounterBadge } from '@/components/premium/LimitCounterBadge';
 import { useSkillStates } from '@/lib/api/skills';
 import type { DimensionId, SkillState, SubId, TierName } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
+import { useLimitModalStore, useSkillLimit } from '@/lib/premium';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
@@ -66,6 +68,15 @@ function totals(states: SkillState[]): MedalTotals {
 export default function SkillsHubScreen() {
   const router = useRouter();
   const { t } = useT();
+  const skillLimit = useSkillLimit();
+  const openLimit = useLimitModalStore((s) => s.open);
+  const handleCreateSkill = () => {
+    if (skillLimit.atLimit) {
+      openLimit('skill');
+      return;
+    }
+    router.push({ pathname: '/skill-form', params: {} });
+  };
   const metaLookup = useMetaLookup();
   const { pick } = useLocalizedPick();
   const skillStates = useSkillStates();
@@ -140,16 +151,19 @@ export default function SkillsHubScreen() {
             <Ionicons name="chevron-back" size={22} color={tokens.text.hi} />
           </Pressable>
           <Text style={styles.title}>{t('skills.allTitle')}</Text>
-          <Pressable
-            onPress={() => router.push({ pathname: '/skill-form', params: {} })}
-            style={({ pressed }) => [
-              styles.iconButton,
-              pressed && { opacity: 0.6 },
-            ]}
-            hitSlop={8}
-          >
-            <Ionicons name="add" size={22} color={tokens.brand.violet2} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.space[2] }}>
+            <LimitCounterBadge limit={skillLimit} />
+            <Pressable
+              onPress={handleCreateSkill}
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && { opacity: 0.6 },
+              ]}
+              hitSlop={8}
+            >
+              <Ionicons name="add" size={22} color={tokens.brand.violet2} />
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView

@@ -28,6 +28,7 @@ import {
   useStartQuestFromTemplate,
 } from '@/lib/api/quests';
 import { useActiveTasks } from '@/lib/api/tasks';
+import { freeLimitEntity } from '@/lib/premium';
 import { useT } from '@/lib/i18n';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
 import { TourModule } from '@/components/tour/TourModule';
@@ -202,6 +203,7 @@ export default function QuestDetailScreen() {
       await startTemplate.mutateAsync(template.id);
       router.back();
     } catch (e) {
+      if (freeLimitEntity(e)) return; // limit modal handled globally
       const err = e as { message?: string; code?: string; details?: string; hint?: string };
       console.error('[start_quest_from_template] failed', err);
       showInfo(

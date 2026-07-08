@@ -319,6 +319,16 @@ const en = {
       typesTitle: 'Types',
       typesLine: 'Your type and preferences — the lenses you perceive the world through.',
     },
+    // Limit modal (P1.1) — recognition per entity before the pitch.
+    limit: {
+      taskLine1: 'Your 10 active tasks are all in use — your system is full.',
+      rewardLine1: 'Your 5 active rewards are all in use.',
+      skillLine1: 'Your 3 skills are all in progress.',
+      questLine1: 'Your 3 active quests are underway.',
+      line2: 'Go further with Premium, or archive something to make room.',
+      seePremium: 'See Premium',
+      archive: 'Archive items',
+    },
   },
 
   tour: {
