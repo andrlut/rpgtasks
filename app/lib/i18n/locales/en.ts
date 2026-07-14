@@ -1080,6 +1080,8 @@ const en = {
       titleN: 'Bought {{qty}}× "{{title}}"',
       bankLine: 'Bank: {{before}} → {{after}}',
       goToBank: 'Go to bank',
+      enjoyNow: 'Enjoy now',
+      saveForLater: 'Save for later',
       dismiss: 'Close',
     },
     buyConfirm: {

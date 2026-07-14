@@ -31,6 +31,11 @@ interface Props {
   bankBefore: number;
   /** Number of items in the bank AFTER this purchase (bankBefore + qty). */
   bankAfter: number;
+  /** When true, show the "enjoy now" primary CTA (consume one unit
+   *  immediately). False on old servers that don't return redemption ids. */
+  canEnjoyNow?: boolean;
+  /** Consume one just-purchased unit right away, then close. */
+  onEnjoyNow?: () => void;
   onClose: () => void;
   onGoToBank: () => void;
 }
@@ -56,6 +61,8 @@ export function BuyCelebrationModal({
   costPaid,
   bankBefore,
   bankAfter,
+  canEnjoyNow = false,
+  onEnjoyNow,
   onClose,
   onGoToBank,
 }: Props) {
@@ -198,28 +205,69 @@ export function BuyCelebrationModal({
                 </Text>
               </View>
 
-              {/* CTAs */}
+              {/* CTAs. When "enjoy now" is available it's the gold
+                  primary (the delightful path — consume it right away);
+                  "go to bank" drops to a secondary outline. Otherwise
+                  "go to bank" keeps the gold primary. */}
               <View style={styles.actions}>
-                <Pressable
-                  onPress={onGoToBank}
-                  style={({ pressed }) => [
-                    styles.primaryBtn,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <LinearGradient
-                    colors={['#FFE890', '#FFC83D', '#C8881C']}
-                    locations={[0, 0.5, 1]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  <Ionicons name="wallet" size={14} color="#3D2A00" />
-                  <Text style={styles.primaryText}>
-                    {t('rewards.celebration.goToBank').toUpperCase()}
-                  </Text>
-                </Pressable>
+                {canEnjoyNow && onEnjoyNow ? (
+                  <>
+                    <Pressable
+                      onPress={onEnjoyNow}
+                      style={({ pressed }) => [
+                        styles.primaryBtn,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                      accessibilityRole="button"
+                    >
+                      <LinearGradient
+                        colors={['#FFE890', '#FFC83D', '#C8881C']}
+                        locations={[0, 0.5, 1]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 0, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <Ionicons name="sparkles" size={14} color="#3D2A00" />
+                      <Text style={styles.primaryText}>
+                        {t('rewards.celebration.enjoyNow').toUpperCase()}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={onGoToBank}
+                      style={({ pressed }) => [
+                        styles.secondaryBtn,
+                        pressed && { opacity: 0.75 },
+                      ]}
+                      accessibilityRole="button"
+                    >
+                      <Ionicons name="wallet-outline" size={14} color="#FFE3A6" />
+                      <Text style={styles.secondaryText}>
+                        {t('rewards.celebration.saveForLater').toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    onPress={onGoToBank}
+                    style={({ pressed }) => [
+                      styles.primaryBtn,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                    accessibilityRole="button"
+                  >
+                    <LinearGradient
+                      colors={['#FFE890', '#FFC83D', '#C8881C']}
+                      locations={[0, 0.5, 1]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Ionicons name="wallet" size={14} color="#3D2A00" />
+                    <Text style={styles.primaryText}>
+                      {t('rewards.celebration.goToBank').toUpperCase()}
+                    </Text>
+                  </Pressable>
+                )}
                 <Pressable
                   onPress={onClose}
                   style={({ pressed }) => [
@@ -344,6 +392,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.7,
     color: '#3D2A00',
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: tokens.space[3],
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,200,61,0.35)',
+    backgroundColor: 'rgba(255,200,61,0.08)',
+  },
+  secondaryText: {
+    fontFamily: 'Manrope_800ExtraBold',
+    fontSize: 12,
+    letterSpacing: 0.7,
+    color: '#FFE3A6',
   },
   ghostBtn: {
     paddingVertical: tokens.space[2],

@@ -11,14 +11,12 @@ import {
 
 import { HexChart } from '@/components/HexChart';
 import { MoodTodayCard } from '@/components/mood/MoodTodayCard';
-import type { CharacterSubScore, SubId } from '@/lib/db/types';
+import type { CharacterSubScore } from '@/lib/db/types';
 import { pickSubScores, pickSubScoresDecimal } from '@/lib/api/character';
 import { useLastWellbeingSession } from '@/lib/api/psych';
 import { daysSince } from '@/lib/api/questionnaire';
 import { useT } from '@/lib/i18n';
-import { useMetaLookup } from '@/lib/i18n/meta';
 import { tokens } from '@/theme';
-import { SUB_META } from '@/theme/dimensions';
 
 type HexSource = 'self' | 'both' | 'questionnaire';
 
@@ -110,7 +108,6 @@ interface Props {
 export function AvaliacaoPanel({ subScores }: Props) {
   const router = useRouter();
   const { t } = useT();
-  const metaLookup = useMetaLookup();
   const { width: screenWidth } = useWindowDimensions();
   const lastSession = useLastWellbeingSession();
   const [hexSource, setHexSource] = useState<HexSource>('self');
@@ -151,15 +148,6 @@ export function AvaliacaoPanel({ subScores }: Props) {
         ? t('avaliacao.questionnaireToday')
         : t('avaliacao.questionnaireDaysAgo', { count: sinceDays });
 
-  const weakest = useMemo<{ subId: SubId; score: number } | null>(() => {
-    if (selfScores.size === 0) return null;
-    let pick: { subId: SubId; score: number } | null = null;
-    for (const [subId, score] of selfScores.entries()) {
-      if (!pick || score < pick.score) pick = { subId, score };
-    }
-    return pick;
-  }, [selfScores]);
-
   return (
     <View style={styles.wrap}>
       <MoodTodayCard />
@@ -180,33 +168,6 @@ export function AvaliacaoPanel({ subScores }: Props) {
           </View>
         )}
       </View>
-
-      {weakest && weakest.score < 5 && (
-        <Pressable
-          onPress={() =>
-            router.push({
-              pathname: '/dimension/[id]',
-              params: { id: SUB_META[weakest.subId].dimensionId },
-            })
-          }
-          style={({ pressed }) => [styles.nudge, pressed && { opacity: 0.7 }]}
-          hitSlop={4}
-        >
-          <View style={styles.nudgeInner}>
-            <Text style={styles.nudgeText}>
-              <Text style={styles.nudgeStrong}>
-                {metaLookup.sub(weakest.subId).label}
-              </Text>{' '}
-              {t('avaliacao.nudgeSuffix', { score: weakest.score })}
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={14}
-              color={tokens.brand.violet2}
-            />
-          </View>
-        </Pressable>
-      )}
 
       <Pressable
         onPress={() => router.push('/self-assessment')}
@@ -258,32 +219,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     right: 4,
-  },
-  nudge: {
-    backgroundColor: 'rgba(155, 130, 255, 0.08)',
-    borderLeftWidth: 2,
-    borderLeftColor: tokens.brand.violet2,
-    paddingHorizontal: tokens.space[3],
-    paddingVertical: tokens.space[2],
-    borderRadius: tokens.radius.sm,
-  },
-  nudgeInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.space[2],
-  },
-  nudgeText: {
-    flex: 1,
-    fontFamily: 'Manrope_500Medium',
-    fontSize: 12,
-    lineHeight: 17,
-    color: tokens.text.base,
-    fontStyle: 'italic',
-  },
-  nudgeStrong: {
-    fontFamily: 'Manrope_800ExtraBold',
-    color: tokens.text.hi,
-    fontStyle: 'normal',
   },
   cta: {
     flexDirection: 'row',

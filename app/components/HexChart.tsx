@@ -312,13 +312,14 @@ export function HexChart({
         </Text>
       </View>
 
-      {/* Legend: 2 rows × 3 cards, exact widths via flex:1. When onDimPress
-          is provided, each card becomes a Pressable that drills into the
-          dim detail screen — primary entry-point from the hex. */}
+      {/* Legend: 3 rows × 2 cards, exact widths via flex:1. Two-per-row
+          gives each dim card more horizontal room than the old 3-per-row
+          layout (which felt cramped). When onDimPress is provided, each
+          card becomes a Pressable that drills into the dim detail. */}
       <View style={styles.legend}>
-        {[0, 3].map((rowStart) => (
+        {[0, 2, 4].map((rowStart) => (
           <View key={`row-${rowStart}`} style={styles.legendRow}>
-            {mains.slice(rowStart, rowStart + 3).map((m) => {
+            {mains.slice(rowStart, rowStart + 2).map((m) => {
               const meta = metaLookup.dim(m.dim);
               const subIds = SUBS_BY_DIM[m.dim];
               const cardContent = (
@@ -447,20 +448,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 12,
     borderWidth: 1,
-    padding: 10,
+    padding: 12,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     marginBottom: 8,
   },
   cardLabel: {
     flex: 1,
     minWidth: 0,
     fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 9,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    letterSpacing: 1,
   },
   cardBadge: {
     minWidth: 22,

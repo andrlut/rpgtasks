@@ -412,6 +412,10 @@ export interface RedeemBatchResult {
   qty: number;
   unit_cost: number;
   total_paid: number;
+  /** Ids of the redemption rows created, in insert order (oldest first).
+   *  The buy celebration uses the first for "enjoy now". Older RPC
+   *  versions omit this, hence optional. */
+  redemption_ids?: string[];
 }
 
 /**

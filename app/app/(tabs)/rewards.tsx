@@ -35,6 +35,7 @@ import {
   useRewards,
   useSetTrackedReward,
   useTrackedRewardId,
+  useUseReward,
 } from '@/lib/api/rewards';
 import type { Reward, RewardCategory, RewardTemplate } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
@@ -66,6 +67,7 @@ export default function RewardsScreen() {
   const rewards = useRewards();
   const templates = useRewardTemplates();
   const redeem = useRedeemRewardN();
+  const useReward = useUseReward();
   const addTemplate = useAddTemplateToShop();
   const archiveReward = useArchiveReward();
   // bank query stays only to drive the FAB visibility/count; the actual
@@ -102,6 +104,8 @@ export default function RewardsScreen() {
     costPaid: number;
     bankBefore: number;
     bankAfter: number;
+    /** Redemption ids created by this purchase — feeds "enjoy now". */
+    redemptionIds: string[];
   } | null>(null);
   const bottomClearance = useBottomNavClearance();
 
@@ -284,12 +288,32 @@ export default function RewardsScreen() {
         costPaid: result?.total_paid ?? reward.cost * qty,
         bankBefore,
         bankAfter: bankBefore + (result?.qty ?? qty),
+        redemptionIds: result?.redemption_ids ?? [],
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Unknown error';
       showInfo(t('reward.shop.buyFail'), msg);
     } finally {
       setRedeemingId(null);
+    }
+  };
+
+  /**
+   * "Enjoy now" from the celebration modal — consume ONE just-purchased
+   * unit immediately (marks the first redemption used) and close. Any
+   * remaining units of a multi-buy stay banked. Falls back gracefully
+   * if the RPC didn't return ids (old server): just closes.
+   */
+  const handleEnjoyNow = async (redemptionIds: string[]) => {
+    setCelebration(null);
+    const first = redemptionIds[0];
+    if (!first) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    try {
+      await useReward.mutateAsync(first);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      showInfo(t('reward.shop.useFail'), msg);
     }
   };
 
@@ -659,6 +683,10 @@ export default function RewardsScreen() {
         costPaid={celebration?.costPaid ?? 0}
         bankBefore={celebration?.bankBefore ?? 0}
         bankAfter={celebration?.bankAfter ?? 0}
+        canEnjoyNow={(celebration?.redemptionIds.length ?? 0) > 0}
+        onEnjoyNow={() =>
+          handleEnjoyNow(celebration?.redemptionIds ?? [])
+        }
         onClose={() => setCelebration(null)}
         onGoToBank={() => {
           setCelebration(null);
