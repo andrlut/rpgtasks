@@ -40,7 +40,9 @@ import {
   getAxisContent,
   getClarityLabel,
   getFacetContent,
+  getPoleGrowth,
   getTypeContent,
+  getTypeSituations,
   letterForAxis,
   normalizeBipolar,
   type AxisSlug,
@@ -475,6 +477,10 @@ function ResultBody({
         />
       ))}
 
+      <TypeSituationList axisMeans={axisMeans} locale={locale} />
+
+      <TypeActionBridge axisMeans={axisMeans} locale={locale} />
+
       <Pressable
         onPress={onRetake}
         style={({ pressed }) => [styles.retakeBtn, pressed && { opacity: 0.85 }]}
@@ -623,6 +629,104 @@ function AxisFacets({
   );
 }
 
+// ─── Situational portrait ─────────────────────────────────────────────────
+
+function TypeSituationList({
+  axisMeans,
+  locale,
+}: {
+  axisMeans: Record<AxisSlug, number>;
+  locale: TypesLocale;
+}) {
+  const isPt = locale === 'pt';
+  const situations = getTypeSituations(locale);
+  return (
+    <>
+      <Text style={styles.sectionHeader}>
+        {isPt ? 'Você no dia a dia' : 'You, day to day'}
+      </Text>
+      <View style={styles.situationCard}>
+        {situations.map((s, i) => {
+          const mean = axisMeans[s.axis];
+          const reaction = mean >= 3 ? s.poleA : s.poleB;
+          return (
+            <View
+              key={s.prompt}
+              style={[styles.situationRow, i > 0 && styles.situationRowBorder]}
+            >
+              <Text style={styles.situationPrompt}>{s.prompt}</Text>
+              <View style={styles.situationReactionRow}>
+                <View style={[styles.situationDot, { backgroundColor: AXIS_COLOR[s.axis] }]} />
+                <Text style={styles.situationReaction}>{reaction}</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </>
+  );
+}
+
+// ─── Action bridge ("como treinar isso") ──────────────────────────────────
+
+function TypeActionBridge({
+  axisMeans,
+  locale,
+}: {
+  axisMeans: Record<AxisSlug, number>;
+  locale: TypesLocale;
+}) {
+  const router = useRouter();
+  const isPt = locale === 'pt';
+  // The user's most distinct axis — where the preference (and its shadow) is
+  // strongest, so its pole is the most useful place to train.
+  const axis = AXIS_ORDER.reduce(
+    (best, ax) =>
+      Math.abs(axisMeans[ax] - 3) > Math.abs(axisMeans[best] - 3) ? ax : best,
+    AXIS_ORDER[0],
+  );
+  const letter = letterForAxis(axis, axisMeans[axis]);
+  const growth = getPoleGrowth(letter, locale);
+  const accent = AXIS_COLOR[axis];
+  return (
+    <>
+      <Text style={styles.sectionHeader}>
+        {isPt ? 'Como treinar isso' : 'How to train it'}
+      </Text>
+      <View style={[styles.bridgeCard, { borderColor: `${accent}44` }]}>
+        <Text style={styles.bridgeGrowth}>{growth}</Text>
+        <Text style={styles.bridgeHint}>
+          {isPt
+            ? 'Seu resultado não precisa parar na tela. Vira treino:'
+            : "Your result doesn't have to stop at the screen. Turn it into training:"}
+        </Text>
+        <View style={styles.bridgeBtns}>
+          <Pressable
+            onPress={() => router.push('/quest-create')}
+            style={({ pressed }) => [styles.bridgeBtn, pressed && { opacity: 0.75 }]}
+            hitSlop={4}
+          >
+            <Ionicons name="flag-outline" size={15} color={tokens.brand.violet2} />
+            <Text style={styles.bridgeBtnText}>
+              {isPt ? 'Virar missão' : 'Make a mission'}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/skill-form')}
+            style={({ pressed }) => [styles.bridgeBtn, pressed && { opacity: 0.75 }]}
+            hitSlop={4}
+          >
+            <Ionicons name="barbell-outline" size={15} color={tokens.brand.violet2} />
+            <Text style={styles.bridgeBtnText}>
+              {isPt ? 'Criar habilidade' : 'Create a skill'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </>
+  );
+}
+
 // ─── Styles ───────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
@@ -760,6 +864,34 @@ const styles = StyleSheet.create({
   facetFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: tokens.space[2] },
   facetWords: { flex: 1, fontFamily: 'Manrope_500Medium', fontSize: 10, color: tokens.text.dim },
   facetOpp: { fontFamily: 'Manrope_700Bold', fontSize: 9, letterSpacing: 0.4, textTransform: 'uppercase' },
+
+  situationCard: {
+    borderRadius: tokens.radius.md, borderWidth: 1, borderColor: tokens.border.base,
+    backgroundColor: tokens.bg.surface, paddingHorizontal: tokens.space[3],
+  },
+  situationRow: { paddingVertical: tokens.space[3], gap: 5 },
+  situationRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: tokens.border.base },
+  situationPrompt: {
+    fontFamily: 'Manrope_700Bold', fontSize: 11, letterSpacing: 0.3,
+    color: tokens.text.dim, textTransform: 'uppercase',
+  },
+  situationReactionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.space[2] },
+  situationDot: { width: 6, height: 6, borderRadius: 3, marginTop: 7 },
+  situationReaction: { flex: 1, ...tokens.type.body, color: tokens.text.base, fontSize: 13, lineHeight: 19 },
+
+  bridgeCard: {
+    borderRadius: tokens.radius.md, borderWidth: 1, backgroundColor: tokens.bg.surface,
+    padding: tokens.space[4], gap: tokens.space[3],
+  },
+  bridgeGrowth: { fontFamily: 'Manrope_700Bold', fontSize: 14, lineHeight: 21, color: tokens.text.hi },
+  bridgeHint: { fontFamily: 'Manrope_500Medium', fontSize: 12, lineHeight: 17, color: tokens.text.dim },
+  bridgeBtns: { flexDirection: 'row', gap: tokens.space[2] },
+  bridgeBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: tokens.space[3], paddingHorizontal: tokens.space[2],
+    borderRadius: tokens.radius.md, borderWidth: 1, borderColor: 'rgba(155, 130, 255, 0.30)',
+  },
+  bridgeBtnText: { fontFamily: 'Manrope_700Bold', fontSize: 12, color: tokens.brand.violet2, letterSpacing: 0.2 },
 
   retakeBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
