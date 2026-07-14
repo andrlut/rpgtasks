@@ -1722,6 +1722,12 @@ const en = {
     unknown: 'Unexpected error. Try again.',
   },
 
+  historyHub: {
+    dias: 'Days',
+    dedicacao: 'Dedication',
+    insights: 'Insights',
+  },
+
   insights: {
     title: 'Insights',
     window90: 'last 90 days',

@@ -1721,6 +1721,12 @@ const pt: Translations = {
     unknown: 'Erro inesperado. Tente novamente.',
   },
 
+  historyHub: {
+    dias: 'Dias',
+    dedicacao: 'Dedicação',
+    insights: 'Insights',
+  },
+
   insights: {
     title: 'Insights',
     window90: 'últimos 90 dias',

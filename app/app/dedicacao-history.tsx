@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CompletionLog } from '@/components/history/CompletionLog';
+import { HistoryLensTabs } from '@/components/history/HistoryLensTabs';
 import {
   HeatmapLegend,
   MonthHeatmap,
@@ -291,6 +292,8 @@ export default function DedicacaoHistoryScreen() {
             />
           }
         >
+          <HistoryLensTabs current="dedicacao" />
+
           <HistoryFilters
             spec={spec}
             onSpecChange={setSpec}

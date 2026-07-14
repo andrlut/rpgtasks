@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { HistoryLensTabs } from '@/components/history/HistoryLensTabs';
 import { useCorrelation } from '@/lib/api/correlation';
 import { useMoodTags } from '@/lib/api/mood';
 import {
@@ -121,6 +122,8 @@ export default function InsightsScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          <HistoryLensTabs current="insights" />
+
           <SegmentedControl<Lens>
             options={[
               { value: 'feeling', label: t('insights.lensFeeling') },

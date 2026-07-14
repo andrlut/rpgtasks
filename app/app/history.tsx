@@ -22,14 +22,15 @@ import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { DayStatsCard } from '@/components/DayStatsCard';
 import { MoodDayDetail } from '@/components/mood/MoodDayDetail';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { MonthGrid } from '@/components/MonthGrid';
-import { MoodMonthGrid } from '@/components/mood/MoodMonthGrid';
+import { DayHeatmap, xpColorFor } from '@/components/history/DayHeatmap';
+import { HistoryLensTabs } from '@/components/history/HistoryLensTabs';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { TaskActionSheet } from '@/components/TaskActionSheet';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { dateKeyFromLocal, useDailySummary, useDayDetail } from '@/lib/api/history';
 import { useMoodMonth } from '@/lib/api/mood';
+import { moodLevel } from '@/lib/mood';
 import {
   dimensionForSub,
   useCompleteTask,
@@ -358,6 +359,10 @@ export default function HistoryScreen() {
           </Pressable>
         </View>
 
+        <View style={{ marginBottom: tokens.space[4] }}>
+          <HistoryLensTabs current="dias" />
+        </View>
+
         <View style={styles.heatmapCard}>
           <SegmentedControl<'activity' | 'mood'>
             options={[
@@ -369,35 +374,33 @@ export default function HistoryScreen() {
           />
 
           <View style={styles.heatmapGrid}>
-            {heatmapMode === 'mood' ? (
-              moodMonth.isLoading ? (
-                <View style={styles.heatmapLoading}>
-                  <ActivityIndicator color={tokens.brand.violet2} />
-                </View>
-              ) : (
-                <MoodMonthGrid
-                  moods={moodMonth.data}
-                  monthDate={visibleMonth}
-                  selected={selected}
-                  onSelectDay={handleSelectDay}
-                  onPrevMonth={handlePrevMonth}
-                  onNextMonth={handleNextMonth}
-                  canGoNext={canGoNextMonth}
-                />
-              )
-            ) : summary.isLoading ? (
+            {(heatmapMode === 'mood' ? moodMonth.isLoading : summary.isLoading) ? (
               <View style={styles.heatmapLoading}>
                 <ActivityIndicator color={tokens.brand.violet2} />
               </View>
             ) : (
-              <MonthGrid
-                data={summary.data}
+              <DayHeatmap
                 monthDate={visibleMonth}
                 selected={selected}
                 onSelectDay={handleSelectDay}
                 onPrevMonth={handlePrevMonth}
                 onNextMonth={handleNextMonth}
                 canGoNext={canGoNextMonth}
+                colorFor={(key) => {
+                  if (heatmapMode === 'mood') {
+                    const m = moodMonth.data?.get(key);
+                    return m ? { bg: moodLevel(m.mood).color, onColor: true } : null;
+                  }
+                  return xpColorFor(summary.data?.get(key)?.totalXp ?? 0);
+                }}
+                markFor={
+                  heatmapMode === 'mood'
+                    ? (key) => {
+                        const m = moodMonth.data?.get(key);
+                        return !!m && (!!m.note || (m.tags?.length ?? 0) > 0);
+                      }
+                    : undefined
+                }
               />
             )}
           </View>
