@@ -1441,6 +1441,8 @@ const pt: Translations = {
     notifications: {
       master: 'Ativar notificações',
       masterDescription: 'Chave geral pros lembretes abaixo.',
+      mood: 'Check-in de humor',
+      moodDescription: 'Um lembrete gentil no fim do dia pra registrar como você se sentiu.',
       daily: 'Lembrete diário',
       dailyDescription: 'Um cutucão se ainda tem tarefas diárias pendentes.',
       quest: 'Lembrete de missão',
@@ -1717,6 +1719,39 @@ const pt: Translations = {
     notAuthenticated: 'Você precisa estar logado pra isso.',
     notFound: 'Não encontrado',
     unknown: 'Erro inesperado. Tente novamente.',
+  },
+
+  mood: {
+    title: 'Check-in de humor',
+    question: 'Como você se sentiu hoje?',
+    subtitle: 'no geral, olhando o dia todo',
+    levels: {
+      terrible: 'Péssimo',
+      bad: 'Mal',
+      ok: 'Mais ou menos',
+      good: 'Bem',
+      great: 'Ótimo',
+    },
+    notePlaceholder: 'Quer contar mais? (opcional)',
+    noScore: 'sem XP · sem streak · sem cobrança',
+    save: 'Salvar',
+    saving: 'Salvando…',
+    saveError: 'Não foi possível salvar seu humor',
+    discardTitle: 'Descartar?',
+    discardBody: 'Você marcou um humor mas não salvou. Descartar?',
+    keep: 'Continuar',
+    discard: 'Descartar',
+    tasksMenuA11y: 'Registrar como você se sentiu hoje',
+    todayCard: {
+      eyebrow: 'Humor de hoje',
+      promptTitle: 'Como você se sentiu hoje?',
+      loggedPrefix: 'Você se sentiu',
+    },
+    prompt: {
+      title: 'Como foi seu dia?',
+      writeMore: 'Escrever mais',
+      notNow: 'Agora não',
+    },
   },
 
   format: {

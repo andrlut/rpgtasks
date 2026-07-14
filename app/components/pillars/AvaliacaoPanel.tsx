@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import { HexChart } from '@/components/HexChart';
+import { MoodTodayCard } from '@/components/mood/MoodTodayCard';
 import type { CharacterSubScore, SubId } from '@/lib/db/types';
 import { pickSubScores, pickSubScoresDecimal } from '@/lib/api/character';
 import { useLastWellbeingSession } from '@/lib/api/psych';
@@ -161,6 +162,8 @@ export function AvaliacaoPanel({ subScores }: Props) {
 
   return (
     <View style={styles.wrap}>
+      <MoodTodayCard />
+
       <View style={styles.hexWrap}>
         <HexChart
           scores={primary}

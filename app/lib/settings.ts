@@ -24,6 +24,8 @@ export interface AppSettings {
   questReminder: boolean;
   /** Momentum reminder enabled (placeholder). */
   momentumReminder: boolean;
+  /** Show the gentle end-of-day mood check-in prompt on the Today Hub. */
+  moodCheckinPrompt: boolean;
 }
 
 const DEFAULTS: AppSettings = {
@@ -35,6 +37,7 @@ const DEFAULTS: AppSettings = {
   dailyReminder: false,
   questReminder: false,
   momentumReminder: false,
+  moodCheckinPrompt: true,
 };
 
 type Status = 'unknown' | 'ready';

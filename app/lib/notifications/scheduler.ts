@@ -10,6 +10,9 @@ import {
   DAILY_BRIEF_MINUTE_DEFAULT,
   MESSAGES_EN,
   MESSAGES_PT,
+  NIGHTLY_CHECKIN_HOUR,
+  NIGHTLY_CHECKIN_MINUTE,
+  NIGHTLY_CHECKIN_ROUTE,
   NOTIFICATION_IDS,
   type NotificationLocale,
   pickRandom,
@@ -76,6 +79,37 @@ export async function scheduleDailyBrief(
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour,
       minute,
+    },
+  });
+}
+
+/**
+ * Nightly mood check-in — a recurring DAILY trigger at 21:00. Unlike the
+ * Checkpoint it needs no boot-order dance: a DAILY trigger fires at the next
+ * occurrence automatically, so we never hand-arm "today at 21:00". Tapping it
+ * deep-links to the mood check-in screen (see the response listener in
+ * useNotificationsSetup). Cancel-first so it's idempotent.
+ */
+export async function scheduleNightlyCheckin(
+  locale: NotificationLocale = 'pt-BR',
+): Promise<void> {
+  await cancelById(NOTIFICATION_IDS.NIGHTLY_CHECKIN);
+
+  const msg = pickRandom(getMessages(locale).nightly);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: msg.title,
+      body: msg.body,
+      data: {
+        id: NOTIFICATION_IDS.NIGHTLY_CHECKIN,
+        route: NIGHTLY_CHECKIN_ROUTE,
+      },
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: NIGHTLY_CHECKIN_HOUR,
+      minute: NIGHTLY_CHECKIN_MINUTE,
     },
   });
 }

@@ -1,3 +1,5 @@
+import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 
@@ -22,6 +24,9 @@ import { requestNotificationPermissions } from './permissions';
  * Short-circuit the whole hook there.
  */
 const NOTIFICATIONS_SUPPORTED = Platform.OS !== 'web';
+
+/** Guards cold-start notification-response replay to once per app process. */
+let coldStartResponseConsumed = false;
 
 /**
  * Boots the Perceva notification system.
@@ -88,4 +93,39 @@ export function useNotificationsSetup() {
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
   }, [osLocale]);
+
+  // ── 4. Deep-link a tapped notification to its target screen ────────────
+  // The app had no notification-response handling at all — a tap just cold-
+  // opened the default route. We read `content.data.route` (set by the
+  // nightly check-in) and push it. Warm taps always route; the cold-start
+  // launch response is consumed once so a later unrelated cold start doesn't
+  // replay a stale response.
+  useEffect(() => {
+    if (!NOTIFICATIONS_SUPPORTED) return;
+    const routeFromResponse = (
+      resp: Notifications.NotificationResponse | null,
+    ) => {
+      const data = resp?.notification.request.content.data as
+        | { route?: string }
+        | null
+        | undefined;
+      const route = data?.route;
+      if (typeof route === 'string' && route.length > 0) {
+        // Small delay so the initial AuthGate redirect settles before we push.
+        setTimeout(() => router.push(route as never), 300);
+      }
+    };
+
+    const sub =
+      Notifications.addNotificationResponseReceivedListener(routeFromResponse);
+
+    if (!coldStartResponseConsumed) {
+      coldStartResponseConsumed = true;
+      Notifications.getLastNotificationResponseAsync()
+        .then(routeFromResponse)
+        .catch(() => {});
+    }
+
+    return () => sub.remove();
+  }, []);
 }

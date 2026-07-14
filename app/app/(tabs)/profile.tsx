@@ -209,6 +209,13 @@ export default function SettingsScreen() {
           />
           <Divider />
           <ToggleRow
+            label={t('profile.notifications.mood')}
+            description={t('profile.notifications.moodDescription')}
+            value={settings.moodCheckinPrompt}
+            onChange={(v) => setSetting('moodCheckinPrompt', v)}
+          />
+          <Divider />
+          <ToggleRow
             label={t('profile.notifications.daily')}
             description={t('profile.notifications.dailyDescription')}
             value={settings.dailyReminder}

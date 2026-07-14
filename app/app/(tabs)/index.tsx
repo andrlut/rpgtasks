@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { BucketTabsV2, type BucketTabSpec } from '@/components/BucketTabsV2';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
+import { MoodCheckinPrompt } from '@/components/MoodCheckinPrompt';
 import { CompletedBucket, type CompletedItem } from '@/components/CompletedBucket';
 import { QuestChipsStrip } from '@/components/QuestChipsStrip';
 import { RewardStatsCard, XPStatsCard } from '@/components/StatsCards';
@@ -612,6 +613,8 @@ export default function HomeScreen() {
         onSkipToday={handleActionSkip}
         onEdit={handleActionEdit}
       />
+
+      <MoodCheckinPrompt enabled={!activeTourStep} />
 
       {/* Post-login tour — M1 (Tasks). Only renders when the user has
          tasks visible behind the spotlight and M1 is the current

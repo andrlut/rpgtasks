@@ -1442,6 +1442,8 @@ const en = {
     notifications: {
       master: 'Enable notifications',
       masterDescription: 'Master switch for all reminders below.',
+      mood: 'Mood check-in',
+      moodDescription: 'A gentle end-of-day nudge to log how you felt.',
       daily: 'Daily reminder',
       dailyDescription: 'A nudge if you have unfinished daily quests.',
       quest: 'Quest reminder',
@@ -1718,6 +1720,39 @@ const en = {
     notAuthenticated: 'You need to be signed in for this.',
     notFound: 'Not found',
     unknown: 'Unexpected error. Try again.',
+  },
+
+  mood: {
+    title: 'Mood check-in',
+    question: 'How did you feel today?',
+    subtitle: 'overall, across the whole day',
+    levels: {
+      terrible: 'Awful',
+      bad: 'Bad',
+      ok: 'Meh',
+      good: 'Good',
+      great: 'Great',
+    },
+    notePlaceholder: 'Want to say more? (optional)',
+    noScore: 'no XP · no streak · no pressure',
+    save: 'Save',
+    saving: 'Saving…',
+    saveError: "Couldn't save your mood",
+    discardTitle: 'Discard?',
+    discardBody: "You picked a mood but didn't save it. Discard?",
+    keep: 'Keep editing',
+    discard: 'Discard',
+    tasksMenuA11y: 'Log how you felt today',
+    todayCard: {
+      eyebrow: "Today's mood",
+      promptTitle: 'How did you feel today?',
+      loggedPrefix: 'You felt',
+    },
+    prompt: {
+      title: 'How was your day?',
+      writeMore: 'Write more',
+      notNow: 'Not now',
+    },
   },
 
   format: {

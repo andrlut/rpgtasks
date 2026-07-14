@@ -402,6 +402,22 @@ export interface RewardRedemption {
   used_at: string | null;
 }
 
+/**
+ * Daily mood check-in — a qualitative counterweight to the quant systems.
+ * One canonical row per local day (upsert). Carries NO XP/coins/Momentum.
+ */
+export interface MoodLog {
+  id: string;
+  character_id: string;
+  /** Local YYYY-MM-DD the mood refers to. */
+  logged_for: string;
+  /** 1 (worst) .. 5 (best) subjective valence. */
+  mood: 1 | 2 | 3 | 4 | 5;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';
 
 export interface Skill {

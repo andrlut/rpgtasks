@@ -287,6 +287,14 @@ export default function TasksHubScreen() {
           <Text style={styles.title}>{t('tasksHub.title')}</Text>
           <View style={styles.topActions}>
             <Pressable
+              onPress={() => router.push('/mood-checkin')}
+              style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}
+              hitSlop={8}
+              accessibilityLabel={t('mood.tasksMenuA11y')}
+            >
+              <Ionicons name="happy-outline" size={20} color={tokens.text.hi} />
+            </Pressable>
+            <Pressable
               onPress={toggleSearch}
               style={({ pressed }) => [
                 styles.iconButton,

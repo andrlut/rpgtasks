@@ -16,6 +16,7 @@ export {
   getBriefTime,
   scheduleCheckpoint,
   scheduleDailyBrief,
+  scheduleNightlyCheckin,
   setBriefTime,
 } from './scheduler';
 export {
@@ -31,6 +32,7 @@ import {
   getBriefTime,
   scheduleCheckpoint,
   scheduleDailyBrief,
+  scheduleNightlyCheckin,
 } from './scheduler';
 import type { NotificationLocale } from './constants';
 
@@ -51,6 +53,7 @@ export async function setupNotifications(
 ): Promise<void> {
   const { hour, minute } = await getBriefTime();
   await scheduleDailyBrief(hour, minute, locale);
+  await scheduleNightlyCheckin(locale);
   await registerAppOpen();
   await scheduleCheckpoint(locale);
 }

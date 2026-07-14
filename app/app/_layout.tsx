@@ -224,6 +224,10 @@ export default function RootLayout() {
               options={{ presentation: 'modal', headerShown: false }}
             />
             <Stack.Screen
+              name="mood-checkin"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
               name="questionnaire"
               options={{ presentation: 'modal', headerShown: false }}
             />

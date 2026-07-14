@@ -13,13 +13,21 @@
 export const NOTIFICATION_IDS = {
   DAILY_BRIEF: 'perceva-daily-brief',
   CHECKPOINT: 'perceva-checkpoint',
+  NIGHTLY_CHECKIN: 'perceva-nightly-checkin',
 } as const;
+
+/** Route a tapped nightly check-in deep-links to. */
+export const NIGHTLY_CHECKIN_ROUTE = '/mood-checkin';
 
 export const DAILY_BRIEF_HOUR_DEFAULT = 8;
 export const DAILY_BRIEF_MINUTE_DEFAULT = 0;
 
 export const CHECKPOINT_HOUR = 12;
 export const CHECKPOINT_MINUTE = 30;
+
+/** Nightly mood check-in — evening wind-down ("fim do dia"). */
+export const NIGHTLY_CHECKIN_HOUR = 21;
+export const NIGHTLY_CHECKIN_MINUTE = 0;
 
 /** AsyncStorage key for "did the user open the app today?". */
 export const LAST_OPEN_KEY = '@perceva/last_open_date';
@@ -37,6 +45,7 @@ export interface NotificationMessage {
 export interface MessageCatalog {
   dailyBrief: readonly NotificationMessage[];
   checkpoint: readonly NotificationMessage[];
+  nightly: readonly NotificationMessage[];
 }
 
 export const MESSAGES_PT: MessageCatalog = {
@@ -49,6 +58,10 @@ export const MESSAGES_PT: MessageCatalog = {
     { title: 'Perceva', body: 'Suas tasks te esperam. Dá uma olhada quando puder.' },
     { title: 'Ainda dá tempo', body: 'Você ainda não abriu o app hoje.' },
   ],
+  nightly: [
+    { title: 'Como foi seu dia?', body: 'Um toque pra registrar como você se sentiu hoje.' },
+    { title: 'Perceva', body: 'Fim do dia — como você tá se sentindo?' },
+  ],
 };
 
 export const MESSAGES_EN: MessageCatalog = {
@@ -60,6 +73,10 @@ export const MESSAGES_EN: MessageCatalog = {
   checkpoint: [
     { title: 'Perceva', body: 'Your tasks are waiting. Check in when you can.' },
     { title: 'Still time left', body: "You haven't opened the app yet today." },
+  ],
+  nightly: [
+    { title: 'How was your day?', body: 'One tap to log how you felt today.' },
+    { title: 'Perceva', body: 'End of the day — how are you feeling?' },
   ],
 };
 
