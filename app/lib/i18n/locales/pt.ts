@@ -1753,6 +1753,8 @@ const pt: Translations = {
     history: {
       title: 'Como me senti',
       seeHistory: 'Ver histórico',
+      filterActivity: 'Atividade',
+      filterMood: 'Humor',
     },
     day: {
       eyebrow: 'Humor do dia',

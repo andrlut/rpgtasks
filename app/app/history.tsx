@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,10 +23,13 @@ import { DayStatsCard } from '@/components/DayStatsCard';
 import { MoodDayDetail } from '@/components/mood/MoodDayDetail';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { MonthGrid } from '@/components/MonthGrid';
+import { MoodMonthGrid } from '@/components/mood/MoodMonthGrid';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { TaskActionSheet } from '@/components/TaskActionSheet';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
 import { dateKeyFromLocal, useDailySummary, useDayDetail } from '@/lib/api/history';
+import { useMoodMonth } from '@/lib/api/mood';
 import {
   dimensionForSub,
   useCompleteTask,
@@ -94,6 +97,10 @@ function formatDay(d: Date): string {
 export default function HistoryScreen() {
   const router = useRouter();
   const { t } = useT();
+  const params = useLocalSearchParams<{ heatmap?: string }>();
+  const [heatmapMode, setHeatmapMode] = useState<'activity' | 'mood'>(
+    params.heatmap === 'mood' ? 'mood' : 'activity',
+  );
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -120,6 +127,7 @@ export default function HistoryScreen() {
 
   const settings = useLoadedSettings();
   const summary = useDailySummary(monthRange.from, monthRange.to);
+  const moodMonth = useMoodMonth(visibleMonth);
   const day = useDayDetail(selected, settings.weekStart);
   const completeTask = useCompleteTask();
   const skipTask = useSkipTaskToday();
@@ -149,6 +157,13 @@ export default function HistoryScreen() {
       }
       return next;
     });
+  };
+
+  const handleSelectDay = (d: Date) => {
+    setSelected(d);
+    if (!isSameMonth(d, visibleMonth)) {
+      setVisibleMonth(startOfMonth(d));
+    }
   };
 
   // Month navigation from the grid header. We DON'T touch `selected`
@@ -344,26 +359,48 @@ export default function HistoryScreen() {
         </View>
 
         <View style={styles.heatmapCard}>
-          {summary.isLoading ? (
-            <View style={styles.heatmapLoading}>
-              <ActivityIndicator color={tokens.brand.violet2} />
-            </View>
-          ) : (
-            <MonthGrid
-              data={summary.data}
-              monthDate={visibleMonth}
-              selected={selected}
-              onSelectDay={(d) => {
-                setSelected(d);
-                if (!isSameMonth(d, visibleMonth)) {
-                  setVisibleMonth(startOfMonth(d));
-                }
-              }}
-              onPrevMonth={handlePrevMonth}
-              onNextMonth={handleNextMonth}
-              canGoNext={canGoNextMonth}
-            />
-          )}
+          <SegmentedControl<'activity' | 'mood'>
+            options={[
+              { value: 'activity', label: t('mood.history.filterActivity') },
+              { value: 'mood', label: t('mood.history.filterMood') },
+            ]}
+            value={heatmapMode}
+            onChange={setHeatmapMode}
+          />
+
+          <View style={styles.heatmapGrid}>
+            {heatmapMode === 'mood' ? (
+              moodMonth.isLoading ? (
+                <View style={styles.heatmapLoading}>
+                  <ActivityIndicator color={tokens.brand.violet2} />
+                </View>
+              ) : (
+                <MoodMonthGrid
+                  moods={moodMonth.data}
+                  monthDate={visibleMonth}
+                  selected={selected}
+                  onSelectDay={handleSelectDay}
+                  onPrevMonth={handlePrevMonth}
+                  onNextMonth={handleNextMonth}
+                  canGoNext={canGoNextMonth}
+                />
+              )
+            ) : summary.isLoading ? (
+              <View style={styles.heatmapLoading}>
+                <ActivityIndicator color={tokens.brand.violet2} />
+              </View>
+            ) : (
+              <MonthGrid
+                data={summary.data}
+                monthDate={visibleMonth}
+                selected={selected}
+                onSelectDay={handleSelectDay}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
+                canGoNext={canGoNextMonth}
+              />
+            )}
+          </View>
         </View>
 
         <View style={styles.dayNav}>
@@ -627,6 +664,9 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.base,
     padding: tokens.space[4],
     marginBottom: tokens.space[5],
+  },
+  heatmapGrid: {
+    marginTop: tokens.space[4],
   },
   heatmapLoading: {
     paddingVertical: tokens.space[6],

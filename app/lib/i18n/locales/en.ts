@@ -1754,6 +1754,8 @@ const en = {
     history: {
       title: 'How I felt',
       seeHistory: 'See history',
+      filterActivity: 'Activity',
+      filterMood: 'Mood',
     },
     day: {
       eyebrow: 'Mood',

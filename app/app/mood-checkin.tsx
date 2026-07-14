@@ -130,7 +130,7 @@ export default function MoodCheckinScreen() {
           </Pressable>
           <Text style={styles.headerTitle}>{t('mood.title')}</Text>
           <Pressable
-            onPress={() => router.push('/mood-history')}
+            onPress={() => router.push({ pathname: '/history', params: { heatmap: 'mood' } })}
             style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
             hitSlop={10}
             accessibilityLabel={t('mood.history.title')}

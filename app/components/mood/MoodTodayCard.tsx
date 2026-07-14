@@ -71,7 +71,7 @@ export function MoodTodayCard() {
       </Pressable>
 
       <Pressable
-        onPress={() => router.push('/mood-history')}
+        onPress={() => router.push({ pathname: '/history', params: { heatmap: 'mood' } })}
         style={({ pressed }) => [styles.historyLink, pressed && { opacity: 0.6 }]}
         hitSlop={6}
       >
