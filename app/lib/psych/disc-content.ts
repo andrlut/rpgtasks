@@ -251,6 +251,213 @@ const BLENDS: Record<DiscLocale, Record<DiscBlendCode, BlendContent>> = {
   en: EN_BLENDS,
 };
 
+// ─── Situational portrait ("você no dia a dia") ─────────────────────────────
+// Concrete, relatable moments keyed to each factor. The result surfaces the
+// reactions of the user's PRIMARY factor — the "this is exactly me" read.
+
+interface SituationContent {
+  /** The moment / scenario. */
+  prompt: string;
+  /** One-line reaction per factor. */
+  byFactor: Record<DiscFactor, string>;
+}
+
+const PT_SITUATIONS: SituationContent[] = [
+  {
+    prompt: 'Sob um prazo apertado',
+    byFactor: {
+      d: 'Você acelera, corta o supérfluo e vai direto pro que resolve.',
+      i: 'Você mobiliza o grupo e transforma a correria num mutirão animado.',
+      s: 'Você mantém a calma e segura o ritmo sem deixar o pânico contaminar.',
+      c: 'Você prioriza pelo que é crítico e protege a qualidade do essencial.',
+    },
+  },
+  {
+    prompt: 'Numa discordância',
+    byFactor: {
+      d: 'Você vai direto ao ponto e defende sua posição sem rodeio.',
+      i: 'Você tenta convencer no carisma e alivia a tensão com humor.',
+      s: 'Você busca o meio-termo e evita que o clima azede.',
+      c: 'Você traz fatos, aponta a inconsistência e argumenta pela lógica.',
+    },
+  },
+  {
+    prompt: 'Quando o plano muda de repente',
+    byFactor: {
+      d: 'Você reassume o controle rápido e redefine a direção.',
+      i: 'Você embarca fácil — novidade te anima mais do que assusta.',
+      s: 'Você estranha a virada e precisa de um tempo pra reancorar.',
+      c: 'Você quer entender o porquê da mudança antes de aceitá-la.',
+    },
+  },
+  {
+    prompt: 'Ao decidir algo importante',
+    byFactor: {
+      d: 'Você decide rápido e confia no próprio julgamento.',
+      i: 'Você sente as reações das pessoas e decide no embalo.',
+      s: 'Você pondera, consulta quem confia e evita a pressa.',
+      c: 'Você junta dados, pesa os cenários e só fecha com base sólida.',
+    },
+  },
+  {
+    prompt: 'Quando alguém erra',
+    byFactor: {
+      d: 'Você aponta o erro na hora, sem meias palavras.',
+      i: 'Você suaviza, explica com jeito e mantém o astral.',
+      s: 'Você releva, dá espaço e evita constranger.',
+      c: 'Você mostra onde saiu do padrão e como corrigir.',
+    },
+  },
+  {
+    prompt: 'Num ambiente novo, cheio de gente',
+    byFactor: {
+      d: 'Você busca logo quem decide e o que está em jogo.',
+      i: 'Você circula, puxa conversa e faz amigos em minutos.',
+      s: 'Você observa das bordas até se sentir seguro pra entrar.',
+      c: 'Você mapeia o lugar e as regras antes de se soltar.',
+    },
+  },
+  {
+    prompt: 'Ao começar um projeto',
+    byFactor: {
+      d: 'Você parte pra ação e ajusta o rumo no caminho.',
+      i: 'Você imagina o resultado empolgante e vende a ideia.',
+      s: 'Você prefere um passo firme de cada vez, sem sobressaltos.',
+      c: 'Você planeja e estrutura antes de arrancar.',
+    },
+  },
+  {
+    prompt: 'Sob crítica',
+    byFactor: {
+      d: 'Você rebate e defende sua posição de frente.',
+      i: 'Você sente como pessoal e busca reconquistar a aprovação.',
+      s: 'Você absorve calado e leva um tempo pra digerir.',
+      c: 'Você analisa se a crítica procede antes de reagir.',
+    },
+  },
+  {
+    prompt: 'No fundo, o que mais te assusta',
+    byFactor: {
+      d: 'Perder o controle da situação.',
+      i: 'Ser rejeitado ou passar despercebido.',
+      s: 'Mudança brusca e conflito aberto.',
+      c: 'Errar ou entregar algo abaixo do padrão.',
+    },
+  },
+];
+
+const EN_SITUATIONS: SituationContent[] = [
+  {
+    prompt: 'Under a tight deadline',
+    byFactor: {
+      d: 'You speed up, cut the fluff, and go straight to what solves it.',
+      i: 'You rally the group and turn the scramble into a lively team push.',
+      s: 'You stay calm and hold the pace without letting panic spread.',
+      c: 'You prioritize by what is critical and protect the quality of the essentials.',
+    },
+  },
+  {
+    prompt: 'In a disagreement',
+    byFactor: {
+      d: 'You go straight to the point and defend your stance without hedging.',
+      i: 'You try to win it on charm and ease the tension with humor.',
+      s: 'You look for the middle ground and keep the mood from souring.',
+      c: 'You bring facts, name the inconsistency, and argue from logic.',
+    },
+  },
+  {
+    prompt: 'When the plan suddenly changes',
+    byFactor: {
+      d: 'You grab the wheel fast and reset the direction.',
+      i: 'You roll with it easily — novelty excites you more than it scares you.',
+      s: 'You feel thrown by the shift and need a moment to re-anchor.',
+      c: 'You want to understand the why of the change before accepting it.',
+    },
+  },
+  {
+    prompt: 'Making an important decision',
+    byFactor: {
+      d: 'You decide fast and trust your own judgment.',
+      i: "You read people's reactions and decide in the flow.",
+      s: 'You weigh it, consult people you trust, and avoid rushing.',
+      c: 'You gather data, weigh the scenarios, and only settle on solid ground.',
+    },
+  },
+  {
+    prompt: 'When someone slips up',
+    byFactor: {
+      d: 'You point out the mistake on the spot, no mincing words.',
+      i: 'You soften it, explain gently, and keep the mood up.',
+      s: 'You let it slide, give room, and avoid embarrassing anyone.',
+      c: 'You show exactly where it left the standard and how to fix it.',
+    },
+  },
+  {
+    prompt: 'In a new, crowded setting',
+    byFactor: {
+      d: "You quickly find who's in charge and what's at stake.",
+      i: 'You mingle, strike up conversations, and make friends in minutes.',
+      s: 'You watch from the edges until you feel safe enough to step in.',
+      c: 'You map the place and the rules before you loosen up.',
+    },
+  },
+  {
+    prompt: 'Starting a project',
+    byFactor: {
+      d: 'You jump into action and adjust course along the way.',
+      i: 'You picture the exciting outcome and sell the idea.',
+      s: 'You prefer one firm step at a time, no jolts.',
+      c: 'You plan and structure before you take off.',
+    },
+  },
+  {
+    prompt: 'Under criticism',
+    byFactor: {
+      d: 'You push back and defend your position head-on.',
+      i: 'You take it personally and work to win approval back.',
+      s: 'You absorb it quietly and take a while to digest it.',
+      c: 'You weigh whether the criticism holds before reacting.',
+    },
+  },
+  {
+    prompt: 'Deep down, what scares you most',
+    byFactor: {
+      d: 'Losing control of the situation.',
+      i: 'Being rejected or going unnoticed.',
+      s: 'Abrupt change and open conflict.',
+      c: 'Getting it wrong or delivering below standard.',
+    },
+  },
+];
+
+const SITUATIONS: Record<DiscLocale, SituationContent[]> = {
+  pt: PT_SITUATIONS,
+  en: EN_SITUATIONS,
+};
+
+// ─── Growth edge (bridge to action) ─────────────────────────────────────────
+// The training focus for the user's PRIMARY (leading) style — the shadow of
+// their strongest factor. Feeds the "Como treinar isso" card.
+
+const PT_GROWTH: Record<DiscFactor, string> = {
+  d: 'Seu treino é a pausa: deixar o outro terminar antes de decidir, e trocar um pouco de velocidade por escuta.',
+  i: 'Seu treino é o foco: ancorar o entusiasmo num compromisso e levar até o fim antes de abraçar o próximo.',
+  s: 'Seu treino é a voz: dizer o que incomoda no momento certo e topar uma mudança pequena de propósito.',
+  c: "Seu treino é soltar: aceitar o 'bom o suficiente' onde o capricho extra não muda o resultado.",
+};
+
+const EN_GROWTH: Record<DiscFactor, string> = {
+  d: 'Your training edge is the pause: let the other person finish before you decide, and trade a little speed for listening.',
+  i: 'Your training edge is focus: anchor the enthusiasm to one commitment and see it through before grabbing the next.',
+  s: 'Your training edge is your voice: say what bothers you at the right moment, and take on a small change on purpose.',
+  c: "Your training edge is letting go: accept 'good enough' where the extra polish won't change the outcome.",
+};
+
+const GROWTH: Record<DiscLocale, Record<DiscFactor, string>> = {
+  pt: PT_GROWTH,
+  en: EN_GROWTH,
+};
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export const DISC_FACTOR_ORDER: DiscFactor[] = ['d', 'i', 's', 'c'];
@@ -279,6 +486,16 @@ export function getBlendContent(
   locale: DiscLocale,
 ): BlendContent {
   return BLENDS[locale][code];
+}
+
+/** Situational portrait rows (localized). Read `.byFactor[primary]` per row. */
+export function getSituations(locale: DiscLocale): SituationContent[] {
+  return SITUATIONS[locale];
+}
+
+/** Training edge for a factor — feeds the "Como treinar isso" bridge. */
+export function getGrowthEdge(factor: DiscFactor, locale: DiscLocale): string {
+  return GROWTH[locale][factor];
 }
 
 /** Parse a psych_score facet_id like "disc:factor:d" into its factor. */

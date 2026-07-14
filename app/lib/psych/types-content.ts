@@ -316,6 +316,71 @@ const EN_CLARITY: Record<ClarityBand, string> = {
   slight: "Light", noticeable: "Noticeable", marked: "Marked", distinct: "Distinct",
 };
 
+// ─── Situational portrait ("você no dia a dia") ─────────────────────────────
+// Two concrete scenarios per dichotomy. The result surfaces the reaction of
+// the user's actual pole on each axis (poleA if mean >= 3, else poleB).
+
+interface TypeSituationContent {
+  axis: AxisSlug;
+  prompt: string;
+  /** Reaction when the user leans pole A (E / S / T / J). */
+  poleA: string;
+  /** Reaction when the user leans pole B (I / N / F / P). */
+  poleB: string;
+}
+
+const PT_SITUATIONS: TypeSituationContent[] = [
+  { axis: 'energy', prompt: 'Num grupo novo', poleA: 'Você puxa conversa e já se apresenta.', poleB: 'Você observa das bordas antes de entrar.' },
+  { axis: 'energy', prompt: 'Pra recarregar', poleA: 'Você procura gente e movimento.', poleB: 'Você busca silêncio e um tempo sozinho.' },
+  { axis: 'perception', prompt: 'Diante de um problema', poleA: 'Você parte dos fatos e do que já funciona.', poleB: "Você parte das possibilidades e do 'e se'." },
+  { axis: 'perception', prompt: 'Ao aprender algo', poleA: 'Você aprende fazendo, na prática.', poleB: 'Você aprende pelo conceito, pelo porquê.' },
+  { axis: 'decision', prompt: 'Numa decisão difícil', poleA: 'Você pesa a lógica e a coerência.', poleB: 'Você pesa o impacto nas pessoas.' },
+  { axis: 'decision', prompt: 'Ao dar um retorno duro', poleA: 'Você vai direto, sem rodeio.', poleB: 'Você cuida do tom e do momento.' },
+  { axis: 'organization', prompt: 'Quando o plano muda', poleA: 'Você quer refechar e retomar o controle.', poleB: 'Você flui e se adapta na hora.' },
+  { axis: 'organization', prompt: 'Diante de um prazo', poleA: 'Você começa cedo e distribui o esforço.', poleB: 'Você acelera na reta final.' },
+];
+
+const EN_SITUATIONS: TypeSituationContent[] = [
+  { axis: 'energy', prompt: 'In a new group', poleA: 'You strike up conversation and introduce yourself.', poleB: 'You watch from the edges before stepping in.' },
+  { axis: 'energy', prompt: 'To recharge', poleA: 'You seek out people and movement.', poleB: 'You seek quiet and time alone.' },
+  { axis: 'perception', prompt: 'Facing a problem', poleA: 'You start from the facts and what already works.', poleB: "You start from possibilities and the 'what if'." },
+  { axis: 'perception', prompt: 'Learning something', poleA: 'You learn by doing, hands-on.', poleB: 'You learn through the concept, the why.' },
+  { axis: 'decision', prompt: 'In a hard decision', poleA: 'You weigh the logic and the consistency.', poleB: 'You weigh the impact on people.' },
+  { axis: 'decision', prompt: 'Giving tough feedback', poleA: 'You go straight in, no hedging.', poleB: 'You mind the tone and the timing.' },
+  { axis: 'organization', prompt: 'When the plan changes', poleA: 'You want to re-settle it and take back control.', poleB: 'You flow and adapt on the spot.' },
+  { axis: 'organization', prompt: 'Facing a deadline', poleA: 'You start early and spread the effort out.', poleB: 'You sprint in the final stretch.' },
+];
+
+const SITUATIONS: Record<TypesLocale, TypeSituationContent[]> = { pt: PT_SITUATIONS, en: EN_SITUATIONS };
+
+// ─── Pole growth edge (bridge to action) ────────────────────────────────────
+// Keyed to a single pole LETTER. The result picks the user's most distinct
+// axis and shows the balancing move for that pole. Feeds "Como treinar isso".
+
+const PT_POLE_GROWTH: Record<string, string> = {
+  E: 'Seu treino é o silêncio: reservar um tempo pra ouvir a si mesmo antes de já estar falando.',
+  I: 'Seu treino é a voz: dizer em voz alta antes de ter tudo resolvido por dentro.',
+  S: "Seu treino é o 'e se': arriscar uma possibilidade mesmo sem prova na mão.",
+  N: 'Seu treino é o chão: aterrissar uma ideia num passo concreto pra hoje.',
+  T: 'Seu treino é o outro: perguntar como a pessoa está antes de resolver o problema.',
+  F: 'Seu treino é a firmeza: sustentar a verdade difícil mesmo quando ela desagrada.',
+  J: 'Seu treino é o aberto: deixar uma coisa sem resolver de propósito e ver o que surge.',
+  P: 'Seu treino é o fecho: bater o martelo antes de esgotar todas as opções.',
+};
+
+const EN_POLE_GROWTH: Record<string, string> = {
+  E: 'Your training edge is silence: set aside time to hear yourself before you are already talking.',
+  I: 'Your training edge is your voice: say it out loud before you have it all sorted inside.',
+  S: "Your training edge is the 'what if': risk a possibility even without proof in hand.",
+  N: 'Your training edge is the ground: land one idea in a concrete step for today.',
+  T: 'Your training edge is the other person: ask how they are before solving the problem.',
+  F: 'Your training edge is firmness: hold the hard truth even when it displeases.',
+  J: 'Your training edge is the open: leave one thing unresolved on purpose and see what emerges.',
+  P: 'Your training edge is closure: call it before you have exhausted every option.',
+};
+
+const POLE_GROWTH: Record<TypesLocale, Record<string, string>> = { pt: PT_POLE_GROWTH, en: EN_POLE_GROWTH };
+
 const AXES: Record<TypesLocale, Record<AxisSlug, AxisContent>> = { pt: PT_AXES, en: EN_AXES };
 const FACETS: Record<TypesLocale, Record<TypeFacetSlug, FacetContent>> = { pt: PT_FACETS, en: EN_FACETS };
 const TYPES: Record<TypesLocale, Record<TypeCode, TypeContent>> = { pt: PT_TYPES, en: EN_TYPES };
@@ -334,6 +399,16 @@ export function getTypeContent(code: TypeCode, locale: TypesLocale): TypeContent
 }
 export function getClarityLabel(band: ClarityBand, locale: TypesLocale): string {
   return CLARITY[locale][band];
+}
+
+/** Situational portrait rows (localized). Pick poleA/poleB by the axis mean. */
+export function getTypeSituations(locale: TypesLocale): TypeSituationContent[] {
+  return SITUATIONS[locale];
+}
+
+/** Training edge for a pole letter (E/I/S/N/T/F/J/P) — the "Como treinar isso" bridge. */
+export function getPoleGrowth(letter: string, locale: TypesLocale): string {
+  return POLE_GROWTH[locale][letter] ?? '';
 }
 
 const AXIS_SLUGS = new Set<string>(AXIS_ORDER);
