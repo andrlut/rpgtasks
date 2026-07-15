@@ -16,15 +16,17 @@ export interface AppSettings {
   weekStart: WeekStart;
   /** Show a confirm dialog before completing a 4★ or 5★ task. */
   confirmHighDifficultyComplete: boolean;
-  /** Master notification toggle (placeholder until expo-notifications wired). */
+  /** Master notification switch — gates every scheduled notification. */
   notificationsEnabled: boolean;
-  /** Daily reminder enabled (placeholder). */
+  /** Daily reminder: the 08:00 Daily Brief + the 12:30 "come back" checkpoint. */
   dailyReminder: boolean;
-  /** Quest deadline reminder enabled (placeholder). */
+  /** @deprecated No notification is wired to this yet — kept for settings
+   *  back-compat; not surfaced in the UI. */
   questReminder: boolean;
-  /** Momentum reminder enabled (placeholder). */
+  /** @deprecated No notification is wired to this yet — kept for settings
+   *  back-compat; not surfaced in the UI. */
   momentumReminder: boolean;
-  /** Show the gentle end-of-day mood check-in prompt on the Today Hub. */
+  /** Mood check-in: the 21:00 nightly notification + the in-app Today Hub prompt. */
   moodCheckinPrompt: boolean;
 }
 
@@ -34,7 +36,7 @@ const DEFAULTS: AppSettings = {
   weekStart: 'sunday',
   confirmHighDifficultyComplete: true,
   notificationsEnabled: false,
-  dailyReminder: false,
+  dailyReminder: true,
   questReminder: false,
   momentumReminder: false,
   moodCheckinPrompt: true,

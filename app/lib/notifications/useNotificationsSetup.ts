@@ -74,13 +74,22 @@ export function useNotificationsSetup() {
       }
       const granted = await requestNotificationPermissions();
       if (cancelled || !granted) return;
-      await setupNotifications(osLocale);
+      await setupNotifications(osLocale, {
+        dailyReminder: settings.dailyReminder,
+        moodCheckin: settings.moodCheckinPrompt,
+      });
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [settingsStatus, settings.notificationsEnabled, osLocale]);
+  }, [
+    settingsStatus,
+    settings.notificationsEnabled,
+    settings.dailyReminder,
+    settings.moodCheckinPrompt,
+    osLocale,
+  ]);
 
   // ── 3. AppState — foreground = register open + re-arm checkpoint ───
   useEffect(() => {
@@ -88,11 +97,15 @@ export function useNotificationsSetup() {
     const onChange = async (state: AppStateStatus) => {
       if (state !== 'active') return;
       await registerAppOpen();
-      await scheduleCheckpoint(osLocale);
+      // Re-arm the checkpoint only when daily reminders are on; otherwise the
+      // foreground handler would resurrect a notification the user disabled.
+      if (settings.notificationsEnabled && settings.dailyReminder) {
+        await scheduleCheckpoint(osLocale);
+      }
     };
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();
-  }, [osLocale]);
+  }, [osLocale, settings.notificationsEnabled, settings.dailyReminder]);
 
   // ── 4. Deep-link a tapped notification to its target screen ────────────
   // The app had no notification-response handling at all — a tap just cold-

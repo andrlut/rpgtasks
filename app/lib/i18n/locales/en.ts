@@ -1466,6 +1466,7 @@ const en = {
       confirmDeleteBody: 'This will permanently delete your character, tasks, rewards, and history. This cannot be undone.',
       deleteNotYet: 'Not yet available',
       deleteNotYetBody: 'Account deletion is wired to the server but the admin endpoint is not active yet. For now, sign out and contact us if you need the account removed.',
+      deleteFailTitle: 'Could not delete account',
     },
     update: {
       devMode: 'Dev mode',

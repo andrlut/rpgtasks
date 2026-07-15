@@ -71,10 +71,21 @@ export default function SettingsScreen() {
       },
     );
     if (!ok) return;
-    showInfo(
-      t('profile.actions.deleteNotYet'),
-      t('profile.actions.deleteNotYetBody'),
-    );
+    try {
+      // Permanently deletes the auth user + cascades all personal data,
+      // server-side (supabase/functions/delete-account). Then sign out so the
+      // AuthGate drops the user back to login.
+      const { error } = await supabase.functions.invoke('delete-account', {
+        method: 'POST',
+      });
+      if (error) throw error;
+      // The account is gone; the session is already invalid server-side, so
+      // local signOut is best-effort (the AuthGate redirects to login either way).
+      await supabase.auth.signOut().catch(() => {});
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : t('common.unknownError');
+      showInfo(t('profile.actions.deleteFailTitle'), msg);
+    }
   };
 
   const handleReplayOnboarding = () => {
@@ -222,41 +233,12 @@ export default function SettingsScreen() {
             onChange={(v) => setSetting('dailyReminder', v)}
             disabled={!settings.notificationsEnabled}
           />
-          <Divider />
-          <ToggleRow
-            label={t('profile.notifications.quest')}
-            description={t('profile.notifications.questDescription')}
-            value={settings.questReminder}
-            onChange={(v) => setSetting('questReminder', v)}
-            disabled={!settings.notificationsEnabled}
-          />
-          <Divider />
-          <ToggleRow
-            label={t('profile.notifications.momentum')}
-            description={t('profile.notifications.momentumDescription')}
-            value={settings.momentumReminder}
-            onChange={(v) => setSetting('momentumReminder', v)}
-            disabled={!settings.notificationsEnabled}
-          />
           <NoteText>{t('profile.notifications.footnote')}</NoteText>
         </Card>
 
         {/* ───── TASKS & PROGRESS ───── */}
         <SectionHeader icon="trophy-outline" label={t('profile.sections.tasksProgress')} />
         <Card>
-          <ToggleRow
-            label={t('profile.fields.confirmHighDifficulty')}
-            description={t('profile.fields.confirmHighDifficultyDescription')}
-            value={settings.confirmHighDifficultyComplete}
-            onChange={(v) => setSetting('confirmHighDifficultyComplete', v)}
-          />
-          <Divider />
-          <InfoRow
-            label={t('profile.fields.defaultRewards')}
-            value={t('profile.fields.comingSoon')}
-            muted
-          />
-          <Divider />
           <InfoRow
             label={t('profile.fields.dayResetTime')}
             value={t('profile.fields.midnight')}

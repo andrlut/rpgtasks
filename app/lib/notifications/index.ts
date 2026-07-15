@@ -36,36 +36,54 @@ import {
 } from './scheduler';
 import type { NotificationLocale } from './constants';
 
+/** Per-type notification toggles from Settings (the master switch is
+ *  handled separately). Each maps to a real scheduled notification. */
+export interface NotificationToggles {
+  /** Morning Daily Brief (08:00) + the 12:30 "come back" checkpoint. */
+  dailyReminder: boolean;
+  /** Evening mood check-in (21:00), deep-links to /mood-checkin. */
+  moodCheckin: boolean;
+}
+
 /**
- * Convenience: run the full setup the app needs after permissions
- * are granted. Re-runs are idempotent (safe to call from boot AND
- * when the user toggles the Settings master switch back on).
+ * Run the setup the app needs after permissions are granted. Re-runs are
+ * idempotent — it clears everything first, then schedules only the
+ * notifications whose Settings toggle is on. Safe to call on boot and on
+ * every Settings change.
  *
- *   1. Schedule the recurring Daily Brief at the user's saved time
- *      (defaults 08:00) — cancels any previous one first.
- *   2. Stamp today's open.
- *   3. Arm the 12:30 checkpoint for TOMORROW (see scheduleCheckpoint):
- *      the user is here now, so today is covered; tomorrow's nudge only
- *      survives if they don't open the app before it.
+ *   - `dailyReminder` on → Daily Brief (saved time, default 08:00) + the
+ *     12:30 checkpoint armed for tomorrow (see scheduleCheckpoint).
+ *   - `moodCheckin` on → the 21:00 nightly mood check-in.
+ *   - Today's open is always stamped so the checkpoint has correct semantics.
  */
 export async function setupNotifications(
   locale: NotificationLocale,
+  toggles: NotificationToggles,
 ): Promise<void> {
-  const { hour, minute } = await getBriefTime();
-  await scheduleDailyBrief(hour, minute, locale);
-  await scheduleNightlyCheckin(locale);
+  // Clean slate so flipping a sub-toggle OFF actually removes its notification.
+  await cancelAllNotifications();
+
+  if (toggles.dailyReminder) {
+    const { hour, minute } = await getBriefTime();
+    await scheduleDailyBrief(hour, minute, locale);
+    await scheduleCheckpoint(locale);
+  }
+  if (toggles.moodCheckin) {
+    await scheduleNightlyCheckin(locale);
+  }
+
   await registerAppOpen();
-  await scheduleCheckpoint(locale);
 }
 
 /** Toggle handler for the Settings master switch. */
 export async function setNotificationsEnabled(
   enabled: boolean,
   locale: NotificationLocale,
+  toggles: NotificationToggles,
 ): Promise<void> {
   if (!enabled) {
     await cancelAllNotifications();
     return;
   }
-  await setupNotifications(locale);
+  await setupNotifications(locale, toggles);
 }

@@ -1465,6 +1465,7 @@ const pt: Translations = {
       confirmDeleteBody: 'Isto vai excluir permanentemente seu personagem, tarefas, recompensas e histórico. Não dá pra desfazer.',
       deleteNotYet: 'Ainda não disponível',
       deleteNotYetBody: 'A exclusão de conta está conectada ao servidor mas o endpoint admin ainda não está ativo. Por enquanto, saia da conta e entre em contato se precisar remover.',
+      deleteFailTitle: 'Não foi possível excluir a conta',
     },
     update: {
       devMode: 'Modo dev',
