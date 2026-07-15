@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.andrlut.rpgtasks",
+      "package": "perceva.app",
       "adaptiveIcon": {
         "backgroundColor": "#0E1230",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
