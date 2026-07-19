@@ -23,35 +23,41 @@ Skill especializada — pega uma PR com migrations e roda toda a validação que
 
 ```
 Supabase project ref: uneqnpyzevosznwkmvvo
-Worktrees base dir:   C:/Users/André Luthold/Projetos/RPG/.claude/worktrees/
-Reviewing as:         andrlut (account com cloud access)
+Reviewing as:         conta com cloud access (andrlut local; secret no sandbox)
+Repo root:            detectado dinâmico — não hardcodar path
+```
+
+**Portabilidade**: rode tudo via a Bash tool (Windows local + sandbox Linux). Root em runtime:
+
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 ```
 
 ## Pré-requisitos
 
 - PR number conhecido (passa como argumento ou pergunta)
 - `gh auth status` ok
-- `$env:SUPABASE_ACCESS_TOKEN` setado **e válido** — o dry-run do Passo 4 (`db push --linked`) morre em `Initialising login role... 401 Unauthorized` se o PAT estiver expirado. Testar antes:
+- `SUPABASE_ACCESS_TOKEN` setado **e válido** — o dry-run do Passo 4 (`db push --linked`) morre em `Initialising login role... 401 Unauthorized` se o PAT estiver expirado. Testar antes:
 
-  ```powershell
-  try {
-    Invoke-RestMethod -Uri 'https://api.supabase.com/v1/projects' `
-      -Headers @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" } -ErrorAction Stop | Out-Null
-    "token OK"
-  } catch {
-    "TOKEN INVÁLIDO ($($_.Exception.Response.StatusCode.value__)) — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza: [Environment]::SetEnvironmentVariable('SUPABASE_ACCESS_TOKEN','<novo>','User')"
-  }
+  ```bash
+  if curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+       https://api.supabase.com/v1/projects >/dev/null 2>&1; then
+    echo "token OK"
+  else
+    echo "TOKEN INVÁLIDO — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza a env var SUPABASE_ACCESS_TOKEN"
+  fi
   ```
 
   Se não retornar `token OK`, ainda dá pra fazer a auditoria estática (Passos 1-3), mas o dry-run (Passo 4) vai falhar — avisar o user e pedir rotação do token.
-- Main worktree em `C:/Users/André Luthold/Projetos/RPG` no `main` atualizado
+- Main worktree no `main` atualizado
 
 ## Processo (5 passos)
 
 ### Passo 1 — Inspecionar a PR
 
-```powershell
-$pr = <N>
+```bash
+pr=<N>
 gh pr view $pr --json title,author,headRefName,baseRefName,files,mergeable
 ```
 
@@ -61,13 +67,22 @@ Filtrar arquivos:
 
 Capturar `headRefName` pra checkout.
 
-### Passo 2 — Checkout em worktree isolado
+### Passo 2 — Checkout da branch da PR
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
-git fetch origin $headRefName
-$worktree = ".claude/worktrees/pr-review-$pr"
-git worktree add $worktree $headRefName
+Local (com worktrees): checkout isolado em worktree descartável.
+Nuvem (sandbox efêmero, single checkout): trocar de branch direto serve.
+
+```bash
+cd "$MAIN"
+headRef=$(gh pr view $pr --json headRefName --jq '.headRefName')
+git fetch origin "$headRef"
+
+# Local: worktree isolado
+worktree=".claude/worktrees/pr-review-$pr"
+git worktree add "$worktree" "$headRef"
+cd "$worktree"
+
+# Nuvem (alternativa, sem worktrees): git switch "$headRef"
 ```
 
 ### Passo 3 — Auditoria estática do SQL
@@ -99,9 +114,8 @@ Pra cada `.sql` no PR:
 
 Se Passo 3 não pegou problemas críticos, tentar aplicar:
 
-```powershell
-cd $worktree
-"Y" | supabase db push --linked --debug 2>&1 | Select-Object -Last 30
+```bash
+echo "Y" | supabase db push --linked --debug 2>&1 | tail -n 30
 ```
 
 ⚠️ **Cuidado**: isso aplica de verdade na cloud. Se a PR for ruim, schema fica em estado parcial. Mas a transação roda atomicamente — falha = rollback completo. Em prática é seguro.
@@ -131,14 +145,14 @@ Status: <APROVAR / SOLICITAR MUDANÇAS>
 Próximos passos:
   - Se APROVAR: `gh pr review <N> --approve --body "<msg>"`
   - Se MUDANÇAS: comentar no PR com hints específicos
-  - Cleanup do worktree de review: `git worktree remove <worktree-path>`
+  - Cleanup do worktree de review (local): `git worktree remove <worktree-path>`
 ```
 
 ## Notas importantes
 
 - **Artur não tem acesso ao Supabase CLI**: ele physically não pode ter rodado `db push` antes de abrir o PR. Toda migration dele chega sem dry-run. Esta skill é o substituto.
 - **Schema audit é mais valioso que dry-run sozinho**: dry-run pega erros, mas o audit pega más práticas (naming, RLS faltando) que rodariam OK mas comprometem o design.
-- **Worktree de review é descartável**: criar dedicated worktree pra cada revisão evita poluir worktrees ativos. Remover ao fim.
+- **Worktree de review é descartável** (local): criar dedicated worktree pra cada revisão evita poluir worktrees ativos. Remover ao fim. Na nuvem o sandbox já é efêmero — `git switch` basta.
 - **Não usar `--admin` aqui**: revisão é leitura/análise; o merge é decisão separada (via `/pr-cycle` ou manual).
 
 ## Quando algo der errado
@@ -148,4 +162,4 @@ Próximos passos:
 | `git fetch` falha | Branch não existe no remote | Pedir pro autor `git push` da branch dele |
 | Dry-run aplicou parcial (não rollou back) | DDL em transactions não-implícitas | Reverter manualmente via Management API; depois reportar |
 | `supabase db push` retorna "history mismatch" | Cloud tem migrations que a branch não tem | Comparar `supabase migration list --linked` com `ls supabase/migrations/`; rebasear branch |
-| Worktree add falha por path em uso | Worktree antigo existe | `git worktree remove --force <path>` antes |
+| `worktree add` falha por path em uso | Worktree antigo existe | `git worktree remove --force <path>` antes (ou usar `git switch` no sandbox) |

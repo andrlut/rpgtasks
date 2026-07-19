@@ -26,27 +26,35 @@ Skill nível 3 (agressiva) — cria a migration, aplica na cloud Supabase compar
 Supabase project ref: uneqnpyzevosznwkmvvo
 Migrations dir:       supabase/migrations/
 Naming pattern:       <YYYYMMDD>NNNNNN_<snake_case_name>.sql
-Linked CLI dir:       C:/Users/André Luthold/Projetos/RPG  (main worktree)
+Repo root:            detectado dinâmico — não hardcodar path
+```
+
+**Portabilidade**: rode tudo via a Bash tool (funciona no Windows local e no sandbox Linux da nuvem). O root é detectado em runtime, nunca hardcodado:
+
+```bash
+# main worktree (onde o supabase CLI está linkado); na nuvem é o checkout único
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 ```
 
 ## Pré-requisitos (validar e abortar com mensagem clara se faltar)
 
-- `$env:SUPABASE_ACCESS_TOKEN` setado (verificar via `[Environment]::GetEnvironmentVariable("SUPABASE_ACCESS_TOKEN", "User")`)
+- `SUPABASE_ACCESS_TOKEN` setado no ambiente (`[ -n "$SUPABASE_ACCESS_TOKEN" ]`). Local: env var de usuário no Windows (visível no Git Bash). Nuvem: secret no ambiente do sandbox.
 - **Token VÁLIDO, não só presente.** O erro mais recorrente desse repo é PAT expirado/revogado: o CLI morre em `Initialising login role... 401 Unauthorized` no push, depois de já ter criado o arquivo. Testar a validade ANTES de tocar em qualquer migration:
 
-  ```powershell
-  try {
-    Invoke-RestMethod -Uri 'https://api.supabase.com/v1/projects' `
-      -Headers @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" } -ErrorAction Stop | Out-Null
-    "token OK"
-  } catch {
-    "TOKEN INVÁLIDO ($($_.Exception.Response.StatusCode.value__)) — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza: [Environment]::SetEnvironmentVariable('SUPABASE_ACCESS_TOKEN','<novo>','User')"
-  }
+  ```bash
+  if curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+       https://api.supabase.com/v1/projects >/dev/null 2>&1; then
+    echo "token OK"
+  else
+    echo "TOKEN INVÁLIDO — rotaciona em https://supabase.com/dashboard/account/tokens e atualiza a env var SUPABASE_ACCESS_TOKEN (local: setx/User env; nuvem: secret do sandbox)"
+  fi
   ```
 
   Se não retornar `token OK` → **abortar** com a URL de rotação. Não seguir pro Passo 1.
 - Repo limpo no main worktree (`git status` sem `.sql` pendentes em `supabase/migrations/`)
 - `gh auth status` ok (pra futuras operações)
+- Projeto linkado: `supabase db push --linked` exige `supabase link --project-ref uneqnpyzevosznwkmvvo` rodado uma vez nesse checkout. Local já está linkado; **na nuvem o `cloud-setup.sh` faz o link no bootstrap** — se der "Cannot find project ref", rodar o link.
 
 ## Processo (5 passos)
 
@@ -54,8 +62,9 @@ Linked CLI dir:       C:/Users/André Luthold/Projetos/RPG  (main worktree)
 
 Mexer no schema da cloud sem `git pull` é o erro mais perigoso desse repo (PR #148 saga). Sempre puxar primeiro:
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 git switch main
 git pull --rebase
 ```
@@ -64,11 +73,12 @@ Se houver `.sql` em `supabase/migrations/` que não está no main remote, **abor
 
 ### Passo 2 — Calcular nome counter-style
 
-```powershell
-$today = Get-Date -Format "yyyyMMdd"
-$existing = Get-ChildItem "supabase/migrations/${today}*.sql" -ErrorAction SilentlyContinue
-$next = if ($existing) { ($existing.Count + 1).ToString("D6") } else { "000001" }
-$slug = "${today}${next}_<nome-sugerido>"
+```bash
+today=$(date +%Y%m%d)
+count=$(ls supabase/migrations/${today}*.sql 2>/dev/null | wc -l | tr -d ' ')
+next=$(printf "%06d" $((count + 1)))
+slug="${today}${next}_<nome-sugerido>"
+echo "$slug"
 ```
 
 **Importante**: nunca usar timestamp-style (`YYYYMMDDHHMMSS`). Convenção do repo é counter-style. Cross-check com migrations dos últimos 30 dias se duvidar.
@@ -104,9 +114,9 @@ Mostra ao user pra ele confirmar o conteúdo antes do push. Validar antes de pus
 
 ### Passo 4 — Push pra cloud
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
-"Y" | supabase db push --linked
+```bash
+cd "$MAIN"
+echo "Y" | supabase db push --linked
 ```
 
 Se der erro:
@@ -119,8 +129,8 @@ Se der erro:
 
 **Crítico — não pular:**
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
+```bash
+cd "$MAIN"
 git add "supabase/migrations/${slug}.sql"
 git commit -m "feat(db): <descrição>" -m "Co-Authored-By: Claude <modelo> <noreply@anthropic.com>"
 git push
@@ -139,7 +149,8 @@ Sem isso, o Artur não tem o `.sql` no git e a próxima vez que ele rodar `db pu
 
 | Sintoma | Causa provável | Ação |
 |---|---|---|
-| "Cannot find project ref" | CLI rodando fora do main worktree | `cd "C:/Users/André Luthold/Projetos/RPG"` antes |
+| "Cannot find project ref" | CLI fora do main worktree, ou checkout não linkado | `cd "$MAIN"` antes; na nuvem rodar `supabase link --project-ref uneqnpyzevosznwkmvvo` |
 | `history mismatch` no push | Outra máquina tem migration mais recente | `git pull --rebase` + repushar; se ainda falhar, investigar `supabase migration list --linked` |
 | Push falhou no meio da migration | Transaction rolled back, schema intacto | Editar a migration localmente (se nunca aplicada) e re-pushar |
-| Erro de permissão | Token expirado | Renovar PAT no dashboard Supabase |
+| Erro de permissão / 401 | Token expirado | Renovar PAT no dashboard Supabase e atualizar a env var |
+| `supabase: command not found` (nuvem) | CLI não instalado no sandbox | Rodar `.claude/cloud-setup.sh` |

@@ -7,6 +7,8 @@ description: Limpa worktrees velhos/abandonados/prunable do repo `rpgtasks` com 
 
 Skill de manutenção — executa a faxina de worktrees que o `/sync-all` identifica. Não é destrutiva por padrão: lista, categoriza, propõe, aguarda confirmação.
 
+> **Nota nuvem**: o sandbox da nuvem é um checkout único e efêmero — não tem worktrees. Esta skill só faz sentido na máquina local. Na nuvem, informar que não há o que limpar e parar.
+
 ## Quando invocar
 
 - "Limpa os worktrees", "tira os antigos", "faxina"
@@ -18,43 +20,50 @@ Skill de manutenção — executa a faxina de worktrees que o `/sync-all` identi
 
 - Worktrees todos ativos (nada a limpar — informar e parar)
 - User está no meio de trabalho em um worktree (esperar)
+- Rodando no sandbox da nuvem (sem worktrees)
 
 ## Configurações fixas
 
 ```
-Repo:           C:/Users/André Luthold/Projetos/RPG
-Worktrees dir:  <repo>/.claude/worktrees/
+Worktrees dir:  <repo-root>/.claude/worktrees/
 Sandbox style:  agressivo na sugestão, conservador na execução (confirma antes)
+Repo root:      detectado dinâmico — não hardcodar path
+```
+
+**Portabilidade**: rode tudo via a Bash tool. Root em runtime:
+
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 ```
 
 ## Pré-requisitos
 
-- Estar no main worktree (`C:/Users/André Luthold/Projetos/RPG`) ou em qualquer worktree do repo
+- Estar em qualquer worktree do repo
 - `git fetch origin` recente (idealmente os 5 últimos minutos)
 
-## Processo (4 passos)
+## Processo (5 passos)
 
 ### Passo 1 — Inventário
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 git fetch origin
-$mainSha = git rev-parse origin/main
-$worktrees = git worktree list --porcelain
+mainSha=$(git rev-parse origin/main)
+git worktree list --porcelain
 ```
 
-Pra cada worktree (exceto o main `C:/Users/André Luthold/Projetos/RPG`):
+Pra cada worktree (exceto o main):
 
-```powershell
-$path   = <worktree path>
-$branch = <branch name from porcelain output>
-cd $path
-$status = git status --porcelain
-$head   = git rev-parse HEAD
-$ahead  = git rev-list --count "$mainSha..HEAD" 2>$null
-$behind = git rev-list --count "HEAD..$mainSha" 2>$null
-$mergedToMain = git branch --merged origin/main | Select-String -Quiet "^[* ]+$branch$"
-$remoteExists = git ls-remote --heads origin "$branch" | Select-String -Quiet "$branch"
+```bash
+cd "$path"
+status=$(git status --porcelain)
+head=$(git rev-parse HEAD)
+ahead=$(git rev-list --count "$mainSha..HEAD" 2>/dev/null)
+behind=$(git rev-list --count "HEAD..$mainSha" 2>/dev/null)
+mergedToMain=$(git branch --merged origin/main | grep -qE "^[* ]+$branch$" && echo yes || echo no)
+remoteExists=$(git ls-remote --heads origin "$branch" | grep -q "$branch" && echo yes || echo no)
 ```
 
 ### Passo 2 — Categorização
@@ -93,24 +102,19 @@ Aguardar confirmação. Pra `stale`, pedir y/N individual.
 
 **Sempre nessa ordem:**
 
-```powershell
+```bash
 # 1. prunable primeiro (zero risco)
 git worktree prune -v
 
-# 2. merged-clean e stale aprovados
-foreach ($wt in $toRemove) {
-  # Garantir que main worktree não está nessa branch
-  $currentInMain = cd "C:/Users/André Luthold/Projetos/RPG"; git branch --show-current
-  if ($currentInMain -eq $wt.branch) {
-    cd "C:/Users/André Luthold/Projetos/RPG"
-    git switch main
-  }
+# 2. merged-clean e stale aprovados — pra cada worktree aprovado:
+#    garantir que o main worktree não está nessa branch antes de remover
+currentInMain=$(cd "$MAIN" && git branch --show-current)
+if [ "$currentInMain" = "$wtBranch" ]; then
+  ( cd "$MAIN" && git switch main )
+fi
 
-  git worktree remove $wt.path
-
-  # Deletar branch local (squash-merged precisa -D)
-  git branch -D $wt.branch 2>$null
-}
+git worktree remove "$wtPath"
+git branch -D "$wtBranch" 2>/dev/null || true   # squash-merged precisa -D
 ```
 
 **Importante**: nunca usar `--force` no `worktree remove`. Se der erro de uncommitted changes, abortar essa entrada — significa que a categorização foi errada (deveria ser active-dirty).
@@ -145,5 +149,5 @@ foreach ($wt in $toRemove) {
 |---|---|---|
 | `worktree remove` falha "contains modified files" | Categorização errou; era active-dirty | Mudar pra MANTER; reportar ao user |
 | `branch -D` falha "branch not found" | Já deletado em iteração anterior | Ignorar (idempotente) |
-| `worktree prune` lista entradas mas não remove | Permissões NTFS | Rodar PowerShell como admin OU `chmod` no diretório |
-| Worktree em outro drive | Path absoluto com letra diferente | Ajustar pré-requisitos pra cobrir |
+| `worktree prune` lista entradas mas não remove | Permissões de filesystem | Conferir permissões do diretório (NTFS no Windows / `chmod` no Linux) |
+| Worktree em outro drive/mount | Path absoluto fora do padrão | Ajustar pré-requisitos pra cobrir |

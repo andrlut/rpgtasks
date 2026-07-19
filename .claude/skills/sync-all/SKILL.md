@@ -22,35 +22,44 @@ Skill de status — não muda nada além de `git pull` no main. Foco é diagnós
 ## Configurações fixas
 
 ```
-Main dir:        C:/Users/André Luthold/Projetos/RPG
-Worktrees dir:   <main>/.claude/worktrees/
 Supabase ref:    uneqnpyzevosznwkmvvo
+Repo root:       detectado dinâmico — não hardcodar path
 ```
+
+**Portabilidade**: rode tudo via a Bash tool (Windows local + sandbox Linux). Root em runtime:
+
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
+```
+
+Na nuvem só existe um checkout (sem worktrees) — o Passo 3 vira no-op, e tudo bem.
 
 ## Pré-requisitos
 
 - `gh auth status` ok (pra checks remotos)
-- `$env:SUPABASE_ACCESS_TOKEN` setado (pra migration list)
+- `SUPABASE_ACCESS_TOKEN` setado (pra migration list)
 
 ## Processo (5 passos)
 
 ### Passo 1 — Fetch + main pull
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
+```bash
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+cd "$MAIN"
 git fetch origin
 git switch main
 git pull --rebase
-$mainHead = git rev-parse HEAD
+mainHead=$(git rev-parse HEAD)
 ```
 
 Se `git pull` retornar conflito com arquivos untracked (típico em main por specs HTML duplicados), reportar e parar — usuário precisa decidir o que fazer.
 
 ### Passo 2 — Status do main worktree
 
-```powershell
-$mainStatus = git status --porcelain
-$mainCommitsAhead = git rev-list --count "origin/main..HEAD"
+```bash
+git status --porcelain
+git rev-list --count "origin/main..HEAD"
 ```
 
 Reportar:
@@ -60,19 +69,19 @@ Reportar:
 
 ### Passo 3 — Inventário de worktrees
 
-```powershell
+```bash
 git worktree list --porcelain
 ```
 
 Pra cada worktree (exceto main):
 
-```powershell
+```bash
 cd <path>
-$branch  = git branch --show-current
-$status  = git status --porcelain
-$ahead   = git rev-list --count "$mainHead..HEAD"
-$behind  = git rev-list --count "HEAD..$mainHead"
-$dirty   = if ($status) { "dirty" } else { "clean" }
+branch=$(git branch --show-current)
+status=$(git status --porcelain)
+ahead=$(git rev-list --count "$mainHead..HEAD")
+behind=$(git rev-list --count "HEAD..$mainHead")
+dirty=$([ -n "$status" ] && echo dirty || echo clean)
 ```
 
 Categorizar:
@@ -83,9 +92,9 @@ Categorizar:
 
 ### Passo 4 — Alignment com Supabase cloud
 
-```powershell
-cd "C:/Users/André Luthold/Projetos/RPG"
-supabase migration list --linked 2>&1 | Select-Object -Last 30
+```bash
+cd "$MAIN"
+supabase migration list --linked 2>&1 | tail -n 30
 ```
 
 Comparar local↔remote:
@@ -134,6 +143,6 @@ Formato:
 | Sintoma | Causa provável | Ação |
 |---|---|---|
 | `git pull` "would overwrite untracked" | Specs ou .html locais idênticos ao remote | Comparar hashes; se iguais, deletar local |
-| `supabase migration list` retorna "Cannot find project ref" | CLI rodando fora do main | `cd "C:/Users/André Luthold/Projetos/RPG"` |
+| `supabase migration list` retorna "Cannot find project ref" | CLI fora do main, ou checkout não linkado | `cd "$MAIN"`; na nuvem rodar `supabase link --project-ref uneqnpyzevosznwkmvvo` |
 | `git worktree list` lista paths inexistentes | Worktrees movidos manualmente | `git worktree prune -v` (idempotente) |
 | Várias migrations remote-only | Outro dev pushou sem commitar | Investigar via Management API ou pedir pro outro pushar `.sql` |

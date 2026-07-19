@@ -28,6 +28,13 @@ Lint command:      npx expo lint
 CI workflow:       .github/workflows/ci.yml — "Typecheck & Lint"
 ```
 
+**Portabilidade**: rode tudo via a Bash tool (Windows local + sandbox Linux). Root em runtime:
+
+```bash
+REPO=$(git rev-parse --show-toplevel)
+cd "$REPO/app"
+```
+
 ## Pré-requisitos
 
 - `pnpm install` rodado pelo menos 1x (verificar `app/node_modules` existe)
@@ -37,8 +44,9 @@ CI workflow:       .github/workflows/ci.yml — "Typecheck & Lint"
 
 ### Passo 1 — Typecheck
 
-```powershell
-cd app
+```bash
+REPO=$(git rev-parse --show-toplevel)
+cd "$REPO/app"
 npx tsc --noEmit 2>&1
 ```
 
@@ -48,7 +56,7 @@ Capturar exit code. Se ≠ 0:
 
 ### Passo 2 — Lint
 
-```powershell
+```bash
 npx expo lint 2>&1
 ```
 

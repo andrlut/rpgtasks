@@ -28,6 +28,8 @@ Branch protection:    bypass via --admin (sandbox)
 Cleanup:              --delete-branch + git branch -d local
 ```
 
+**Portabilidade**: rode tudo via a Bash tool (Windows local + sandbox Linux).
+
 ## Pré-requisitos
 
 - `gh auth status` ok
@@ -39,10 +41,11 @@ Cleanup:              --delete-branch + git branch -d local
 
 ### Passo 1 — Identificar contexto
 
-```powershell
-$branch = git branch --show-current
-$base   = "main"
-$commits = git log "origin/${base}..HEAD" --oneline
+```bash
+branch=$(git branch --show-current)
+base="main"
+commits=$(git log "origin/${base}..HEAD" --oneline)
+echo "$commits"
 ```
 
 Se `$commits` vazio → abortar: "nada novo pra PR; branch igual a $base".
@@ -51,19 +54,20 @@ Se `$commits` vazio → abortar: "nada novo pra PR; branch igual a $base".
 
 Roda obrigatoriamente antes de pushar. CI vai rodar isso de novo, mas se quebrar aqui evita 10 min de ciclo:
 
-```powershell
-cd app
+```bash
+REPO=$(git rev-parse --show-toplevel)
+cd "$REPO/app"
 npx tsc --noEmit
 npx expo lint
-cd ..
+cd "$REPO"
 ```
 
 Se qualquer um falhar → reportar erros agrupados e **abortar**. Não pushar com check vermelho.
 
 ### Passo 3 — Push + criar PR
 
-```powershell
-git push -u origin $branch
+```bash
+git push -u origin "$branch"
 ```
 
 Derivar título e body do PR a partir dos commits da branch:
@@ -73,17 +77,17 @@ Derivar título e body do PR a partir dos commits da branch:
   - Section `## Summary` com bullets resumindo o que mudou (1 bullet por commit principal)
   - Section `## Test plan` com checklist herdado do CLAUDE.md
 
-```powershell
-gh pr create --base $base --title "$title" --body "$body"
+```bash
+gh pr create --base "$base" --title "$title" --body "$body"
 ```
 
 Mostra o link do PR ao user.
 
 ### Passo 4 — Aguardar CI
 
-```powershell
-$prNum = gh pr view --json number --jq '.number'
-gh pr checks $prNum --watch
+```bash
+prNum=$(gh pr view --json number --jq '.number')
+gh pr checks "$prNum" --watch
 ```
 
 Timeout de 10 min. Se CI falhar:
@@ -92,24 +96,24 @@ Timeout de 10 min. Se CI falhar:
 
 ### Passo 5 — Merge admin
 
-```powershell
-gh pr merge $prNum --squash --admin --delete-branch
+```bash
+gh pr merge "$prNum" --squash --admin --delete-branch
 ```
 
 ⚠️ Se der `failed to delete local branch` por causa de worktree, ignorar — o merge no GitHub funcionou. Verificar:
 
-```powershell
-gh pr view $prNum --json state | ConvertFrom-Json
+```bash
+gh pr view "$prNum" --json state --jq '.state'
 ```
 
 Se `state == "MERGED"` → seguir pra Passo 6.
 
 ### Passo 6 — Cleanup local
 
-```powershell
+```bash
 git switch main
 git pull --rebase
-git branch -D $branch  # OK porque branch foi squash-merged
+git branch -D "$branch"  # OK porque branch foi squash-merged
 ```
 
 Se houver outros worktrees em branches relacionadas, mencionar mas **não** mexer (cada worktree pode ter sessão Claude ativa).
