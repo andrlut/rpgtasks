@@ -83,8 +83,11 @@ jobs:
         env:
           EXPO_PUBLIC_SUPABASE_URL: https://uneqnpyzevosznwkmvvo.supabase.co
           EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_sWLt4U0F5J4S-Se-6V7SXw_1LyQqysV
+          # Via env, not inline `${{ }}` — a quote or backtick in the message
+          # would otherwise be pasted straight into the shell body.
+          INPUT_MESSAGE: ${{ inputs.message }}
         run: |
-          MSG="${{ inputs.message }}"
+          MSG="$INPUT_MESSAGE"
           if [ -z "$MSG" ]; then
             MSG="$(git log -1 --pretty=%s)"
           fi

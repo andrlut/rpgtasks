@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { useRecoveryStore } from '@/lib/auth';
+import { localizeAuthError, useRecoveryStore } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
@@ -46,7 +46,7 @@ export default function ResetPasswordScreen() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) {
-        Alert.alert(t('auth.reset.couldNotUpdate'), error.message);
+        Alert.alert(t('auth.reset.couldNotUpdate'), localizeAuthError(error, t));
         return;
       }
       // Clear the recovery flag so AuthGate stops routing here.

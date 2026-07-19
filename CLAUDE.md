@@ -63,7 +63,7 @@ Much of what earlier docs list as "pending" has **shipped to production** — do
 
 - **Mobile**: React Native + Expo SDK 54, TypeScript strict, Expo Router (file-based)
 - **State**: TanStack Query (server) + Zustand (UI/local)
-- **i18n**: `i18next` + `react-i18next`; locale split: `pt-BR` (default) + `en-US`. Catalog tables carry `_pt` columns; client picks column by app locale.
+- **i18n**: `i18n-js` (NOT `i18next` — no `react-i18next`, no `TFunction` type); `useT()` from `app/lib/i18n` returns `{ t, locale }`. Locale split: `pt-BR` (default) + `en-US`. Catalog tables carry `_pt` columns; client picks column by app locale.
 - **Backend**: Supabase — Postgres 17 + Auth + Edge Functions, project ref `uneqnpyzevosznwkmvvo`
 - **Tooling**: pnpm workspaces, GitHub Actions CI, EAS Build for APKs, EAS Update for OTA
 - **Icons**: `@expo/vector-icons` (Ionicons)
