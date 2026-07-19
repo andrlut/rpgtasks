@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { PercevaGlyph } from '@/components/PercevaGlyph';
-import { AUTH_REDIRECT_URL } from '@/lib/auth';
+import { AUTH_REDIRECT_URL, localizeAuthError } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
@@ -52,7 +52,7 @@ export default function LoginScreen() {
       if (error) {
         Alert.alert(
           mode === 'login' ? t('auth.login.failed') : t('auth.signup.failed'),
-          error.message,
+          localizeAuthError(error, t),
         );
       } else if (mode === 'signup') {
         Alert.alert(t('auth.signup.almostThere'), t('auth.signup.checkEmail'));

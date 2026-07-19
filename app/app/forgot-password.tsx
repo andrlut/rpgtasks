@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,10 +13,22 @@ import {
   View,
 } from 'react-native';
 
-import { AUTH_REDIRECT_URL, useRecoveryStore } from '@/lib/auth';
+import { AUTH_REDIRECT_URL, localizeAuthError, useRecoveryStore } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
+
+/**
+ * Supabase's `mailer_otp_length` is a project setting (8 at time of writing,
+ * not the 6 you might assume). Accept the whole plausible range rather than
+ * hardcoding one length — a mismatch here is invisible from the client and
+ * shows up as "invalid code" for a code the user typed correctly.
+ */
+const CODE_MIN_LENGTH = 6;
+const CODE_MAX_LENGTH = 8;
+
+/** Server-side `smtp_max_frequency` is 60s; mirror it so the UI never invites a rejected tap. */
+const RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * Two-step recovery: request a code, then type it in.
@@ -39,36 +51,62 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    cooldownRef.current = setInterval(() => {
+      setCooldown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const requestCode = async (isResend: boolean) => {
     const trimmed = email.trim();
     if (!trimmed) {
       Alert.alert(t('auth.forgot.emailNeeded'), t('auth.forgot.emailNeededBody'));
       return;
     }
 
-    setIsSubmitting(true);
+    const setBusy = isResend ? setIsResending : setIsSubmitting;
+    setBusy(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
         redirectTo: AUTH_REDIRECT_URL,
       });
       if (error) {
-        const msg = /rate limit/i.test(error.message)
-          ? t('auth.forgot.rateLimited')
-          : error.message;
-        Alert.alert(t('auth.forgot.couldNotSend'), msg);
+        Alert.alert(t('auth.forgot.couldNotSend'), localizeAuthError(error, t));
         return;
       }
       setSent(true);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      if (isResend) {
+        setCode('');
+        Alert.alert(t('auth.forgot.resent'), t('auth.forgot.resentBody', { email: trimmed }));
+      }
     } finally {
-      setIsSubmitting(false);
+      setBusy(false);
     }
+  };
+
+  const handleSubmit = () => requestCode(false);
+  const handleResend = () => requestCode(true);
+
+  /** Back to the email step — the only escape from a typo'd address. */
+  const handleChangeEmail = () => {
+    setSent(false);
+    setCode('');
+    setCooldown(0);
   };
 
   const handleVerify = async () => {
     const trimmedCode = code.trim();
-    if (trimmedCode.length < 6) {
+    if (trimmedCode.length < CODE_MIN_LENGTH) {
       Alert.alert(t('auth.forgot.codeNeeded'), t('auth.forgot.codeNeededBody'));
       return;
     }
@@ -81,10 +119,7 @@ export default function ForgotPasswordScreen() {
         type: 'recovery',
       });
       if (error) {
-        const msg = /expired|invalid/i.test(error.message)
-          ? t('auth.forgot.codeInvalid')
-          : error.message;
-        Alert.alert(t('auth.forgot.couldNotVerify'), msg);
+        Alert.alert(t('auth.forgot.couldNotVerify'), localizeAuthError(error, t));
         return;
       }
       // verifyOtp emits PASSWORD_RECOVERY, which the root listener turns
@@ -134,7 +169,7 @@ export default function ForgotPasswordScreen() {
               value={code}
               onChangeText={(v) => setCode(v.replace(/[^0-9]/g, ''))}
               keyboardType="number-pad"
-              maxLength={6}
+              maxLength={CODE_MAX_LENGTH}
               placeholder={t('auth.forgot.codePlaceholder')}
               placeholderTextColor={tokens.text.faint}
               editable={!isSubmitting}
@@ -157,11 +192,27 @@ export default function ForgotPasswordScreen() {
             </Pressable>
 
             <Pressable
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              style={styles.toggle}
+              onPress={handleResend}
+              disabled={isResending || cooldown > 0}
+              style={({ pressed }) => [styles.toggle, pressed && { opacity: 0.6 }]}
             >
-              <Text style={styles.toggleText}>{t('auth.forgot.resend')}</Text>
+              {isResending ? (
+                <ActivityIndicator color={tokens.text.mid} />
+              ) : (
+                <Text style={[styles.toggleText, cooldown > 0 && styles.toggleTextMuted]}>
+                  {cooldown > 0
+                    ? t('auth.forgot.resendIn', { seconds: cooldown })
+                    : t('auth.forgot.resend')}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleChangeEmail}
+              disabled={isSubmitting || isResending}
+              style={({ pressed }) => [styles.toggleTight, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.toggleText}>{t('auth.forgot.wrongEmail')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -257,12 +308,14 @@ const styles = StyleSheet.create({
   primaryButtonText: { ...tokens.type.h3, color: tokens.text.hi },
   codeInput: {
     textAlign: 'center',
-    letterSpacing: 8,
+    letterSpacing: 6,
     ...tokens.type.h2,
     color: tokens.text.hi,
   },
   toggle: { marginTop: tokens.space[5], alignItems: 'center' },
+  toggleTight: { marginTop: tokens.space[3], alignItems: 'center' },
   toggleText: { ...tokens.type.body, color: tokens.text.mid },
+  toggleTextMuted: { color: tokens.text.faint },
   successBox: {
     alignItems: 'center',
     gap: tokens.space[3],
