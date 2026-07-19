@@ -13,15 +13,31 @@ import {
   View,
 } from 'react-native';
 
-import { AUTH_REDIRECT_URL } from '@/lib/auth';
+import { AUTH_REDIRECT_URL, useRecoveryStore } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
 
+/**
+ * Two-step recovery: request a code, then type it in.
+ *
+ * We deliberately do NOT rely on the emailed link. Supabase answers the
+ * verify endpoint with a 303 to `rpgtasks://auth/callback#...`, and Chrome
+ * on Android refuses to follow a server-initiated redirect into a custom
+ * scheme — the link dead-ends and burns the token. The 6-digit OTP keeps
+ * the browser out of the flow entirely.
+ *
+ * verifyOtp({ type: 'recovery' }) is also what emits PASSWORD_RECOVERY,
+ * which is the event AuthGate needs to route to /reset-password. The old
+ * fragment path called setSession(), which only ever emits SIGNED_IN.
+ */
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { t } = useT();
+  const setRecovering = useRecoveryStore((s) => s.setRecovering);
+
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
@@ -50,6 +66,36 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const handleVerify = async () => {
+    const trimmedCode = code.trim();
+    if (trimmedCode.length < 6) {
+      Alert.alert(t('auth.forgot.codeNeeded'), t('auth.forgot.codeNeededBody'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: trimmedCode,
+        type: 'recovery',
+      });
+      if (error) {
+        const msg = /expired|invalid/i.test(error.message)
+          ? t('auth.forgot.codeInvalid')
+          : error.message;
+        Alert.alert(t('auth.forgot.couldNotVerify'), msg);
+        return;
+      }
+      // verifyOtp emits PASSWORD_RECOVERY, which the root listener turns
+      // into isRecovering. Set it here too so routing to /reset-password
+      // never depends on listener/render ordering.
+      setRecovering(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -71,20 +117,51 @@ export default function ForgotPasswordScreen() {
         </View>
 
         {sent ? (
-          <View style={styles.successBox}>
-            <Ionicons name="mail" size={36} color={tokens.semantic.xp} />
-            <Text style={styles.successTitle}>{t('auth.forgot.emailSent')}</Text>
-            <Text style={styles.successSub}>
-              {t('auth.forgot.emailSentBody', { email: email.trim() })}
+          <View style={styles.form}>
+            <View style={styles.successBox}>
+              <Ionicons name="mail" size={36} color={tokens.semantic.xp} />
+              <Text style={styles.successTitle}>{t('auth.forgot.emailSent')}</Text>
+              <Text style={styles.successSub}>
+                {t('auth.forgot.emailSentBody', { email: email.trim() })}
+              </Text>
+            </View>
+
+            <Text style={[styles.label, { marginTop: tokens.space[6] }]}>
+              {t('auth.forgot.codeLabel')}
             </Text>
+            <TextInput
+              style={[styles.input, styles.codeInput]}
+              value={code}
+              onChangeText={(v) => setCode(v.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
+              maxLength={6}
+              placeholder={t('auth.forgot.codePlaceholder')}
+              placeholderTextColor={tokens.text.faint}
+              editable={!isSubmitting}
+              autoFocus
+            />
+
             <Pressable
               style={({ pressed }) => [
                 styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
+                (pressed || isSubmitting) && styles.primaryButtonPressed,
               ]}
-              onPress={() => router.replace('/login')}
+              onPress={handleVerify}
+              disabled={isSubmitting}
             >
-              <Text style={styles.primaryButtonText}>{t('auth.forgot.done')}</Text>
+              {isSubmitting ? (
+                <ActivityIndicator color={tokens.text.hi} />
+              ) : (
+                <Text style={styles.primaryButtonText}>{t('auth.forgot.verify')}</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              style={styles.toggle}
+            >
+              <Text style={styles.toggleText}>{t('auth.forgot.resend')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -178,6 +255,14 @@ const styles = StyleSheet.create({
   },
   primaryButtonPressed: { opacity: 0.8 },
   primaryButtonText: { ...tokens.type.h3, color: tokens.text.hi },
+  codeInput: {
+    textAlign: 'center',
+    letterSpacing: 8,
+    ...tokens.type.h2,
+    color: tokens.text.hi,
+  },
+  toggle: { marginTop: tokens.space[5], alignItems: 'center' },
+  toggleText: { ...tokens.type.body, color: tokens.text.mid },
   successBox: {
     alignItems: 'center',
     gap: tokens.space[3],

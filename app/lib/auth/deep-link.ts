@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import { useEffect } from 'react';
 
 import { supabase } from '../supabase';
+import { useRecoveryStore } from './recovery';
 
 /**
  * Deep link the app uses for Supabase auth callbacks (email confirmation,
@@ -25,11 +26,15 @@ async function handleAuthUrl(url: string) {
   const parsed = Linking.parse(url);
   // Allow either path === 'auth/callback' (production builds) or anywhere
   // with auth params (Expo Go dev URL doesn't include the path cleanly).
+  // `createURL` emits a double slash, so `rpgtasks://auth/callback` parses
+  // as hostname='auth' + path='callback' — the path check alone never
+  // matches in production builds. Check the host too.
   const looksLikeAuth =
     parsed.path?.includes('auth/callback') ||
+    parsed.hostname === 'auth' ||
     url.includes('access_token=') ||
     url.includes('token_hash=') ||
-    url.includes('?code=');
+    url.includes('code=');
   if (!looksLikeAuth) return;
 
   // Fragment params (#access_token=...&refresh_token=...)
@@ -43,6 +48,12 @@ async function handleAuthUrl(url: string) {
         access_token: accessToken,
         refresh_token: refreshToken,
       });
+      // setSession only ever emits SIGNED_IN, so a recovery link arriving
+      // as a fragment would drop the user on Home with no chance to pick a
+      // new password. The intent is in the fragment's own `type`.
+      if (fragParams.get('type') === 'recovery') {
+        useRecoveryStore.getState().setRecovering(true);
+      }
       return;
     }
   }
