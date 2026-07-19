@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,14 @@ import {
 } from 'react-native';
 
 import { PercevaGlyph } from '@/components/PercevaGlyph';
-import { AUTH_REDIRECT_URL, localizeAuthError } from '@/lib/auth';
+import {
+  AUTH_REDIRECT_URL,
+  CODE_MAX_LENGTH,
+  CODE_MIN_LENGTH,
+  localizeAuthError,
+  RESEND_COOLDOWN_SECONDS,
+  sanitizeCode,
+} from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
@@ -28,6 +35,25 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Signup confirmation runs as a typed code, not an emailed link — same
+  // reason as password recovery: GoTrue's 303 into `rpgtasks://` dies in
+  // Chrome on Android. `awaitingCode` holds the address we signed up with.
+  const [awaitingCode, setAwaitingCode] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [isResending, setIsResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    cooldownRef.current = setInterval(() => {
+      setCooldown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
       Alert.alert(t('auth.errors.missingInfo'), t('auth.errors.missingInfoBody'));
@@ -40,27 +66,104 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      const { error } =
-        mode === 'login'
-          ? await supabase.auth.signInWithPassword({ email: email.trim(), password })
-          : await supabase.auth.signUp({
-              email: email.trim(),
-              password,
-              options: { emailRedirectTo: AUTH_REDIRECT_URL },
-            });
+      if (mode === 'login') {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) Alert.alert(t('auth.login.failed'), localizeAuthError(error, t));
+        return;
+      }
 
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+      });
       if (error) {
-        Alert.alert(
-          mode === 'login' ? t('auth.login.failed') : t('auth.signup.failed'),
-          localizeAuthError(error, t),
-        );
-      } else if (mode === 'signup') {
-        Alert.alert(t('auth.signup.almostThere'), t('auth.signup.checkEmail'));
+        Alert.alert(t('auth.signup.failed'), localizeAuthError(error, t));
+        return;
+      }
+      // A session here means the project has autoconfirm on — nothing to
+      // confirm, AuthGate takes over. Otherwise collect the emailed code.
+      if (data.session) return;
+
+      // GoTrue obfuscates already-registered addresses rather than erroring,
+      // so a duplicate signup returns 200 with no session and sends no email.
+      // An empty `identities` array is the documented tell. Without this the
+      // user is parked on a code screen waiting for a code nobody sent.
+      // Copy stays neutral either way — saying "that email is taken" would
+      // hand an attacker an account-enumeration oracle.
+      if (data.user?.identities?.length === 0) {
+        Alert.alert(t('auth.signup.maybeExists'), t('auth.signup.maybeExistsBody'));
         setMode('login');
+        setPassword('');
+        return;
+      }
+
+      setAwaitingCode(email.trim());
+      setCode('');
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!awaitingCode) return;
+    const trimmedCode = code.trim();
+    if (trimmedCode.length < CODE_MIN_LENGTH) {
+      Alert.alert(t('auth.forgot.codeNeeded'), t('auth.forgot.codeNeededBody'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // type 'signup' both confirms the address and returns a session, so
+      // AuthGate routes onward with no extra sign-in step.
+      const { error } = await supabase.auth.verifyOtp({
+        email: awaitingCode,
+        token: trimmedCode,
+        type: 'signup',
+      });
+      if (error) {
+        Alert.alert(t('auth.forgot.couldNotVerify'), localizeAuthError(error, t));
       }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleResendSignup = async () => {
+    if (!awaitingCode) return;
+    setIsResending(true);
+    try {
+      // `resend` accepts 'signup' | 'email_change' | 'sms' | 'phone_change'
+      // — notably NOT 'recovery', which is why the reset screen re-calls
+      // resetPasswordForEmail instead of this.
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: awaitingCode,
+        options: { emailRedirectTo: AUTH_REDIRECT_URL },
+      });
+      if (error) {
+        Alert.alert(t('auth.forgot.couldNotSend'), localizeAuthError(error, t));
+        return;
+      }
+      setCode('');
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      Alert.alert(t('auth.forgot.resent'), t('auth.forgot.resentBody', { email: awaitingCode }));
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  /** Abandon the pending confirmation and go back to the credentials form. */
+  const handleAbandonCode = () => {
+    setAwaitingCode(null);
+    setCode('');
+    setCooldown(0);
+    setMode('login');
   };
 
   return (
@@ -80,6 +183,68 @@ export default function LoginScreen() {
           <Text style={styles.brandTagline}>{t('auth.brand.tagline')}</Text>
         </View>
 
+        {awaitingCode ? (
+          <View style={styles.form}>
+            <Text style={styles.confirmTitle}>{t('auth.signup.confirmTitle')}</Text>
+            <Text style={styles.confirmSub}>
+              {t('auth.signup.confirmBody', { email: awaitingCode })}
+            </Text>
+
+            <Text style={[styles.label, { marginTop: tokens.space[6] }]}>
+              {t('auth.forgot.codeLabel')}
+            </Text>
+            <TextInput
+              style={[styles.input, styles.codeInput]}
+              value={code}
+              onChangeText={(v) => setCode(sanitizeCode(v))}
+              keyboardType="number-pad"
+              maxLength={CODE_MAX_LENGTH}
+              placeholder={t('auth.forgot.codePlaceholder')}
+              placeholderTextColor={tokens.text.faint}
+              editable={!isSubmitting}
+              autoFocus
+            />
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.primaryButton,
+                (pressed || isSubmitting) && styles.primaryButtonPressed,
+              ]}
+              onPress={handleVerify}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color={tokens.text.hi} />
+              ) : (
+                <Text style={styles.primaryButtonText}>{t('auth.signup.confirmSubmit')}</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleResendSignup}
+              disabled={isResending || cooldown > 0}
+              style={({ pressed }) => [styles.toggle, pressed && { opacity: 0.6 }]}
+            >
+              {isResending ? (
+                <ActivityIndicator color={tokens.text.mid} />
+              ) : (
+                <Text style={[styles.toggleText, cooldown > 0 && styles.toggleTextMuted]}>
+                  {cooldown > 0
+                    ? t('auth.forgot.resendIn', { seconds: cooldown })
+                    : t('auth.forgot.resend')}
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleAbandonCode}
+              disabled={isSubmitting || isResending}
+              style={({ pressed }) => [styles.toggleTight, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.toggleText}>{t('auth.signup.confirmLater')}</Text>
+            </Pressable>
+          </View>
+        ) : (
         <View style={styles.form}>
           <Text style={styles.label}>{t('auth.fields.email')}</Text>
           <TextInput
@@ -149,6 +314,7 @@ export default function LoginScreen() {
             </Text>
           </Pressable>
         </View>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -225,6 +391,31 @@ const styles = StyleSheet.create({
   toggleAction: {
     color: tokens.brand.violet2,
     fontFamily: 'Manrope_700Bold',
+  },
+  toggleTight: {
+    marginTop: tokens.space[3],
+    alignItems: 'center',
+  },
+  toggleTextMuted: {
+    color: tokens.text.faint,
+  },
+  confirmTitle: {
+    ...tokens.type.h2,
+    color: tokens.text.hi,
+    textAlign: 'center',
+  },
+  confirmSub: {
+    ...tokens.type.body,
+    color: tokens.text.mid,
+    textAlign: 'center',
+    marginTop: tokens.space[2],
+    paddingHorizontal: tokens.space[2],
+  },
+  codeInput: {
+    textAlign: 'center',
+    letterSpacing: 6,
+    ...tokens.type.h2,
+    color: tokens.text.hi,
   },
   forgotLink: {
     marginTop: tokens.space[4],

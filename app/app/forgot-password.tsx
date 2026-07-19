@@ -13,22 +13,18 @@ import {
   View,
 } from 'react-native';
 
-import { AUTH_REDIRECT_URL, localizeAuthError, useRecoveryStore } from '@/lib/auth';
+import {
+  AUTH_REDIRECT_URL,
+  CODE_MAX_LENGTH,
+  CODE_MIN_LENGTH,
+  localizeAuthError,
+  RESEND_COOLDOWN_SECONDS,
+  sanitizeCode,
+  useRecoveryStore,
+} from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { tokens } from '@/theme';
-
-/**
- * Supabase's `mailer_otp_length` is a project setting (8 at time of writing,
- * not the 6 you might assume). Accept the whole plausible range rather than
- * hardcoding one length — a mismatch here is invisible from the client and
- * shows up as "invalid code" for a code the user typed correctly.
- */
-const CODE_MIN_LENGTH = 6;
-const CODE_MAX_LENGTH = 8;
-
-/** Server-side `smtp_max_frequency` is 60s; mirror it so the UI never invites a rejected tap. */
-const RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * Two-step recovery: request a code, then type it in.
@@ -167,7 +163,7 @@ export default function ForgotPasswordScreen() {
             <TextInput
               style={[styles.input, styles.codeInput]}
               value={code}
-              onChangeText={(v) => setCode(v.replace(/[^0-9]/g, ''))}
+              onChangeText={(v) => setCode(sanitizeCode(v))}
               keyboardType="number-pad"
               maxLength={CODE_MAX_LENGTH}
               placeholder={t('auth.forgot.codePlaceholder')}

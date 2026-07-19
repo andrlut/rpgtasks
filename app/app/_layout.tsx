@@ -21,12 +21,7 @@ import { ConfirmHost } from '@/components/ConfirmHost';
 import { InstrumentTeaserHost } from '@/components/premium/InstrumentTeaserHost';
 import { LimitReachedHost } from '@/components/premium/LimitReachedHost';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import {
-  useAuthDeepLink,
-  useRecoveryStore,
-  useRegisterRecoveryListener,
-  useSession,
-} from '@/lib/auth';
+import { useRecoveryStore, useRegisterRecoveryListener, useSession } from '@/lib/auth';
 import { useNotificationsSetup } from '@/lib/notifications/useNotificationsSetup';
 import { useLoadOnboarding } from '@/lib/onboarding';
 import { useModuleStatus, useTourReady } from '@/lib/tour/store';
@@ -47,7 +42,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // never fires with stale data from a previous account.
   const tourReady = useTourReady(user?.id ?? null);
   const m0Status = useModuleStatus('M0');
-  useAuthDeepLink();
   useRegisterRecoveryListener();
 
   useEffect(() => {
