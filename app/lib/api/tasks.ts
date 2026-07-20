@@ -281,24 +281,39 @@ function endOfThisMonth(): Date {
 }
 
 
-/** Local YYYY-MM-DD for the device's "today". Skip rows store dates,
- *  not timestamps. */
-function todayLocalDateKey(): string {
-  const d = new Date();
+/** Local YYYY-MM-DD for `d`. Never `toISOString().slice(0, 10)` — that is
+ *  the UTC day, which is off by one for any evening east of Greenwich.
+ *  `task_skip.skipped_for` and `task_completion.completed_local_date` both
+ *  store the *local* calendar day, so every key we compare against them
+ *  has to be built from the local components. */
+function localDateKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
+/** Local YYYY-MM-DD for the device's "today". */
+function todayLocalDateKey(): string {
+  return localDateKey(new Date());
+}
+
 async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> {
   const today = new Date();
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
   const weekStart = startOfThisWeek(weekStartPref);
   const monthStart = startOfThisMonth();
   const monthEnd = endOfThisMonth();
   const todayKey = todayLocalDateKey();
+  // Period counts below range on `completed_local_date`, NOT on
+  // `completed_at`. The two disagree for every row written before the
+  // column existed (backfilled as the UTC day) and for anything logged
+  // near midnight, and useDayDetail in lib/api/history.ts keys the
+  // calendar off the local column. Two hooks answering "did this task
+  // hit its weekly target?" have to count the same rows, or Home and
+  // History contradict each other on the same task.
+  const weekStartKey = localDateKey(weekStart);
+  const monthStartKey = localDateKey(monthStart);
+  const monthEndKey = localDateKey(monthEnd);
 
   const { data: tasks, error: taskErr } = await supabase
     .from('task')
@@ -317,7 +332,7 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
   const { data: completionsToday, error: compErr } = await supabase
     .from('task_completion')
     .select('id, task_id, xp_granted, coins_granted')
-    .gte('completed_at', startOfToday.toISOString())
+    .eq('completed_local_date', todayKey)
     .order('completed_at', { ascending: false });
   if (compErr) throw compErr;
   const doneToday = new Map<string, number>();
@@ -345,7 +360,7 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
   const { data: completionsWeek, error: weekErr } = await supabase
     .from('task_completion')
     .select('id, task_id, completed_at')
-    .gte('completed_at', weekStart.toISOString())
+    .gte('completed_local_date', weekStartKey)
     .order('completed_at', { ascending: false });
   if (weekErr) throw weekErr;
   const doneWeek = new Map<string, number>();
@@ -369,8 +384,8 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
   const { data: completionsMonth, error: monthErr } = await supabase
     .from('task_completion')
     .select('task_id')
-    .gte('completed_at', monthStart.toISOString())
-    .lte('completed_at', monthEnd.toISOString());
+    .gte('completed_local_date', monthStartKey)
+    .lte('completed_local_date', monthEndKey);
   if (monthErr) throw monthErr;
   const doneMonth = new Map<string, number>();
   (completionsMonth ?? []).forEach((c) => {
@@ -413,10 +428,11 @@ async function fetchHomeBuckets(weekStartPref: WeekStart): Promise<HomeBuckets> 
   if (skipTodayErr) throw skipTodayErr;
   const skippedToday = new Set((skipsToday ?? []).map((s) => s.task_id));
 
-  const weekStartKey = weekStart.toISOString().slice(0, 10);
-  const monthStartKey = monthStart.toISOString().slice(0, 10);
-  const monthEndKey = monthEnd.toISOString().slice(0, 10);
-
+  // weekStartKey / monthStartKey / monthEndKey are the local-day keys
+  // computed at the top. They used to be derived here via
+  // `toISOString().slice(0, 10)`, which is the UTC day: with monthEnd
+  // pinned to 23:59:59.999 local, a UTC−3 device rolled it forward into
+  // the first of the next month and over-counted skips by a day.
   const { data: skipsWeek, error: skipWeekErr } = await supabase
     .from('task_skip')
     .select('task_id')
@@ -1016,6 +1032,8 @@ export function useCompleteTemplate() {
     mutationFn: async (params: {
       templateId: string;
       subOverrides?: { sub_id: string; stars: number }[];
+      /** Local YYYY-MM-DD to file this under; defaults to the device's today. */
+      completedLocalDate?: string;
     }): Promise<{
       completion_id: string;
       xp_granted: number;
@@ -1024,6 +1042,11 @@ export function useCompleteTemplate() {
     }> => {
       const { data, error } = await supabase.rpc('complete_template', {
         p_template_id: params.templateId,
+        // Must be sent explicitly: complete_template defaults p_local_date
+        // to `(now() at time zone 'UTC')::date`, so omitting it files a
+        // UTC−3 evening completion under tomorrow — on the wrong calendar
+        // cell, in the wrong Momentum window. Mirrors useCompleteTask.
+        p_local_date: params.completedLocalDate ?? todayLocalDateKey(),
         p_sub_overrides: params.subOverrides ?? null,
       });
       if (error) throw error;

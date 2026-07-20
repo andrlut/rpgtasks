@@ -43,16 +43,30 @@ interface Props {
  * phone) cannot stack a day number, an XP figure and a dot row legibly;
  * dropping the Atividade|Humor segmented control from the History card
  * freed roughly the 9dp per row this costs.
+ *
+ * The stack has to fit, because the cell clips: dayNum 13 + gap 1 + xpNum
+ * 11 + gap 1 + dotTrack 8 = 34, plus 3dp padding per side = 40, plus the
+ * 2dp selection border per side = 44. Two dp of headroom — which is why
+ * both figures set `allowFontScaling={false}` and dayNum pins an explicit
+ * lineHeight. Adding a row here means raising this number.
  */
 const CELL_HEIGHT = 46;
 
 /**
- * Six dimensions can fire in one day but six 5dp dots plus gaps overrun a
- * narrow cell. Five is the honest ceiling — a day touching more than five
- * of the six pillars is vanishingly rare, and the cell clips rather than
- * reflows when it happens.
+ * Six dimensions can fire in one day but the dot row has to survive the
+ * narrowest cell we ship on. Budget, worst case (320dp phone, selected
+ * cell): 320 − 32 (screen padding) − 2 (card border) − 32 (card padding)
+ * = 254dp of grid; minus the 6 inter-cell gaps of 6dp = 218/7 = 31.1dp
+ * per cell; minus the 2dp selection border per side = **27.1dp** inside.
+ *
+ * The track costs `n×5 + (n−1)×1 + 2×1.5` (see `dot`/`dotTrack`), so
+ * four dots = 26dp and five = 32dp. Four is the real ceiling; a fifth
+ * would silently lose ~60% of the outer dot to `overflow: 'hidden'` on
+ * small screens. Days touching more than four pillars are rare, and the
+ * accessibility label below still enumerates *every* dimension, so the
+ * clipped ones are not lost to screen readers.
  */
-const MAX_DOTS = 5;
+const MAX_DOTS = 4;
 
 /**
  * The single month-grid heatmap for the whole app. A cell is one unified
@@ -147,7 +161,7 @@ export function DayHeatmap({
 
             const parts = [dayFmt.format(cell)];
             if (data?.a11yNote) parts.push(data.a11yNote);
-            if (xp > 0) parts.push(`${xp} XP`);
+            if (xp > 0) parts.push(t('a11y.dayCellXp', { xp }));
             if (dims.length > 0) {
               parts.push(dims.map((d) => meta.dim(d).label).join(t('format.listSeparator')));
             }
@@ -171,7 +185,13 @@ export function DayHeatmap({
                   isFuture && styles.cellFuture,
                 ]}
               >
+                {/* allowFontScaling={false} on both figures: the cell is a
+                    fixed 46dp box with `overflow: 'hidden'`, so an OS font
+                    scale above ~1.1 would push the dot row out of frame
+                    entirely rather than reflow. Same reasoning as the
+                    labels in components/HexChart.tsx. */}
                 <Text
+                  allowFontScaling={false}
                   style={[
                     styles.dayNum,
                     data?.onColor ? styles.inkOnColor : null,
@@ -181,7 +201,10 @@ export function DayHeatmap({
                   {cell.getDate()}
                 </Text>
                 {xp > 0 && (
-                  <Text style={[styles.xpNum, data?.onColor ? styles.inkOnColor : null]}>
+                  <Text
+                    allowFontScaling={false}
+                    style={[styles.xpNum, data?.onColor ? styles.inkOnColor : null]}
+                  >
                     {formatXp(xp)}
                   </Text>
                 )}
@@ -280,22 +303,34 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cellEmpty: { flex: 1, height: CELL_HEIGHT },
-  dayNum: { fontFamily: 'Manrope_700Bold', fontSize: 11, color: tokens.text.hi },
+  // Explicit lineHeight, not the font's default box: it is what makes the
+  // CELL_HEIGHT budget above arithmetic rather than a guess.
+  dayNum: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    lineHeight: 13,
+    color: tokens.text.hi,
+  },
   xpNum: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 9,
     lineHeight: 11,
     letterSpacing: 0.2,
-    // Never tokens.semantic.xp — that green is byte-identical to the
-    // "great" mood fill, so XP would disappear on the days it matters.
+    // This is the *no mood fill* branch only — whenever a day has a mood
+    // color, `onColor` is set and `inkOnColor` overrides to dark ink. Keep
+    // it a neutral: tokens.semantic.xp is byte-identical to the "great"
+    // mood fill (#3DD68C), so picking it here would make XP vanish on the
+    // best days the moment that override is ever relaxed.
     color: tokens.text.base,
   },
   inkOnColor: { color: tokens.bg.deep, fontFamily: 'Manrope_800ExtraBold' },
   dotTrack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 1.5,
-    paddingHorizontal: 2,
+    // Geometry is load-bearing: see the MAX_DOTS budget above before
+    // widening the gap or the padding.
+    gap: 1,
+    paddingHorizontal: 1.5,
     paddingVertical: 1.5,
     borderRadius: tokens.radius.pill,
     // Dark backing rather than a per-dot ring: three dimension colors sit

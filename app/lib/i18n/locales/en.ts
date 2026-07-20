@@ -57,6 +57,7 @@ const en = {
     xpByDimension: 'XP distribution by dimension',
     stopTracking: 'Stop tracking this reward',
     dayCellEmpty: 'no entries',
+    dayCellXp: '{{xp}} XP',
   },
 
   taskForm: {

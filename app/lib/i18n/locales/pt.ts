@@ -47,6 +47,7 @@ const pt: Translations = {
     xpByDimension: 'Distribuição de XP por dimensão',
     stopTracking: 'Parar de acompanhar esta recompensa',
     dayCellEmpty: 'sem registro',
+    dayCellXp: '{{xp}} XP',
   },
 
   taskForm: {
