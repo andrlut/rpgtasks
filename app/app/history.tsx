@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,19 +16,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useT } from '@/lib/i18n';
 
 import { BucketTabsV2, type BucketTabSpec } from '@/components/BucketTabsV2';
-import { CalendarMonthModal } from '@/components/CalendarMonthModal';
 import { CompletedBucket, type CompletedItem } from '@/components/CompletedBucket';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { DayStatsCard } from '@/components/DayStatsCard';
 import { MoodDayDetail } from '@/components/mood/MoodDayDetail';
 import { ScreenBackground } from '@/components/ScreenBackground';
-import { DayHeatmap, xpColorFor } from '@/components/history/DayHeatmap';
+import { DayHeatmap, type DayCellData } from '@/components/history/DayHeatmap';
 import { HistoryLensTabs } from '@/components/history/HistoryLensTabs';
-import { SegmentedControl } from '@/components/SegmentedControl';
 import { TaskActionSheet } from '@/components/TaskActionSheet';
 import { TaskCard } from '@/components/TaskCard';
 import { XPCoinFloat } from '@/components/XPCoinFloat';
-import { dateKeyFromLocal, useDailySummary, useDayDetail } from '@/lib/api/history';
+import {
+  dateKeyFromLocal,
+  useDailySummary,
+  useDayDetail,
+  type DailySummaryEntry,
+} from '@/lib/api/history';
 import { useMoodMonth } from '@/lib/api/mood';
 import { moodLevel } from '@/lib/mood';
 import {
@@ -41,9 +44,10 @@ import {
 import { useLoadedSettings } from '@/lib/settings';
 import { compareOneShotsByFreshness, isInTrophyWindow } from '@/lib/trophy';
 import { confirmAction, showInfo } from '@/lib/util/confirm';
-import type { TaskSub, TaskWithSubs } from '@/lib/db/types';
+import type { DimensionId, SubId, TaskSub, TaskWithSubs } from '@/lib/db/types';
 import { rewardForTaskSubs } from '@/lib/xp';
 import { tokens } from '@/theme';
+import { DIMENSION_ORDER } from '@/theme/dimensions';
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -82,6 +86,21 @@ function isSameDay(a: Date, b: Date): boolean {
   );
 }
 
+/**
+ * Which pillars a day touched, in catalog order. Deliberately dimension-
+ * level and not sub-level: `SUB_META` carries no per-sub palette, so
+ * sibling subs (sleep and nutrition are both #FF6B7A) would render
+ * pixel-identical dots.
+ */
+function dimensionsInDay(entry: DailySummaryEntry | undefined): DimensionId[] {
+  if (!entry) return [];
+  const hit = new Set<DimensionId>();
+  for (const [sub, xp] of Object.entries(entry.bySub)) {
+    if ((xp ?? 0) > 0) hit.add(dimensionForSub(sub as SubId));
+  }
+  return DIMENSION_ORDER.filter((d) => hit.has(d));
+}
+
 function formatDay(d: Date): string {
   const today = startOfDay(new Date());
   const target = startOfDay(d);
@@ -98,13 +117,8 @@ function formatDay(d: Date): string {
 export default function HistoryScreen() {
   const router = useRouter();
   const { t } = useT();
-  const params = useLocalSearchParams<{ heatmap?: string }>();
-  const [heatmapMode, setHeatmapMode] = useState<'activity' | 'mood'>(
-    params.heatmap === 'mood' ? 'mood' : 'activity',
-  );
   const [selected, setSelected] = useState<Date>(() => startOfDay(new Date()));
   const [visibleMonth, setVisibleMonth] = useState<Date>(() => startOfMonth(new Date()));
-  const [calendarOpen, setCalendarOpen] = useState(false);
   // Sheets + floats — mirror the home so retro-logging on a past day
   // feels identical to logging today.
   const [sheetTask, setSheetTask] = useState<TaskWithSubs | null>(null);
@@ -347,63 +361,47 @@ export default function HistoryScreen() {
             <Text style={styles.eyebrow}>{t('historyScreen.eyebrow')}</Text>
             <Text style={styles.title}>{t('historyScreen.title')}</Text>
           </View>
-          <Pressable
-            onPress={() => setCalendarOpen(true)}
-            style={({ pressed }) => [
-              styles.calendarBtn,
-              pressed && { opacity: 0.7 },
-            ]}
-            hitSlop={8}
-          >
-            <Ionicons name="calendar-outline" size={22} color={tokens.text.hi} />
-          </Pressable>
         </View>
 
         <View style={{ marginBottom: tokens.space[4] }}>
-          <HistoryLensTabs current="dias" />
+          <HistoryLensTabs current="rotina" />
         </View>
 
+        {/* One calendar, three channels: the cell fill is the day's mood,
+            the figure is its XP, and the dots are the pillars it touched.
+            The old Atividade|Humor toggle existed only because a cell
+            could carry one of those at a time. */}
         <View style={styles.heatmapCard}>
-          <SegmentedControl<'activity' | 'mood'>
-            options={[
-              { value: 'activity', label: t('mood.history.filterActivity') },
-              { value: 'mood', label: t('mood.history.filterMood') },
-            ]}
-            value={heatmapMode}
-            onChange={setHeatmapMode}
-          />
-
-          <View style={styles.heatmapGrid}>
-            {(heatmapMode === 'mood' ? moodMonth.isLoading : summary.isLoading) ? (
-              <View style={styles.heatmapLoading}>
-                <ActivityIndicator color={tokens.brand.violet2} />
-              </View>
-            ) : (
-              <DayHeatmap
-                monthDate={visibleMonth}
-                selected={selected}
-                onSelectDay={handleSelectDay}
-                onPrevMonth={handlePrevMonth}
-                onNextMonth={handleNextMonth}
-                canGoNext={canGoNextMonth}
-                colorFor={(key) => {
-                  if (heatmapMode === 'mood') {
-                    const m = moodMonth.data?.get(key);
-                    return m ? { bg: moodLevel(m.mood).color, onColor: true } : null;
-                  }
-                  return xpColorFor(summary.data?.get(key)?.totalXp ?? 0);
-                }}
-                markFor={
-                  heatmapMode === 'mood'
-                    ? (key) => {
-                        const m = moodMonth.data?.get(key);
-                        return !!m && (!!m.note || (m.tags?.length ?? 0) > 0);
-                      }
-                    : undefined
-                }
-              />
-            )}
-          </View>
+          {summary.isLoading || moodMonth.isLoading ? (
+            <View style={styles.heatmapLoading}>
+              <ActivityIndicator color={tokens.brand.violet2} />
+            </View>
+          ) : (
+            <DayHeatmap
+              monthDate={visibleMonth}
+              selected={selected}
+              onSelectDay={handleSelectDay}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              canGoNext={canGoNextMonth}
+              weekStart={settings.weekStart}
+              dataFor={(key) => {
+                const mood = moodMonth.data?.get(key);
+                const entry = summary.data?.get(key);
+                if (!mood && !entry) return null;
+                const level = mood ? moodLevel(mood.mood) : null;
+                const cell: DayCellData = {
+                  bg: level?.color,
+                  onColor: !!level,
+                  xp: entry?.totalXp ?? 0,
+                  dims: dimensionsInDay(entry),
+                  mark: !!mood && (!!mood.note || (mood.tags?.length ?? 0) > 0),
+                  a11yNote: level ? t(`mood.levels.${level.key}`) : undefined,
+                };
+                return cell;
+              }}
+            />
+          )}
         </View>
 
         <View style={styles.dayNav}>
@@ -577,13 +575,6 @@ export default function HistoryScreen() {
       </ScrollView>
       </ScreenBackground>
 
-      <CalendarMonthModal
-        visible={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        onSelectDay={setSelected}
-        selected={selected}
-      />
-
       {/* XP/coin float that pops out of the screen on each retro
           completion — same component the Home uses. */}
       {floats.map((f) => (
@@ -639,16 +630,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  calendarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: tokens.bg.surface,
-    borderWidth: 1,
-    borderColor: tokens.border.base,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   eyebrow: {
     ...tokens.type.eyebrow,
     color: tokens.text.dim,
@@ -667,9 +648,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.base,
     padding: tokens.space[4],
     marginBottom: tokens.space[5],
-  },
-  heatmapGrid: {
-    marginTop: tokens.space[4],
   },
   heatmapLoading: {
     paddingVertical: tokens.space[6],

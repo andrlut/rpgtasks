@@ -1,12 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { dimensionForSub } from '@/lib/api/tasks';
-import type {
-  DimensionId,
-  SubId,
-  TaskSub,
-  TaskWithSubs,
-} from '@/lib/db/types';
+import type { SubId, TaskSub, TaskWithSubs } from '@/lib/db/types';
 import { parseRecurrence } from '@/lib/recurrence';
 import type { WeekStart } from '@/lib/settings';
 import { supabase } from '@/lib/supabase';
@@ -41,19 +36,20 @@ function endOfMonth(d: Date): Date {
 
 export const historyKeys = {
   all: ['history'] as const,
-  daily: (fromIso: string, toIso: string) =>
-    [...historyKeys.all, 'daily', fromIso, toIso] as const,
+  daily: (fromKey: string, toKey: string) =>
+    [...historyKeys.all, 'daily', fromKey, toKey] as const,
   day: (dateKey: string, weekStart: WeekStart = 'monday') =>
     [...historyKeys.all, 'day', dateKey, weekStart] as const,
 };
 
 export interface DailySummaryEntry {
-  /** Local-date key in `YYYY-MM-DD` form (using device's local timezone). */
+  /** Local-date key in `YYYY-MM-DD` form — the stored `completed_local_date`. */
   dateKey: string;
   totalXp: number;
   totalCoins: number;
   completionCount: number;
-  byDimension: Partial<Record<DimensionId, number>>;
+  /** XP per sub actually practiced that day, from the completion snapshots. */
+  bySub: Partial<Record<SubId, number>>;
 }
 
 interface CompletionTaskJoin {
@@ -106,47 +102,52 @@ export function endOfLocalDay(d: Date): Date {
 
 /**
  * Aggregate completions per local day across [from, to]. Used to render
- * the History calendar heatmap. Per-dim XP comes from the per-sub
- * completion snapshots so multi-sub tasks split honestly across pillars.
+ * the History calendar heatmap. Per-sub XP comes from the completion
+ * snapshots so multi-sub tasks split honestly across pillars.
+ *
+ * Grouping is on the stored `completed_local_date`, not on `completed_at`
+ * re-derived client-side: `mood_log.logged_for` and the Momentum window
+ * both key off that column, so a late-evening completion has to land in
+ * the same cell as the mood the user logged for the same day.
  */
 export function useDailySummary(from: Date, to: Date) {
-  const fromIso = startOfLocalDay(from).toISOString();
-  const toIso = endOfLocalDay(to).toISOString();
+  const fromKey = dateKeyFromLocal(from);
+  const toKey = dateKeyFromLocal(to);
 
   return useQuery({
-    queryKey: historyKeys.daily(fromIso, toIso),
+    queryKey: historyKeys.daily(fromKey, toKey),
     queryFn: async (): Promise<Map<string, DailySummaryEntry>> => {
       const { data: completions, error: compErr } = await supabase
         .from('task_completion')
         .select(
-          'id, completed_at, xp_granted, coins_granted, task_completion_sub(sub_id, xp_granted)',
+          'id, completed_local_date, xp_granted, coins_granted, task_completion_sub(sub_id, xp_granted)',
         )
-        .gte('completed_at', fromIso)
-        .lte('completed_at', toIso);
+        .gte('completed_local_date', fromKey)
+        .lte('completed_local_date', toKey);
       if (compErr) throw compErr;
 
       const map = new Map<string, DailySummaryEntry>();
       ((completions ?? []) as unknown as Array<{
         id: string;
-        completed_at: string;
+        completed_local_date: string;
         xp_granted: number;
         coins_granted: number;
         task_completion_sub: { sub_id: string; xp_granted: number }[] | null;
       }>).forEach((c) => {
-        const key = dateKeyFromLocal(new Date(c.completed_at));
+        const key = c.completed_local_date;
         const entry = map.get(key) ?? {
           dateKey: key,
           totalXp: 0,
           totalCoins: 0,
           completionCount: 0,
-          byDimension: {},
+          bySub: {},
         };
         entry.totalXp += c.xp_granted;
         entry.totalCoins += c.coins_granted;
         entry.completionCount += 1;
         for (const subRow of c.task_completion_sub ?? []) {
-          const dim = dimensionForSub(subRow.sub_id as SubId);
-          entry.byDimension[dim] = (entry.byDimension[dim] ?? 0) + subRow.xp_granted;
+          const sub = subRow.sub_id as SubId;
+          entry.bySub[sub] = (entry.bySub[sub] ?? 0) + subRow.xp_granted;
         }
         map.set(key, entry);
       });
@@ -244,23 +245,18 @@ function hydrateTask(raw: TaskRowFull, recurrence: TaskWithSubs['recurrence']): 
  * (retro-logging candidates).
  */
 export function useDayDetail(date: Date, weekStart: WeekStart = 'monday') {
-  const dayStart = startOfLocalDay(date);
   const dayEnd = endOfLocalDay(date);
   const dateKey = dateKeyFromLocal(date);
 
   return useQuery({
     queryKey: historyKeys.day(dateKey, weekStart),
     queryFn: async (): Promise<DayDetail> => {
-      const fromIso = dayStart.toISOString();
-      const toIso = dayEnd.toISOString();
-
       const { data: comps, error: compErr } = await supabase
         .from('task_completion')
         .select(
           'id, task_id, completed_at, xp_granted, coins_granted, total_stars, task_completion_sub(sub_id, stars, xp_granted, coins_granted), task:task_id(id, title)',
         )
-        .gte('completed_at', fromIso)
-        .lte('completed_at', toIso)
+        .eq('completed_local_date', dateKey)
         .order('completed_at', { ascending: true });
       if (compErr) throw compErr;
 
@@ -335,16 +331,18 @@ export function useDayDetail(date: Date, weekStart: WeekStart = 'monday') {
       //
       // Two extra count queries needed: completions inside the week
       // containing the selected day, and completions inside its month.
-      const weekFrom = startOfWeek(date, weekStart);
-      const weekTo = endOfWeek(date, weekStart);
-      const monthFrom = startOfMonth(date);
-      const monthTo = endOfMonth(date);
+      // Same key as above — a period target must count the completions
+      // the calendar shows inside that period, cell for cell.
+      const weekFrom = dateKeyFromLocal(startOfWeek(date, weekStart));
+      const weekTo = dateKeyFromLocal(endOfWeek(date, weekStart));
+      const monthFrom = dateKeyFromLocal(startOfMonth(date));
+      const monthTo = dateKeyFromLocal(endOfMonth(date));
 
       const { data: weekRows, error: weekErr } = await supabase
         .from('task_completion')
         .select('task_id')
-        .gte('completed_at', weekFrom.toISOString())
-        .lte('completed_at', weekTo.toISOString());
+        .gte('completed_local_date', weekFrom)
+        .lte('completed_local_date', weekTo);
       if (weekErr) throw weekErr;
       const completionCountThisWeek = new Map<string, number>();
       (weekRows ?? []).forEach((c) => {
@@ -357,8 +355,8 @@ export function useDayDetail(date: Date, weekStart: WeekStart = 'monday') {
       const { data: monthRows, error: monthErr } = await supabase
         .from('task_completion')
         .select('task_id')
-        .gte('completed_at', monthFrom.toISOString())
-        .lte('completed_at', monthTo.toISOString());
+        .gte('completed_local_date', monthFrom)
+        .lte('completed_local_date', monthTo);
       if (monthErr) throw monthErr;
       const completionCountThisMonth = new Map<string, number>();
       (monthRows ?? []).forEach((c) => {

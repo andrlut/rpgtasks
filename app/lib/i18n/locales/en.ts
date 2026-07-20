@@ -56,6 +56,8 @@ const en = {
     increaseQty: 'Increase quantity',
     xpByDimension: 'XP distribution by dimension',
     stopTracking: 'Stop tracking this reward',
+    dayCellEmpty: 'no entries',
+    dayCellXp: '{{xp}} XP',
   },
 
   taskForm: {
@@ -115,12 +117,6 @@ const en = {
     placeholder: 'Adventurer',
     hint: 'This is the name shown on your character header and greetings. {{count}} characters left.',
     saveError: 'Could not save',
-  },
-
-  calendarModal: {
-    title: 'Calendar',
-    legendSelected: 'Selected',
-    legendActivity: 'Activity',
   },
 
   trackPicker: {
@@ -1751,7 +1747,7 @@ const en = {
   },
 
   historyHub: {
-    dias: 'Days',
+    rotina: 'Routine',
     dedicacao: 'Dedication',
     insights: 'Insights',
   },
@@ -1818,8 +1814,6 @@ const en = {
     history: {
       title: 'How I felt',
       seeHistory: 'See history',
-      filterActivity: 'Activity',
-      filterMood: 'Mood',
     },
     day: {
       eyebrow: 'Mood',
