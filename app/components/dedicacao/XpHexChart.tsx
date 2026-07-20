@@ -28,11 +28,10 @@ interface Props {
   /** Total XP in the prior window, or null when comparison doesn't apply
    *  (granularity = 'all'). */
   prevTotalXp: number | null;
-  /** Radius ceiling — the XP value that maps to the outermost reachable
-   *  vertex. Pass the same ceiling the sparklines use so the leading dim
-   *  peaks consistently across both visuals. Falls back to the largest
-   *  slice when absent or zero. */
-  globalMax?: number;
+  /** True while the window query is in flight. Suppresses the "no XP"
+   *  caption — `slices` reads all-zero before the data lands, and asserting
+   *  an empty period we haven't loaded yet is a lie, not a placeholder. */
+  isLoading?: boolean;
   size?: number;
   onAxisPress?: (dim: DimensionId) => void;
   /** Stable id for the gradient def — required when more than one hex can
@@ -40,7 +39,9 @@ interface Props {
   idSuffix: string;
 }
 
-const BADGE = 30;
+// 32 + hitSlop 8 = a 48×48 tap target, clearing the 44×44 iOS HIG /
+// WCAG 2.5.5 floor. Don't shrink either number without checking that sum.
+const BADGE = 32;
 const LABEL_GAP = 17;
 const PADDING = BADGE / 2 + LABEL_GAP + 1;
 const RING_STEPS = [0.34, 0.67, 1];
@@ -91,7 +92,7 @@ export function XpHexChart({
   slices,
   totalXp,
   prevTotalXp,
-  globalMax,
+  isLoading = false,
   size = 240,
   onAxisPress,
   idSuffix,
@@ -104,19 +105,21 @@ export function XpHexChart({
 
   const vertices = useMemo(() => {
     const xpById = new Map(slices.map((s) => [s.dimId, s.xp]));
-    const localMax = DIMENSION_ORDER.reduce(
+    // Normalized against the largest dim in this window — nothing external.
+    // The sparklines' ceiling is numerically the same value, but they map it
+    // linearly to full height while this maps through LEADER_RATIO/MIN_RATIO,
+    // so the two visuals are not interchangeable scales. See the note in
+    // DedicacaoPanel.
+    const max = DIMENSION_ORDER.reduce(
       (m, d) => Math.max(m, xpById.get(d) ?? 0),
       0,
     );
-    const max = globalMax && globalMax > 0 ? globalMax : localMax;
     return DIMENSION_ORDER.map((dimId, j) => {
       const xp = xpById.get(dimId) ?? 0;
       const angle = angleAt(j);
-      // Clamped because `globalMax` is derived from bucketed cumulatives,
-      // which can land just under a dim's window total.
       const ratio =
         max > 0 && xp > 0
-          ? Math.max(MIN_RATIO, Math.min(1, xp / max) * LEADER_RATIO)
+          ? Math.max(MIN_RATIO, (xp / max) * LEADER_RATIO)
           : 0;
       const r = ratio * R;
       return {
@@ -128,7 +131,7 @@ export function XpHexChart({
         by: cy + Math.sin(angle) * (R + LABEL_GAP),
       };
     });
-  }, [slices, globalMax, cx, cy, R]);
+  }, [slices, cx, cy, R]);
 
   const hasData = totalXp > 0 && vertices.some((v) => v.xp > 0);
 
@@ -220,7 +223,7 @@ export function XpHexChart({
               key={v.dimId}
               disabled={!onAxisPress}
               onPress={() => onAxisPress?.(v.dimId)}
-              hitSlop={6}
+              hitSlop={8}
               style={({ pressed }) => [
                 styles.badge,
                 {
@@ -255,27 +258,29 @@ export function XpHexChart({
           <Text style={styles.totalXp}>{totalXp.toLocaleString()}</Text>
           <Text style={styles.xpLabel}>XP</Text>
         </View>
-        {hasData ? (
-          delta && (
-            <Text
-              style={[
-                styles.deltaText,
-                {
-                  color:
-                    delta.kind === 'new' || delta.positive
-                      ? tokens.semantic.xp2
-                      : tokens.semantic.warn,
-                },
-              ]}
-            >
-              {delta.kind === 'new'
-                ? t('dedicacao.deltaNew', { xp: totalXp.toLocaleString() })
-                : `${delta.positive ? '▲ +' : '▼ '}${delta.pct}%`}
-            </Text>
-          )
-        ) : (
+        {/* The delta wins whenever it exists, including the empty window
+            that follows a non-empty one: "▼ -100%" says strictly more than
+            "no XP this period". The caption is the fallback, and it stays
+            silent while loading rather than asserting an empty period. */}
+        {delta ? (
+          <Text
+            style={[
+              styles.deltaText,
+              {
+                color:
+                  delta.kind === 'new' || delta.positive
+                    ? tokens.semantic.xp2
+                    : tokens.semantic.warn,
+              },
+            ]}
+          >
+            {delta.kind === 'new'
+              ? t('dedicacao.deltaNew', { xp: totalXp.toLocaleString() })
+              : `${delta.positive ? '▲ +' : '▼ '}${delta.pct}%`}
+          </Text>
+        ) : !hasData && !isLoading ? (
           <Text style={styles.emptyText}>{t('dedicacao.hexEmpty')}</Text>
-        )}
+        ) : null}
       </View>
     </View>
   );

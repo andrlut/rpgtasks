@@ -101,9 +101,12 @@ const SPARK_HEIGHT = 64;
  * per-dim cards with a tall cumulative sparkline (window XP overlaid
  * top-right). Cards expand for a per-sub breakdown.
  *
- * The hex and the sparklines share one ceiling (`sparkGlobalMax`, the
- * leading dim's final cumulative XP) so the leader peaks consistently
- * across both and a sub-leading dim reads short in either.
+ * The sparklines share one ceiling (`sparkGlobalMax`, the leading dim's
+ * final cumulative XP) so a sub-leading dim reads short next to the
+ * leader's full-height climb. The hex does *not* use it: it normalizes
+ * against the leading dim's window total (numerically the same number,
+ * but mapped through LEADER_RATIO/MIN_RATIO rather than linearly), so the
+ * two visuals are comparable within themselves, not against each other.
  *
  * Tapping a hex axis badge scrolls + briefly highlights the matching dim
  * card. Level + total XP stay all-time — only window XP, sparkline, and
@@ -274,7 +277,7 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
           slices={slices}
           totalXp={totalWindowXp}
           prevTotalXp={isAll ? null : prevTotalXp}
-          globalMax={sparkGlobalMax}
+          isLoading={windowQuery.isPending}
           size={hexSize}
           onAxisPress={handleAxisPress}
           idSuffix="dedicacao"
