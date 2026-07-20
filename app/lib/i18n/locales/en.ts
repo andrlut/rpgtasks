@@ -161,6 +161,8 @@ const en = {
       checkEmail: 'Check your email to confirm your account, then come back and log in.',
       confirmTitle: 'Confirm your email',
       confirmBody: "If {{email}} is new here, a code is on its way. Enter it to activate your account.",
+      unconfirmedTitle: 'Your account needs activating',
+      unconfirmedBody: "Your account exists but was never confirmed. We sent a fresh code to {{email}} — enter it here to sign in.",
       confirmSubmit: 'Confirm account',
       confirmLater: 'Do this later',
       maybeExists: 'Check your email',

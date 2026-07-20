@@ -151,6 +151,8 @@ const pt: Translations = {
       checkEmail: 'Confira seu email pra confirmar a conta e depois volte pra entrar.',
       confirmTitle: 'Confirme seu email',
       confirmBody: 'Se {{email}} for novo por aqui, um código está a caminho. Digite ele pra ativar sua conta.',
+      unconfirmedTitle: 'Falta ativar sua conta',
+      unconfirmedBody: 'Sua conta existe, mas nunca foi confirmada. Mandamos um código novo pra {{email}} — digite ele aqui pra entrar.',
       confirmSubmit: 'Confirmar conta',
       confirmLater: 'Deixar pra depois',
       maybeExists: 'Confira seu email',
