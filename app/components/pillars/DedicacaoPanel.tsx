@@ -16,7 +16,7 @@ import {
 import { InsightCard } from '@/components/InsightCard';
 import { PeriodSelector } from '@/components/dedicacao/PeriodSelector';
 import { Sparkline } from '@/components/dedicacao/Sparkline';
-import { XpDonut } from '@/components/dedicacao/XpDonut';
+import { XpHexChart } from '@/components/dedicacao/XpHexChart';
 import { ProgressBar } from '@/components/ProgressBar';
 import {
   computeWindow,
@@ -39,8 +39,8 @@ import {
 
 interface Props {
   dimensions: CharacterDimension[];
-  /** ScrollView that wraps the panel — used to scroll to a card when a donut
-   *  slice is tapped. Optional: the panel still renders if absent (no
+  /** ScrollView that wraps the panel — used to scroll to a card when a hex
+   *  axis is tapped. Optional: the panel still renders if absent (no
    *  scroll behavior). */
   scrollViewRef?: React.RefObject<ScrollViewType | null>;
 }
@@ -97,14 +97,15 @@ const SPARK_HEIGHT = 64;
 
 /**
  * Sub-pillar **Dedicação** (Praticada). Windowed XP view: period selector
- * up top, donut summarizing per-dim XP share for the window, and per-dim
- * cards with a tall cumulative sparkline (window XP overlaid top-right).
- * Cards expand for a per-sub breakdown.
+ * up top, a 6-axis hex summarizing per-dim XP share for the window, and
+ * per-dim cards with a tall cumulative sparkline (window XP overlaid
+ * top-right). Cards expand for a per-sub breakdown.
  *
- * All sparklines share a single y-axis ceiling (the leading dim's final
- * cumulative XP) so a sub-leading dim renders short next to the leader.
+ * The hex and the sparklines share one ceiling (`sparkGlobalMax`, the
+ * leading dim's final cumulative XP) so the leader peaks consistently
+ * across both and a sub-leading dim reads short in either.
  *
- * Tapping a donut slice scrolls + briefly highlights the matching dim
+ * Tapping a hex axis badge scrolls + briefly highlights the matching dim
  * card. Level + total XP stay all-time — only window XP, sparkline, and
  * sub breakdown change with the selector.
  */
@@ -200,7 +201,7 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     return () => clearTimeout(id);
   }, [highlightDim]);
 
-  const handleSlicePress = (dim: DimensionId) => {
+  const handleAxisPress = (dim: DimensionId) => {
     setHighlightDim(dim);
     // findNodeHandle isn't supported on web (RN-Web restriction). The
     // border still flashes; user scrolls manually. Native APK keeps
@@ -237,10 +238,9 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     });
   };
 
-  // Donut sized to ~half the viewport — generous but not dominant. The
-  // tap target spans the full size; the visual stroke is only 14px so the
-  // negative space is mostly the engraved Perceva glyph + the XP number.
-  const donutSize = Math.max(176, Math.min((screenWidth || 360) - 96, 220));
+  // Wider than the donut it replaced: the hex reserves ~33px per side for
+  // the dimension badge ring, so an equivalent plot radius needs a bigger box.
+  const hexSize = Math.max(212, Math.min((screenWidth || 360) - 56, 272));
   const sparkWidth = Math.max(160, (screenWidth || 360) - 64);
 
   // Order cards by window XP descending — leaders surface first. Ties
@@ -269,13 +269,15 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
         labels={labels}
       />
 
-      <View style={styles.donutWrap}>
-        <XpDonut
+      <View style={styles.hexWrap}>
+        <XpHexChart
           slices={slices}
           totalXp={totalWindowXp}
           prevTotalXp={isAll ? null : prevTotalXp}
-          size={donutSize}
-          onSlicePress={handleSlicePress}
+          globalMax={sparkGlobalMax}
+          size={hexSize}
+          onAxisPress={handleAxisPress}
+          idSuffix="dedicacao"
         />
         {/* Entry point to the history screen — sits in the space where the
             caption used to be. Quiet, contextual, doesn't compete with the
@@ -549,7 +551,7 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: tokens.space[3] },
-  donutWrap: { alignItems: 'center', gap: tokens.space[2] },
+  hexWrap: { alignItems: 'center', gap: tokens.space[2] },
   historyLink: {
     flexDirection: 'row',
     alignItems: 'center',

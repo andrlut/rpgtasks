@@ -10,11 +10,6 @@ interface CompletionSubRow {
   task_completion_sub: { sub_id: string; xp_granted: number | null }[] | null;
 }
 
-export interface SubXp {
-  subId: SubId;
-  totalXp: number;
-}
-
 export type Granularity = 'week' | 'month' | 'quarter' | 'all';
 
 export interface WindowSpec {
@@ -66,7 +61,6 @@ export interface WindowResult {
 
 export const dedicacaoKeys = {
   all: ['dedicacao'] as const,
-  totalXpBySub: () => [...dedicacaoKeys.all, 'totalXpBySub'] as const,
   window: (spec: WindowSpec, weekStart: WeekStart) =>
     [
       ...dedicacaoKeys.all,
@@ -76,43 +70,6 @@ export const dedicacaoKeys = {
       weekStart,
     ] as const,
 };
-
-/**
- * All-time XP grouped by subattribute. Kept for the Avaliação hex (which
- * still reads an all-time SHAPE). Dedicação proper uses the windowed
- * variant below.
- */
-export function useTotalXpBySub() {
-  return useQuery({
-    queryKey: dedicacaoKeys.totalXpBySub(),
-    queryFn: async (): Promise<SubXp[]> => {
-      const { data, error } = await supabase
-        .from('task_completion')
-        .select('task_completion_sub(sub_id, xp_granted)');
-      if (error) throw error;
-
-      const totals = new Map<SubId, number>();
-      for (const dim of DIMENSION_ORDER) {
-        for (const sub of SUBS_BY_DIM[dim]) totals.set(sub, 0);
-      }
-
-      for (const row of (data ?? []) as {
-        task_completion_sub: CompletionSubRow['task_completion_sub'];
-      }[]) {
-        for (const tcs of row.task_completion_sub ?? []) {
-          const subId = tcs.sub_id as SubId;
-          const xp = tcs.xp_granted ?? 0;
-          totals.set(subId, (totals.get(subId) ?? 0) + xp);
-        }
-      }
-
-      return [...totals.entries()].map(([subId, totalXp]) => ({
-        subId,
-        totalXp,
-      }));
-    },
-  });
-}
 
 // ── Date helpers ──────────────────────────────────────────────────────────
 

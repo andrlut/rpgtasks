@@ -73,6 +73,12 @@ function Line({ x1, y1, x2, y2, color, width = 1, opacity = 1 }: LineProps) {
  *
  * Trade-off: no filled polygon — only outline. The score shape comes
  * across via the outline + the 6 colored vertex discs at varying radii.
+ *
+ * OBSOLETE CONSTRAINT: react-native-svg is stable on Android now and ships
+ * in production (dedicacao/Sparkline and dedicacao/XpHexChart both use it).
+ * Nothing forces the View-and-rotation approach anymore. This component is
+ * not being rewritten because it works and is live in Avaliação — but a new
+ * chart should reach for SVG, not copy this.
  */
 export function HexChart({
   scores,

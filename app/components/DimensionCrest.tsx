@@ -27,6 +27,10 @@ interface Props {
  * Same approach as HexChart: views and rotated rectangles only, so it
  * renders identically on iOS, Android, and web without depending on
  * react-native-svg (which has native crashes on 15.12.1).
+ *
+ * OBSOLETE CONSTRAINT: the react-native-svg Android crashes no longer
+ * apply — it ships in production here. Kept as-is because it works; don't
+ * cite this as a reason to avoid SVG in new components.
  */
 export function DimensionCrest({ dimensionId, size = 220, scores }: Props) {
   const meta = useMetaLookup();

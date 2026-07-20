@@ -34,6 +34,10 @@ interface Props {
  *
  * Built with plain Views + expo-linear-gradient — no react-native-svg
  * (Android crash mitigations apply across the codebase).
+ *
+ * OBSOLETE CONSTRAINT: those Android crashes no longer apply —
+ * react-native-svg ships in production here. Kept as-is because it works;
+ * don't cite this as a reason to avoid SVG in new components.
  */
 export function SkillMedallionOrbital({
   tier,

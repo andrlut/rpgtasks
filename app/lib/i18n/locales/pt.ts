@@ -1742,6 +1742,12 @@ const pt: Translations = {
     },
   },
 
+  dedicacao: {
+    hexAxisA11y: '{{dim}}: {{xp}} XP nesse período',
+    hexEmpty: 'Nenhum XP nesse período',
+    deltaNew: '+{{xp}} novo',
+  },
+
   errors: {
     network: 'Erro de rede. Verifique sua conexão e tente novamente.',
     notAuthenticated: 'Você precisa estar logado pra isso.',

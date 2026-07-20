@@ -1743,6 +1743,12 @@ const en = {
     },
   },
 
+  dedicacao: {
+    hexAxisA11y: '{{dim}}: {{xp}} XP this period',
+    hexEmpty: 'No XP in this period',
+    deltaNew: '+{{xp}} new',
+  },
+
   errors: {
     network: 'Network error. Check your connection and try again.',
     notAuthenticated: 'You need to be signed in for this.',
