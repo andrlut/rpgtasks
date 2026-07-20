@@ -16,6 +16,24 @@ type Translate = (key: string, options?: TranslateOptions) => string;
  * throttle message embeds a countdown, which is exactly why the old
  * `/rate limit/i` regex in forgot-password never matched it.
  */
+/**
+ * GoTrue reports an unconfirmed address as a *sign-in* failure, so the login
+ * screen has to recognise it to offer a way out. Without this the account is a
+ * dead end: signing in fails forever, and signing up again hits GoTrue's
+ * already-registered obfuscation, which bounces straight back to login.
+ *
+ * Same code-first, message-fallback shape as `localizeAuthError` — the code is
+ * stable, the message is not.
+ */
+export function isUnconfirmedEmail(error: AuthError | null): boolean {
+  if (!error) return false;
+
+  const code = (error as AuthError & { code?: string }).code ?? '';
+  if (code === 'email_not_confirmed') return true;
+
+  return /email not confirmed/i.test(error.message ?? '');
+}
+
 export function localizeAuthError(error: AuthError | null, t: Translate): string {
   if (!error) return '';
 

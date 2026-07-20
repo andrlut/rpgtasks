@@ -1,5 +1,5 @@
 export { AUTH_REDIRECT_URL } from './deep-link';
-export { localizeAuthError } from './errors';
+export { isUnconfirmedEmail, localizeAuthError } from './errors';
 export {
   CODE_MAX_LENGTH,
   CODE_MIN_LENGTH,

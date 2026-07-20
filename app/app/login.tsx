@@ -17,6 +17,7 @@ import {
   AUTH_REDIRECT_URL,
   CODE_MAX_LENGTH,
   CODE_MIN_LENGTH,
+  isUnconfirmedEmail,
   localizeAuthError,
   RESEND_COOLDOWN_SECONDS,
   sanitizeCode,
@@ -39,6 +40,11 @@ export default function LoginScreen() {
   // reason as password recovery: GoTrue's 303 into `rpgtasks://` dies in
   // Chrome on Android. `awaitingCode` holds the address we signed up with.
   const [awaitingCode, setAwaitingCode] = useState<string | null>(null);
+  // The code screen is reached two ways and the copy has to differ. From
+  // signup we must stay vague ("if this address is new…") to avoid handing out
+  // an account-enumeration oracle; from a failed login GoTrue already told us
+  // the account exists, so being direct costs nothing.
+  const [codeReason, setCodeReason] = useState<'signup' | 'unconfirmed'>('signup');
   const [code, setCode] = useState('');
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -53,6 +59,14 @@ export default function LoginScreen() {
       if (cooldownRef.current) clearInterval(cooldownRef.current);
     };
   }, [cooldown > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Park on the code screen for `address`, arming the resend cooldown. */
+  const openCodeScreen = (address: string, reason: 'signup' | 'unconfirmed') => {
+    setAwaitingCode(address);
+    setCodeReason(reason);
+    setCode('');
+    setCooldown(RESEND_COOLDOWN_SECONDS);
+  };
 
   const handleSubmit = async () => {
     if (!email.trim() || !password) {
@@ -71,7 +85,31 @@ export default function LoginScreen() {
           email: email.trim(),
           password,
         });
-        if (error) Alert.alert(t('auth.login.failed'), localizeAuthError(error, t));
+        if (!error) return;
+
+        // An account that was created but never confirmed is otherwise
+        // unreachable: sign-in keeps failing, and signing up again returns
+        // GoTrue's obfuscated already-registered response, which drops the
+        // user right back here. Send them to the same code screen signup
+        // uses. This is the state every Play Store account is in today.
+        if (isUnconfirmedEmail(error)) {
+          const address = email.trim();
+          // Park first, send second. The project is capped at 2 emails an
+          // hour, so a throttled resend must not also cost the user the one
+          // screen where they could type a code an earlier email delivered.
+          openCodeScreen(address, 'unconfirmed');
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: address,
+            options: { emailRedirectTo: AUTH_REDIRECT_URL },
+          });
+          if (resendError) {
+            Alert.alert(t('auth.forgot.couldNotSend'), localizeAuthError(resendError, t));
+          }
+          return;
+        }
+
+        Alert.alert(t('auth.login.failed'), localizeAuthError(error, t));
         return;
       }
 
@@ -101,9 +139,7 @@ export default function LoginScreen() {
         return;
       }
 
-      setAwaitingCode(email.trim());
-      setCode('');
-      setCooldown(RESEND_COOLDOWN_SECONDS);
+      openCodeScreen(email.trim(), 'signup');
     } finally {
       setIsSubmitting(false);
     }
@@ -185,9 +221,15 @@ export default function LoginScreen() {
 
         {awaitingCode ? (
           <View style={styles.form}>
-            <Text style={styles.confirmTitle}>{t('auth.signup.confirmTitle')}</Text>
+            <Text style={styles.confirmTitle}>
+              {codeReason === 'unconfirmed'
+                ? t('auth.signup.unconfirmedTitle')
+                : t('auth.signup.confirmTitle')}
+            </Text>
             <Text style={styles.confirmSub}>
-              {t('auth.signup.confirmBody', { email: awaitingCode })}
+              {codeReason === 'unconfirmed'
+                ? t('auth.signup.unconfirmedBody', { email: awaitingCode })
+                : t('auth.signup.confirmBody', { email: awaitingCode })}
             </Text>
 
             <Text style={[styles.label, { marginTop: tokens.space[6] }]}>
