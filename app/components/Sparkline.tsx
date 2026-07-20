@@ -18,8 +18,7 @@ interface SparklineProps {
  * not informative).
  *
  * Implementation note: each segment is a thin View rotated to the segment
- * angle — same trick used in HexChart to dodge the react-native-svg
- * native crashes on Android.
+ * angle — a trick to dodge the react-native-svg native crashes on Android.
  *
  * OBSOLETE CONSTRAINT: those crashes no longer apply — react-native-svg
  * ships in production here, and `dedicacao/Sparkline` is an SVG sparkline.
