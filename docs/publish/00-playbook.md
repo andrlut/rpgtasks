@@ -240,7 +240,7 @@ Estas são as mudanças em arquivos existentes. Nenhuma toca schema, RPCs, `app/
 ```
 (Se quiser manter iPad, deixe como está — mas então produza screenshots iPad 13" 2064×2752 e valide o layout em tablet.)
 
-**3) `app/app/(tabs)/profile.tsx`** — o diff real do Delete Account (trocar o `showInfo` fake pela chamada à Edge Function) depende da Edge Function que ainda não existe; quando ela for criada (`supabase/functions/delete-account`, território do chat paralelo pela pasta `supabase/functions/`), o corpo do `handleDeleteAccount` (linha ~62) passa a invocar `supabase.functions.invoke('delete-account')` seguido de `supabase.auth.signOut()`. **Coordene com o chat paralelo** para não colidir na pasta `supabase/functions/` — sugiro ele criar a function e você entregar só o diff do `profile.tsx` que a consome.
+**3) `app/app/(tabs)/profile.tsx`** — ✅ **feito na #274.** `handleDeleteAccount` invoca `supabase.functions.invoke('delete-account')` seguido de `supabase.auth.signOut()`, e a Edge Function existe em `supabase/functions/delete-account/` e está deployada. O texto anterior descrevia uma coordenação entre dois chats que já aconteceu.
 
 ---
 
