@@ -19,7 +19,7 @@ execução**. Os detalhes ficam nos arquivos numerados.
 
 - **Config iOS aplicada** em `app/app.json` (`bundleIdentifier`, `buildNumber`, export-compliance) e `app/eas.json` (blocos `ios` + `submit`).
 - **`supportsTablet: false`** — decisão de v1: evita ter que produzir screenshots de iPad e a review de layout em tablet. É **uma linha reversível** se você quiser iPad depois.
-- **Edge Function `delete-account`** escrita em `supabase/functions/delete-account/` (ainda **não deployada** — precisa da service_role key).
+- **Edge Function `delete-account`** escrita em `supabase/functions/delete-account/` — **deployada e ligada no client** desde a #274 (`app/app/(tabs)/profile.tsx` invoca ela). Passo 1 abaixo está concluído.
 - **`google-service-account.json` no `.gitignore`** (nunca vaza).
 - Toda a documentação acima.
 
@@ -38,13 +38,13 @@ Marcadores: 💳 = custa dinheiro/tem latência (comece cedo) · 🤖 = eu execu
 - [ ] 💳👤 **Apple Developer Program** ($99/ano, *individual* — não precisa D-U-N-S). Enrollment sai em 24–48h; pode pedir foto de documento. → [`00-playbook.md` §A1](00-playbook.md)
 - [ ] 💳👤 **Google Play Console** ($25, taxa única). Verificação de ID + endereço leva até ~2 dias úteis. Escolha conta **pessoal**. → [`00-playbook.md` §B1](00-playbook.md)
 
-### Passo 1 — Delete Account real (bloqueia AS DUAS lojas)
-- [ ] 👤 **Rotacione a service_role key** no dashboard Supabase (a antiga foi flagada como exposta) e me passe a nova.
-- [ ] 🤖 `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<nova>` + `supabase functions deploy delete-account`.
-- [ ] 🤖 Aplico o **client wiring** (`profile.tsx` + i18n — diff pronto em [`04-delete-account.md`](04-delete-account.md)) **depois** do deploy, e mando OTA (`eas update --channel preview`).
+### Passo 1 — Delete Account real (bloqueia AS DUAS lojas) — ✅ **concluído na #274**
+- [x] 👤 Service_role key rotacionada.
+- [x] 🤖 `supabase functions deploy delete-account` — a function está no ar.
+- [x] 🤖 Client wiring aplicado: `app/app/(tabs)/profile.tsx` invoca `supabase.functions.invoke('delete-account')`.
 - [ ] 🤖👤 Smoke test com uma conta descartável: tap em Settings → Delete Account → confirmar que some do Auth + dados cascateados.
 
-> **Ordem importa**: deploy da function ANTES do wiring, senão o botão chama um endpoint que não existe.
+> Sobra só o smoke test. O botão in-app satisfaz metade do requisito — a **página web** de deleção (Passo 2) continua obrigatória pro Google.
 
 ### Passo 2 — Páginas públicas (privacy + deleção web)
 - [ ] 👤🌐 Criar repo público `perceva-legal`, jogar `privacy-policy-pt/en` como HTML, ligar **GitHub Pages**. → passos exatos abaixo.
