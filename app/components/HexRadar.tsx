@@ -34,9 +34,9 @@ interface Props {
    *  as the reference rather than the subject. */
   secondary?: number[];
   secondaryColor?: string;
-  /** Pre-formatted headline for the middle of the hex. Omit it entirely
-   *  when the caller's data lives near the center — see the note on the
-   *  center block below. */
+  /** Pre-formatted headline for the middle of the hex. Drawn beneath the
+   *  plot, so a low-value vertex crosses it rather than being hidden by it.
+   *  Omit for a chart that carries its figure elsewhere. */
   centerValue?: string;
   /** Small caps under the value (e.g. "XP"). Omit for a bare number. */
   centerUnit?: string;
@@ -168,7 +168,39 @@ export function HexRadar({
       accessibilityRole="image"
       accessibilityLabel={a11yLabel}
     >
-      <Svg width={size} height={size} pointerEvents="none">
+      {/* The readout sits UNDER the plot, not over it. A radar's center is
+          where the low values live, so whichever of the two is drawn last
+          wins that region — and the summary figure is the thing that can
+          afford to lose it. A 4px vertex dot crossing a glyph costs the
+          number almost nothing and costs the data nothing at all; the other
+          order hides a dim entirely. This is what lets both charts carry a
+          centered figure without the shape having to make room for it. */}
+      {centerValue !== undefined ? (
+        <View style={styles.center} pointerEvents="none">
+          <Text
+            style={[
+              styles.centerValue,
+              { fontSize: centerFontSize, lineHeight: centerFontSize * 1.1 },
+            ]}
+            allowFontScaling={false}
+            numberOfLines={1}
+          >
+            {centerValue}
+          </Text>
+          {centerUnit ? (
+            <Text style={styles.centerUnit} allowFontScaling={false}>
+              {centerUnit}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <Svg
+        width={size}
+        height={size}
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      >
         <Defs>
           <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={fillFrom} stopOpacity={0.34} />
@@ -259,33 +291,6 @@ export function HexRadar({
             ) : null,
           )}
       </Svg>
-
-      {/* The center block paints over the SVG, so it hides whatever sits
-          under it. On a radar that region is not empty — it is where the
-          LOW values live. A vertex only clears a `centerFontSize` 20 / five
-          glyph readout past roughly 0.3R along the shallow axes, so any
-          caller whose series routinely puts dims down there must pass no
-          centerValue and put the figure outside the hex instead. Fits-the-
-          inner-ring is the wrong test; clears-the-vertices is the test. */}
-      {centerValue !== undefined ? (
-        <View style={styles.center} pointerEvents="none">
-          <Text
-            style={[
-              styles.centerValue,
-              { fontSize: centerFontSize, lineHeight: centerFontSize * 1.1 },
-            ]}
-            allowFontScaling={false}
-            numberOfLines={1}
-          >
-            {centerValue}
-          </Text>
-          {centerUnit ? (
-            <Text style={styles.centerUnit} allowFontScaling={false}>
-              {centerUnit}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
 
       {axes.map((axis, j) => {
         const meta = DIMENSION_META[axis.dimId];

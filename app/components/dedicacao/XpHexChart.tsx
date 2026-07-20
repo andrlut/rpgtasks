@@ -45,6 +45,19 @@ const LEADER_RATIO = 0.85;
 const MIN_RATIO = 0.07;
 
 /**
+ * Keep the centered figure to five glyphs. A raw total can run six digits,
+ * and the center is the one place on this chart where the string cannot be
+ * allowed to set the geometry. The 999_500 boundary exists so the last `k`
+ * bucket rounds to `999k` rather than printing `1000k`.
+ */
+function formatCenterXp(xp: number): string {
+  if (xp < 10_000) return xp.toLocaleString();
+  if (xp < 999_500) return `${Math.round(xp / 100) / 10}k`.replace('.', ',');
+  if (xp < 99_950_000) return `${Math.round(xp / 100_000) / 10}M`.replace('.', ',');
+  return `${Math.round(xp / 1_000_000)}M`;
+}
+
+/**
  * Six-axis XP radar — one axis per dimension, in DIMENSION_ORDER, normalized
  * against the largest dimension in the current window. It answers "where did
  * my effort concentrate", and reads shape-first: a balanced window fills the
@@ -118,16 +131,15 @@ export function XpHexChart({
 
   return (
     <View style={styles.wrap}>
-      {/* No centerValue, unlike Avaliação. The shared canvas offers a
-          centered readout and this screen deliberately declines it: the XP
-          scale is relative to the window's leader, so any dim under roughly
-          a third of that leader lands inside a centered number's footprint
-          and gets painted over. On a lopsided week — the normal case, and
-          the one the chart exists to show — that is several real dims
-          hidden behind the total. Everything else about the canvas (rings,
-          spokes, badges, fill ramp, dots) stays shared. */}
+      {/* Smaller than Avaliação's score for the obvious reason: a score is
+          three glyphs and an XP total can be six. 20 keeps a five-glyph
+          figure inside the inner ring; past that `formatCenterXp` abbreviates
+          rather than letting the string dictate the geometry. */}
       <HexRadar
         axes={axes}
+        centerValue={formatCenterXp(totalXp)}
+        centerUnit="XP"
+        centerFontSize={20}
         fillFrom={tokens.semantic.xp2}
         fillTo={tokens.semantic.xp}
         strokeColor={tokens.semantic.xp2}
@@ -138,13 +150,6 @@ export function XpHexChart({
       />
 
       <View style={styles.caption}>
-        {/* Full figure, no k/M abbreviation: below the hex the row is free
-            to grow, and font scaling stays on for the same reason. Both
-            were only ever constrained by the fixed-size center block. */}
-        <View style={styles.totalRow}>
-          <Text style={styles.totalXp}>{totalXp.toLocaleString()}</Text>
-          <Text style={styles.xpLabel}>XP</Text>
-        </View>
         {/* The delta wins whenever it exists, including the empty window
             that follows a non-empty one: "▼ -100%" says strictly more than
             "no XP this period". The caption is the fallback, and it stays
@@ -176,20 +181,6 @@ export function XpHexChart({
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: tokens.space[2] },
   caption: { alignItems: 'center', gap: 2 },
-  totalRow: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
-  totalXp: {
-    fontFamily: 'Manrope_800ExtraBold',
-    fontSize: 34,
-    color: tokens.text.hi,
-    lineHeight: 36,
-    letterSpacing: -0.5,
-  },
-  xpLabel: {
-    fontFamily: 'Manrope_700Bold',
-    fontSize: 11,
-    color: tokens.text.dim,
-    letterSpacing: 1.4,
-  },
   deltaText: {
     fontFamily: 'Manrope_700Bold',
     fontSize: 12,
