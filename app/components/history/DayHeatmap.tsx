@@ -188,8 +188,8 @@ export function DayHeatmap({
                 {/* allowFontScaling={false} on both figures: the cell is a
                     fixed 46dp box with `overflow: 'hidden'`, so an OS font
                     scale above ~1.1 would push the dot row out of frame
-                    entirely rather than reflow. Same reasoning as the
-                    labels in components/HexChart.tsx. */}
+                    entirely rather than reflow. Same reasoning as the center
+                    readout in components/HexRadar.tsx. */}
                 <Text
                   allowFontScaling={false}
                   style={[

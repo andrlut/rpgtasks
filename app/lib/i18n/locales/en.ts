@@ -55,6 +55,7 @@ const en = {
     decreaseQty: 'Decrease quantity',
     increaseQty: 'Increase quantity',
     xpByDimension: 'XP distribution by dimension',
+    scoreByDimension: 'Score by dimension',
     stopTracking: 'Stop tracking this reward',
     dayCellEmpty: 'no entries',
     dayCellXp: '{{xp}} XP',
@@ -661,6 +662,7 @@ const en = {
     questionnaireDaysAgo: 'Retake questionnaire · {{count}}d ago',
     mirrorCta: 'Compare self vs questionnaire',
     nudgeSuffix: 'is at {{score}}/5 — tap to see recommended tasks',
+    hexAxisA11y: '{{dim}}: {{score}} out of {{max}}',
   },
 
   autoconhecimento: {

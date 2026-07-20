@@ -119,8 +119,9 @@ export function AvaliacaoPanel({ subScores }: Props) {
     () => pickSubScores(subScores, 'self'),
     [subScores],
   );
-  // Decimal precision when available (rows written by avaliacao_v2+) so
-  // the hex's vertex labels render `Sleep 3.8` instead of `Sleep 3`.
+  // Decimal precision when available (rows written by avaliacao_v2+). The
+  // hex itself has no per-vertex numbers, so this shows up as a truer
+  // vertex radius plus the legend cards' score badge and sub bar widths.
   const questionnaireScores = useMemo(
     () => pickSubScoresDecimal(subScores, 'questionnaire'),
     [subScores],

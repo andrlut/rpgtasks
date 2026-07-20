@@ -24,9 +24,9 @@ interface Props {
  * crest sits the dim icon as a small "crown" badge. A halo glow in
  * the dim color surrounds everything.
  *
- * Same approach as HexChart: views and rotated rectangles only, so it
- * renders identically on iOS, Android, and web without depending on
- * react-native-svg (which has native crashes on 15.12.1).
+ * Built from views and rotated rectangles only, so it renders identically
+ * on iOS, Android, and web without depending on react-native-svg (which
+ * has native crashes on 15.12.1).
  *
  * OBSOLETE CONSTRAINT: the react-native-svg Android crashes no longer
  * apply — it ships in production here. Kept as-is because it works; don't

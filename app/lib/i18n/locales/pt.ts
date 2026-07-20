@@ -45,6 +45,7 @@ const pt: Translations = {
     decreaseQty: 'Diminuir quantidade',
     increaseQty: 'Aumentar quantidade',
     xpByDimension: 'Distribuição de XP por dimensão',
+    scoreByDimension: 'Pontuação por dimensão',
     stopTracking: 'Parar de acompanhar esta recompensa',
     dayCellEmpty: 'sem registro',
     dayCellXp: '{{xp}} XP',
@@ -656,6 +657,7 @@ const pt: Translations = {
     questionnaireDaysAgo: 'Refazer questionário · {{count}}d atrás',
     mirrorCta: 'Comparar self vs questionário',
     nudgeSuffix: 'está em {{score}}/5 — toque pra ver tasks recomendadas',
+    hexAxisA11y: '{{dim}}: {{score}} de {{max}}',
   },
 
   autoconhecimento: {

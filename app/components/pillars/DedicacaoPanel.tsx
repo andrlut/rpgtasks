@@ -241,8 +241,9 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     });
   };
 
-  // Wider than the donut it replaced: the hex reserves ~33px per side for
-  // the dimension badge ring, so an equivalent plot radius needs a bigger box.
+  // Wider than the donut it replaced: the hex reserves ~41px per side for
+  // the dimension badge ring and its tap slop (HexRadar's PADDING), so an
+  // equivalent plot radius needs a bigger box.
   const hexSize = Math.max(212, Math.min((screenWidth || 360) - 56, 272));
   const sparkWidth = Math.max(160, (screenWidth || 360) - 64);
 
