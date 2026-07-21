@@ -16,6 +16,11 @@ interface Props {
  * The 5-face mood selector shared by the check-in screen, the app-open prompt
  * and (read-only feel) anywhere a scale is shown. One tap = one selection;
  * the selected face fills with its level color, the rest dim.
+ *
+ * Selection is carried by four channels, none of them hue: the filled ring,
+ * the 1.08 scale bump, the dimming of the other four, and the label weight.
+ * The label itself stays on `tokens.text.hi` — the two bottom steps of the
+ * ramp are fills, and as text on the dark background they measure ~3.2:1.
  */
 export function MoodFaceRow({
   value,
@@ -52,7 +57,7 @@ export function MoodFaceRow({
                   width: dim,
                   height: dim,
                   borderRadius: dim / 2,
-                  borderColor: `${lvl.color}55`,
+                  borderColor: `${lvl.color}99`,
                 },
                 active && {
                   backgroundColor: lvl.color,
@@ -68,7 +73,7 @@ export function MoodFaceRow({
               <Text
                 style={[
                   styles.label,
-                  { color: active ? lvl.color : tokens.text.dim },
+                  { color: active ? tokens.text.hi : tokens.text.dim },
                   active && styles.labelActive,
                 ]}
                 numberOfLines={1}

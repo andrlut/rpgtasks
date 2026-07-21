@@ -26,6 +26,7 @@ import {
 import type { SubId } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
+import { moodLevel } from '@/lib/mood';
 import { tokens } from '@/theme';
 import { DIMENSION_ORDER, SUBS_BY_DIM } from '@/theme/dimensions';
 
@@ -33,11 +34,24 @@ type Lens = 'feeling' | 'activity';
 type Band = 'great' | 'ok' | 'low';
 type Feeling = { type: 'band'; band: Band } | { type: 'tag'; slug: string };
 
+/**
+ * The three bands are windows over the 5-point mood ladder (great = 4–5,
+ * ok = 3, low = 1–2), so they take their swatch and face from `MOOD_LEVELS`
+ * rather than restating hexes. They used to hardcode the old red→green ramp,
+ * which meant the chips silently kept the pre-CVD colors after `lib/mood.ts`
+ * moved to the blue→gold ramp. The representative level per band is the one a
+ * user most often lands on: 5, 3 and 2.
+ */
 const BANDS: { band: Band; color: string; emoji: string; labelKey: string }[] = [
-  { band: 'great', color: '#3DD68C', emoji: '😄', labelKey: 'insights.bandGreat' },
-  { band: 'ok', color: '#FFC83D', emoji: '😐', labelKey: 'insights.bandOk' },
-  { band: 'low', color: '#FF7A6B', emoji: '🙁', labelKey: 'insights.bandLow' },
+  { band: 'great', ...swatch(5), labelKey: 'insights.bandGreat' },
+  { band: 'ok', ...swatch(3), labelKey: 'insights.bandOk' },
+  { band: 'low', ...swatch(2), labelKey: 'insights.bandLow' },
 ];
+
+function swatch(v: number): { color: string; emoji: string } {
+  const l = moodLevel(v);
+  return { color: l.color, emoji: l.emoji };
+}
 
 function matchFor(feeling: Feeling): (r: DayRecord) => boolean {
   if (feeling.type === 'tag') return (r) => r.tags.includes(feeling.slug);

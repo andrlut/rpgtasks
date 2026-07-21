@@ -49,6 +49,7 @@ const pt: Translations = {
     stopTracking: 'Parar de acompanhar esta recompensa',
     dayCellEmpty: 'sem registro',
     dayCellXp: '{{xp}} XP',
+    dayCellNote: 'com anotação',
   },
 
   taskForm: {

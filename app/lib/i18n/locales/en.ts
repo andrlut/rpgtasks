@@ -59,6 +59,7 @@ const en = {
     stopTracking: 'Stop tracking this reward',
     dayCellEmpty: 'no entries',
     dayCellXp: '{{xp}} XP',
+    dayCellNote: 'has a note',
   },
 
   taskForm: {

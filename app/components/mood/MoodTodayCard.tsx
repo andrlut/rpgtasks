@@ -31,10 +31,13 @@ export function MoodTodayCard() {
         hitSlop={4}
         accessibilityRole="button"
       >
+      {/* Mood color as a filled disc, not as ink — see MoodDayDetail. */}
       <View
         style={[
           styles.faceWrap,
-          { borderColor: level ? `${level.color}66` : tokens.border.strong },
+          level
+            ? { backgroundColor: level.color, borderColor: level.color }
+            : { borderColor: tokens.border.strong },
           !level && styles.faceWrapEmpty,
         ]}
       >
@@ -46,7 +49,7 @@ export function MoodTodayCard() {
         {logged && level ? (
           <Text style={styles.value} numberOfLines={1}>
             {t('mood.todayCard.loggedPrefix')}{' '}
-            <Text style={[styles.valueStrong, { color: level.color }]}>
+            <Text style={styles.valueStrong}>
               {t(`mood.levels.${level.key}`).toLowerCase()}
             </Text>
           </Text>
@@ -131,6 +134,7 @@ const styles = StyleSheet.create({
   },
   valueStrong: {
     fontFamily: 'Manrope_800ExtraBold',
+    color: tokens.text.hi,
   },
   historyLink: {
     flexDirection: 'row',

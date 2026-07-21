@@ -59,15 +59,19 @@ export function MoodDayDetail({ dateKey }: Props) {
 
       {entry && level ? (
         <>
+          {/* The level color is rendered as *area* (the filled face ring),
+              not as ink: the bottom two steps of the ramp are dark blues that
+              measure ~3.2:1 as text on this surface. Name stays on text.hi. */}
           <View style={styles.moodRow}>
             <View
-              style={[styles.faceWrap, { borderColor: `${level.color}66` }]}
+              style={[
+                styles.faceWrap,
+                { backgroundColor: level.color, borderColor: level.color },
+              ]}
             >
               <Text style={styles.emoji}>{level.emoji}</Text>
             </View>
-            <Text style={[styles.levelLabel, { color: level.color }]}>
-              {t(`mood.levels.${level.key}`)}
-            </Text>
+            <Text style={styles.levelLabel}>{t(`mood.levels.${level.key}`)}</Text>
           </View>
 
           {entry.tags && entry.tags.length > 0 && (
@@ -141,6 +145,7 @@ const styles = StyleSheet.create({
   levelLabel: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 18,
+    color: tokens.text.hi,
   },
   tagsWrap: {
     flexDirection: 'row',
