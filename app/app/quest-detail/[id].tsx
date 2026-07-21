@@ -31,6 +31,8 @@ import { useActiveTasks } from '@/lib/api/tasks';
 import { freeLimitEntity } from '@/lib/premium';
 import { useT } from '@/lib/i18n';
 import { useLocalizedPick } from '@/lib/i18n/catalog';
+import { getSubMeta, useMetaLookup } from '@/lib/i18n/meta';
+import { questProgressRatio } from '@/lib/quests/progress';
 import { TourModule } from '@/components/tour/TourModule';
 import { buildM3Steps } from '@/lib/tour/m3Steps';
 import { useIsCurrentTourModule, useTourStore } from '@/lib/tour/store';
@@ -56,8 +58,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export default function QuestDetailScreen() {
   const router = useRouter();
-  const { t } = useT();
+  const { t, locale } = useT();
   const { pickCascade, pickCascadeNullable } = useLocalizedPick();
+  const meta = useMetaLookup();
   const params = useLocalSearchParams<{ id: string; kind?: string }>();
   const id = params.id;
   const inferredKind: DetailKind =
@@ -153,13 +156,17 @@ export default function QuestDetailScreen() {
   );
   const currentChallengeValue = quest?.currentChallengeValue ?? 0;
 
-  const progress = quest
-    ? isChallenge
-      ? challengeTarget > 0
-        ? Math.min(1, currentChallengeValue / challengeTarget)
-        : 0
-      : aggregateProgress(quest.requirements)
-    : 0;
+  // `accumulate_sub_stars` wins over `quest_type` — the 12 seeded sub-star
+  // templates carry quest_type='challenge' with a null challenge_target_value,
+  // so branching on quest_type first pinned them at 0/0 forever and opened the
+  // manual log input on a quest that fills itself.
+  const subStarsReq = quest?.requirements.find(
+    (r) => r.requirement.kind === 'accumulate_sub_stars',
+  );
+  const isSubStars = !!subStarsReq;
+  const isManualChallenge = isChallenge && !isSubStars && challengeTarget > 0;
+
+  const progress = quest ? questProgressRatio(quest) : 0;
   const totalReqs = quest?.requirements.length ?? 0;
   const metReqs = quest?.requirements.filter((r) => r.isMet).length ?? 0;
   const daysLeft = quest ? daysRemaining(quest.quest.deadline) : null;
@@ -176,7 +183,13 @@ export default function QuestDetailScreen() {
           : undefined;
         return {
           key: rr.requirement.id,
-          label: requirementLabel(rr.requirement, taskTitle),
+          label: requirementLabel(
+            rr.requirement,
+            taskTitle,
+            rr.requirement.sub_id
+              ? getSubMeta(rr.requirement.sub_id).label
+              : undefined,
+          ),
           isMet: rr.isMet,
           skillId: rr.requirement.skill_id ?? null,
           kind: rr.requirement.kind,
@@ -186,14 +199,23 @@ export default function QuestDetailScreen() {
     if (template) {
       return template.requirements.map((req, i) => ({
         key: `tpl-${i}`,
-        label: templateRequirementLabel(req),
+        label: templateRequirementLabel(
+          req,
+          req.sub_id ? getSubMeta(req.sub_id).label : undefined,
+        ),
         isMet: false,
         skillId: req.skill_id ?? null,
         kind: req.kind,
       }));
     }
     return [];
-  }, [quest, template, tasks.data]);
+    // `locale` looks unused to the linter but getSubMeta reads the active
+    // locale at call time — drop it and the sub labels keep the old language
+    // after a locale switch. The hook form (useMetaLookup) is not an option
+    // here: it rebuilds its object every render, so depending on it would
+    // recompute this memo on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quest, template, tasks.data, locale]);
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleStart = async () => {
@@ -362,9 +384,13 @@ export default function QuestDetailScreen() {
               <View style={styles.progHeader}>
                 <Text style={styles.progTitle}>{t('quests.detail.yourProgress')}</Text>
                 <Text style={styles.progNum}>
-                  {isChallenge
-                    ? `${currentChallengeValue} / ${challengeTarget}${challengeUnit ? ` ${challengeUnit}` : ''}`
-                    : `${metReqs} / ${totalReqs}`}
+                  {isSubStars
+                    ? `${subStarsReq.currentCount} / ${Number(
+                        subStarsReq.requirement.target_count ?? 0,
+                      )} ⭐ · ${meta.sub(subStarsReq.requirement.sub_id!).label}`
+                    : isManualChallenge
+                      ? `${currentChallengeValue} / ${challengeTarget}${challengeUnit ? ` ${challengeUnit}` : ''}`
+                      : `${metReqs} / ${totalReqs}`}
                 </Text>
               </View>
               <View style={styles.progTrack}>
@@ -396,7 +422,7 @@ export default function QuestDetailScreen() {
         </View>
 
         {/* Challenge log input — only for active challenge quests */}
-        {quest && isChallenge && !quest.isComplete && (
+        {quest && isManualChallenge && !quest.isComplete && (
           <View style={styles.section}>
             <Text style={styles.secTitle}>
               {challengeUnit
@@ -594,20 +620,6 @@ export default function QuestDetailScreen() {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function aggregateProgress(reqs: QuestWithProgress['requirements']): number {
-  if (reqs.length === 0) return 0;
-  let sum = 0;
-  for (const r of reqs) {
-    const target =
-      r.requirement.kind === 'reach_skill_value'
-        ? Number(r.requirement.min_value ?? 0)
-        : Number(r.requirement.target_count ?? 0);
-    if (target <= 0) continue;
-    sum += Math.min(1, r.currentCount / target);
-  }
-  return sum / reqs.length;
-}
-
 function daysRemaining(deadlineIso: string): number | null {
   if (!deadlineIso) return null;
   return Math.ceil((new Date(deadlineIso).getTime() - Date.now()) / 86400000);
@@ -627,10 +639,12 @@ function requirementLabel(
     task_id: string | null;
     dimension_id: string | null;
     skill_id: string | null;
+    sub_id: string | null;
     target_count: number | null;
     min_value: number | null;
   },
   taskTitle: string | undefined,
+  subLabel: string | undefined,
 ): string {
   if (req.kind === 'complete_task_n_times') {
     return `${taskTitle ?? req.task_id ?? '?'} × ${req.target_count ?? 0}`;
@@ -641,15 +655,24 @@ function requirementLabel(
   if (req.kind === 'reach_skill_value') {
     return `${req.skill_id} ≥ ${req.min_value ?? 0}`;
   }
+  if (req.kind === 'accumulate_sub_stars') {
+    return `${req.target_count ?? 0}⭐ · ${subLabel ?? req.sub_id ?? '?'}`;
+  }
   return req.kind;
 }
 
-function templateRequirementLabel(req: QuestTemplateRequirement): string {
+function templateRequirementLabel(
+  req: QuestTemplateRequirement,
+  subLabel?: string,
+): string {
   if (req.kind === 'complete_task_n_times') {
     return `${req.task_title ?? '?'} × ${req.target_count ?? 0}`;
   }
   if (req.kind === 'complete_any_in_dim') {
     return `${req.target_count ?? 0}× any in ${req.dimension_id}`;
+  }
+  if (req.kind === 'accumulate_sub_stars') {
+    return `${req.target_count ?? 0}⭐ · ${subLabel ?? req.sub_id ?? '?'}`;
   }
   if (req.kind === 'reach_skill_value') {
     return `${req.skill_id} ≥ ${req.min_value ?? req.target_count ?? 0}`;

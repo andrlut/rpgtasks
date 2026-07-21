@@ -307,10 +307,17 @@ export default function HomeScreen() {
       character.refetch(),
       buckets.refetch(),
       allActiveTasks.refetch(),
+      // QuestChipsStrip renders right below and shares this query key —
+      // without this, pulling to refresh visibly updated the task buckets
+      // while the quest chips above them kept a stale count.
+      quests.refetch(),
     ]);
   };
   const isRefreshing =
-    character.isRefetching || buckets.isRefetching || allActiveTasks.isRefetching;
+    character.isRefetching ||
+    buckets.isRefetching ||
+    allActiveTasks.isRefetching ||
+    quests.isRefetching;
 
   const data = buckets.data;
 
