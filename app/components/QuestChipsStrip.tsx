@@ -9,6 +9,7 @@ import { useT } from '@/lib/i18n';
 import { emitTourEvent } from '@/lib/tour/eventBus';
 import { M3_EVENTS } from '@/lib/tour/m3Steps';
 import type { QuestWithProgress } from '@/lib/db/types';
+import { questProgressRatio } from '@/lib/quests/progress';
 import { tokens } from '@/theme';
 
 /**
@@ -118,8 +119,9 @@ function QuestChip({
   variant: 'missao' | 'meta';
   onPress: () => void;
 }) {
-  const done = quest.requirements.filter((r) => r.isMet).length;
-  const total = quest.requirements.length;
+  // Percent of the real progress bar — NOT met-requirements over total, which
+  // reported a 40-of-100 quest as `0/1` for 13 days and then jumped to `1/1`.
+  const pct = Math.round(questProgressRatio(quest) * 100);
 
   const isMissao = variant === 'missao';
   const gradient = isMissao
@@ -144,11 +146,9 @@ function QuestChip({
         <Text style={styles.chipName} numberOfLines={1}>
           {quest.quest.title}
         </Text>
-        {total > 0 && (
-          <Text style={[styles.chipProgress, { color: accentColor }]}>
-            {done}/{total}
-          </Text>
-        )}
+        <Text style={[styles.chipProgress, { color: accentColor }]}>
+          {pct}%
+        </Text>
       </LinearGradient>
     </Pressable>
   );

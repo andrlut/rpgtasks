@@ -10,6 +10,7 @@ import type {
   QuestTemplateRequirement,
   QuestWithProgress,
 } from '@/lib/db/types';
+import { questProgressRatio } from '@/lib/quests/progress';
 import { tokens } from '@/theme';
 import { getQuestCategoryMeta } from '@/theme/quests';
 
@@ -193,19 +194,7 @@ function ActiveCard({
     (r) => r.requirement.kind === 'accumulate_sub_stars',
   );
   const isSubStars = !!subStarsReq;
-  const progress = isSubStars
-    ? Number(subStarsReq.requirement.target_count ?? 0) > 0
-      ? Math.min(
-          1,
-          subStarsReq.currentCount /
-            Number(subStarsReq.requirement.target_count ?? 1),
-        )
-      : 0
-    : isChallenge
-    ? challengeTarget > 0
-      ? Math.min(1, data.currentChallengeValue / challengeTarget)
-      : 0
-    : aggregateProgress(data.requirements);
+  const progress = questProgressRatio(data);
   const days = daysRemaining(data.quest.deadline);
   const totalReqs = data.requirements.length;
   const metReqs = data.requirements.filter((r) => r.isMet).length;
@@ -347,20 +336,6 @@ function chipLabelsFromRequirements(reqs: QuestTemplateRequirement[]): string[] 
       }
     })
     .filter((v): v is string => !!v);
-}
-
-function aggregateProgress(reqs: QuestWithProgress['requirements']): number {
-  if (reqs.length === 0) return 0;
-  let sum = 0;
-  for (const r of reqs) {
-    const target =
-      r.requirement.kind === 'reach_skill_value'
-        ? Number(r.requirement.min_value ?? 0)
-        : Number(r.requirement.target_count ?? 0);
-    if (target <= 0) continue;
-    sum += Math.min(1, r.currentCount / target);
-  }
-  return sum / reqs.length;
 }
 
 function daysRemaining(deadlineIso: string): number | null {
