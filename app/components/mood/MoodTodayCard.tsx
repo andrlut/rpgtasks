@@ -31,13 +31,13 @@ export function MoodTodayCard() {
         hitSlop={4}
         accessibilityRole="button"
       >
-      {/* Mood color as a filled disc, not as ink — see MoodDayDetail. */}
+      {/* Mood color as a ring, not a filled disc and not as ink — filling it
+          camouflages the (yellow) emoji face on the top three steps of the
+          ramp. See MoodDayDetail for the measured numbers. */}
       <View
         style={[
           styles.faceWrap,
-          level
-            ? { backgroundColor: level.color, borderColor: level.color }
-            : { borderColor: tokens.border.strong },
+          { borderColor: level ? level.color : tokens.border.strong },
           !level && styles.faceWrapEmpty,
         ]}
       >
@@ -103,7 +103,8 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: 1.5,
+    // Matches MoodDayDetail — the ring is the only level-colored area here.
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.03)',

@@ -392,7 +392,7 @@ export default function HistoryScreen() {
                 const level = mood ? moodLevel(mood.mood) : null;
                 const cell: DayCellData = {
                   bg: level?.color,
-                  onColor: !!level,
+                  ink: level?.ink,
                   xp: entry?.totalXp ?? 0,
                   dims: dimensionsInDay(entry),
                   mark: !!mood && (!!mood.note || (mood.tags?.length ?? 0) > 0),

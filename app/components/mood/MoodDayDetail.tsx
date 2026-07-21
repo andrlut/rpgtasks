@@ -59,16 +59,18 @@ export function MoodDayDetail({ dateKey }: Props) {
 
       {entry && level ? (
         <>
-          {/* The level color is rendered as *area* (the filled face ring),
-              not as ink: the bottom two steps of the ramp are dark blues that
-              measure ~3.2:1 as text on this surface. Name stays on text.hi. */}
+          {/* The level color is rendered as *area* — but as the ring, not a
+              solid disc. Emoji faces are themselves yellow (~#FCC21B–#FFD983
+              across Noto/Apple), so filling the disc camouflages them on the
+              top three steps: 1.06 on #FAE563, 1.09 on #F2B86C, 1.37 on
+              #9CB2AD. The silhouette disappears and only the eye/mouth strokes
+              survive, reading as floating marks. That matters here because the
+              emoji is the only level-specific mark in this card — the name
+              beside it is neutral text.hi, since the bottom two steps of the
+              ramp measure ~3.2:1 as text on this surface. So: color on the
+              2dp ring, emoji on the dark translucent disc where it reads. */}
           <View style={styles.moodRow}>
-            <View
-              style={[
-                styles.faceWrap,
-                { backgroundColor: level.color, borderColor: level.color },
-              ]}
-            >
+            <View style={[styles.faceWrap, { borderColor: level.color }]}>
               <Text style={styles.emoji}>{level.emoji}</Text>
             </View>
             <Text style={styles.levelLabel}>{t(`mood.levels.${level.key}`)}</Text>
@@ -136,7 +138,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: 1.5,
+    // 2, not 1.5: the ring is now the only place the level color appears in
+    // this card, so it carries the hue channel on its own.
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.03)',
