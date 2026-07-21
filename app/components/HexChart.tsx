@@ -95,9 +95,6 @@ export function HexChart({
           secondaryColor={secondaryColor}
           centerValue={overall.toFixed(1)}
           centerFontSize={28}
-          fillFrom={tokens.brand.violet2}
-          fillTo={tokens.brand.violet}
-          strokeColor={tokens.brand.violet2}
           size={size}
           onAxisPress={onDimPress}
           idSuffix="avaliacao"

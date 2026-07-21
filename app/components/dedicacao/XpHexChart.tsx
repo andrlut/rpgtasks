@@ -131,18 +131,16 @@ export function XpHexChart({
 
   return (
     <View style={styles.wrap}>
-      {/* Smaller than Avaliação's score for the obvious reason: a score is
-          three glyphs and an XP total can be six. 20 keeps a five-glyph
-          figure inside the inner ring; past that `formatCenterXp` abbreviates
-          rather than letting the string dictate the geometry. */}
+      {/* The one number that still differs from Avaliação, and only because
+          the string does: a score is three glyphs, an XP total can be six.
+          24 keeps a five-glyph figure inside the inner ring at the shared
+          canvas size; past five, `formatCenterXp` abbreviates rather than
+          letting the string dictate the geometry. */}
       <HexRadar
         axes={axes}
         centerValue={formatCenterXp(totalXp)}
         centerUnit="XP"
-        centerFontSize={20}
-        fillFrom={tokens.semantic.xp2}
-        fillTo={tokens.semantic.xp}
-        strokeColor={tokens.semantic.xp2}
+        centerFontSize={24}
         size={size}
         onAxisPress={onAxisPress}
         idSuffix={idSuffix}

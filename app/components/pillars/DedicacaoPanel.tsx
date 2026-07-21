@@ -241,10 +241,13 @@ export function DedicacaoPanel({ dimensions, scrollViewRef }: Props) {
     });
   };
 
-  // Wider than the donut it replaced: the hex reserves ~41px per side for
-  // the dimension badge ring and its tap slop (HexRadar's PADDING), so an
-  // equivalent plot radius needs a bigger box.
-  const hexSize = Math.max(212, Math.min((screenWidth || 360) - 56, 272));
+  // Byte-identical to AvaliacaoPanel's `chartSize`. The hex reserves ~41px
+  // per side for the badge ring and its tap slop (HexRadar's PADDING), so a
+  // narrower box buys a much smaller plot than it looks like it should —
+  // which is exactly how this one ended up reading as the lesser chart. Both
+  // panels are direct children of the same tab container with no padding of
+  // their own, so the same formula is correct in both.
+  const hexSize = Math.max(240, Math.min((screenWidth || 360) - 16, 360));
   const sparkWidth = Math.max(160, (screenWidth || 360) - 64);
 
   // Order cards by window XP descending — leaders surface first. Ties

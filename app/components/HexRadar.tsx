@@ -41,11 +41,6 @@ interface Props {
   /** Small caps under the value (e.g. "XP"). Omit for a bare number. */
   centerUnit?: string;
   centerFontSize?: number;
-  /** Gradient endpoints for the polygon fill — pass solid colors; the
-   *  opacity ramp is fixed here so both charts fade identically. */
-  fillFrom: string;
-  fillTo: string;
-  strokeColor: string;
   size?: number;
   onAxisPress?: (dim: DimensionId) => void;
   /** Stable id for the gradient def — required because SVG defs share a
@@ -73,6 +68,22 @@ const PADDING = BADGE / 2 + LABEL_GAP + HIT_SLOP;
  *  steps keep the two charts readable as the same instrument even though
  *  one axis is absolute (0..10) and the other relative to its window. */
 const RING_STEPS = [0.34, 0.67, 1];
+
+/**
+ * The plotted region is deliberately hue-free — the same frosted translucency
+ * the floating nav bar uses, rather than a per-screen identity color.
+ *
+ * Two reasons it is a constant and not a prop. Identity is already carried by
+ * the vertex dots and the icon badges, so tinting the area repeats it in a
+ * third place; and hue is the one channel this app's primary user cannot
+ * read, which makes it the worst available carrier for anything. Leaving it
+ * as a prop was what let the two charts drift apart in the first place — the
+ * only thing a caller should be able to vary is the data.
+ */
+const FILL = '#FFFFFF';
+const FILL_TOP_ALPHA = 0.15;
+const FILL_BOTTOM_ALPHA = 0.04;
+const STROKE = tokens.text.mid;
 
 function angleAt(j: number) {
   return (j / 6) * Math.PI * 2 - Math.PI / 2;
@@ -117,9 +128,6 @@ export function HexRadar({
   centerValue,
   centerUnit,
   centerFontSize = 28,
-  fillFrom,
-  fillTo,
-  strokeColor,
   size = 260,
   onAxisPress,
   idSuffix,
@@ -203,8 +211,8 @@ export function HexRadar({
       >
         <Defs>
           <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={fillFrom} stopOpacity={0.34} />
-            <Stop offset="1" stopColor={fillTo} stopOpacity={0.08} />
+            <Stop offset="0" stopColor={FILL} stopOpacity={FILL_TOP_ALPHA} />
+            <Stop offset="1" stopColor={FILL} stopOpacity={FILL_BOTTOM_ALPHA} />
           </LinearGradient>
         </Defs>
 
@@ -237,7 +245,7 @@ export function HexRadar({
           <Polygon
             points={shapePoints}
             fill={`url(#${gradId})`}
-            stroke={strokeColor}
+            stroke={STROKE}
             strokeWidth={1.75}
             strokeLinejoin="round"
           />
