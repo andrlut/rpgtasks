@@ -36,7 +36,6 @@ import {
   splitMoodTags,
   type MoodValue,
 } from '@/lib/mood';
-import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { tokens } from '@/theme';
 
 /** Emotion chips shown before "ver todas" expands the full vocabulary. */
@@ -99,7 +98,6 @@ export default function MoodCheckinScreen() {
   const day = useMoodForDay(targetDate);
   const catalog = useMoodTags();
   const logMood = useLogMood();
-  const keyboardHeight = useKeyboardHeight();
   const scrollRef = useRef<ScrollView>(null);
 
   const savedMood = (day.data?.mood ?? null) as MoodValue | null;
@@ -199,9 +197,9 @@ export default function MoodCheckinScreen() {
     router.back();
   };
 
-  // The note sits at the bottom of the scroll; once the keyboard padding is
-  // in, walk the caret above the keyboard (the old absolute footer used to
-  // cover exactly this spot — see the keyboard-fix note in styles.footer).
+  // The note sits at the bottom of the scroll; once the viewport has shrunk
+  // for the keyboard, walk the caret into view (the old absolute footer used
+  // to cover exactly this spot — see the keyboard-fix note in styles.footer).
   const handleNoteFocus = () => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
   };
@@ -234,14 +232,14 @@ export default function MoodCheckinScreen() {
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
+          {/* No manual keyboard padding here: the viewport ALREADY shrinks by
+              the keyboard (Android resizes the window under edge-to-edge; iOS
+              gets the KAV padding above), so adding keyboardHeight again
+              double-counts it and the focus scrollToEnd would overshoot the
+              note clean off the top of the viewport. */}
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={[
-              styles.content,
-              keyboardHeight > 0 && {
-                paddingBottom: keyboardHeight + tokens.space[8],
-              },
-            ]}
+            contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"

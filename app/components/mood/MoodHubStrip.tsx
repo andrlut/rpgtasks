@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MoodFace } from '@/components/mood/MoodFace';
 import { MoodFaceRow } from '@/components/mood/MoodFaceRow';
@@ -24,8 +24,11 @@ export function MoodHubStrip() {
   const today = useTodayMood();
   const logMood = useLogMood();
 
-  // While loading, render nothing rather than a flash of the wrong state.
-  if (today.isLoading) return null;
+  // Render only on a SUCCESSFUL fetch: while loading there's nothing to show,
+  // and in the error state "no data" does NOT mean "no entry" — showing the
+  // quick-log row there would let one tap upsert {note: null, tags: null}
+  // over an existing entry and silently wipe the day's journal.
+  if (!today.isSuccess) return null;
 
   const entry = today.data ?? null;
   const openCheckin = () => router.push('/mood-checkin');
@@ -33,9 +36,23 @@ export function MoodHubStrip() {
   if (!entry) {
     const quickLog = (v: MoodValue) => {
       if (logMood.isPending) return;
-      logMood.mutate({ mood: v });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
-        () => {},
+      logMood.mutate(
+        { mood: v },
+        {
+          onSuccess: () => {
+            // Haptic only once the RPC actually landed — a premature success
+            // signal on a failed save would gaslight the user.
+            Haptics.notificationAsync(
+              Haptics.NotificationFeedbackType.Success,
+            ).catch(() => {});
+          },
+          onError: (err) => {
+            Alert.alert(
+              t('mood.saveError'),
+              (err as { message?: string }).message ?? '',
+            );
+          },
+        },
       );
     };
     return (
@@ -68,13 +85,20 @@ export function MoodHubStrip() {
   const level = moodLevel(entry.mood);
   const hasDetails =
     (entry.tags?.length ?? 0) > 0 || (entry.note?.trim().length ?? 0) > 0;
+  // An explicit label on an accessible container SUPPRESSES the flattened
+  // child text — a bare "Editar" would hide the logged mood from TalkBack,
+  // so the label composes the full state the sighted user sees.
+  const loggedA11yLabel = [
+    `${t('mood.todayCard.eyebrow')}: ${t(`mood.levels.${level.key}`)}`,
+    hasDetails ? t('mood.day.edit') : t('mood.hub.addDetails'),
+  ].join('. ');
 
   return (
     <Pressable
       onPress={openCheckin}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
-      accessibilityLabel={t('mood.day.edit')}
+      accessibilityLabel={loggedA11yLabel}
     >
       <View style={styles.loggedRow}>
         <MoodFace value={level.value} size={38} active />

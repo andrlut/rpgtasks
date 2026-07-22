@@ -93,7 +93,12 @@ const styles = StyleSheet.create({
   item: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    // 48dp Android touch-target floor. Only bites on size "sm" (38px faces,
+    // no labels — the Today-Hub strip); lg/md rows are already taller. RN
+    // hitSlop can't rescue a short row: it never extends past parent bounds.
+    minHeight: 48,
   },
   bumped: {
     transform: [{ scale: 1.08 }],

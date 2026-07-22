@@ -170,7 +170,13 @@ export function useLogMood() {
       if (error) throw error;
       return data as MoodLog;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Seed the logged day's caches with the RPC's returned row BEFORE
+      // invalidating: the Home strip and the prompt gate on these, and
+      // without seeding they'd flash back to "unlogged" (and accept a
+      // second tap) for one refetch round-trip after every save.
+      qc.setQueryData(moodKeys.day(data.logged_for), data);
+      qc.setQueryData(moodKeys.today(data.logged_for), data);
       qc.invalidateQueries({ queryKey: moodKeys.all });
     },
   });

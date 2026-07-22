@@ -1820,7 +1820,7 @@ const pt: Translations = {
     emotionPrompt: 'Que sentimentos marcaram o dia?',
     contextPrompt: 'O que mais influenciou seu dia?',
     tagsOptional: 'opcional',
-    showAllTags: 'Ver todas ({{count}})',
+    showAllTags: 'Ver todos ({{count}})',
     showFewerTags: 'Ver menos',
     hub: {
       addDetails: 'Adicionar detalhes',
