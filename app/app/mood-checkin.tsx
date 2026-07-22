@@ -4,8 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -37,6 +35,7 @@ import {
   splitMoodTags,
   type MoodValue,
 } from '@/lib/mood';
+import { useKeyboardHeight } from '@/lib/use-keyboard-height';
 import { tokens } from '@/theme';
 
 /** Emotion chips shown before "ver todas" expands the full vocabulary. */
@@ -100,6 +99,7 @@ export default function MoodCheckinScreen() {
   const catalog = useMoodTags();
   const logMood = useLogMood();
   const scrollRef = useRef<ScrollView>(null);
+  const keyboardHeight = useKeyboardHeight();
 
   const savedMood = (day.data?.mood ?? null) as MoodValue | null;
   const savedNote = day.data?.note ?? '';
@@ -201,12 +201,20 @@ export default function MoodCheckinScreen() {
     router.back();
   };
 
-  // The note sits at the bottom of the scroll; once the viewport has shrunk
-  // for the keyboard, walk the caret into view (the old absolute footer used
-  // to cover exactly this spot — see the keyboard-fix note in styles.footer).
-  const handleNoteFocus = () => {
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
-  };
+  // The note sits at the bottom of the scroll. When the keyboard opens the
+  // container above reserves its height, shrinking the scroll viewport; scroll
+  // to the end AFTER that reflow so the note lands just above the keyboard.
+  // Keying on keyboardHeight (not onFocus) fires post-reflow, so the target is
+  // computed against the already-shortened viewport. The note is the only
+  // TextInput here, so a keyboard opening always means the note is focused.
+  useEffect(() => {
+    if (keyboardHeight <= 0) return;
+    const id = setTimeout(
+      () => scrollRef.current?.scrollToEnd({ animated: true }),
+      60,
+    );
+    return () => clearTimeout(id);
+  }, [keyboardHeight]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -232,17 +240,18 @@ export default function MoodCheckinScreen() {
           </Pressable>
         </View>
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          {/* No manual keyboard padding here: the viewport ALREADY shrinks by
-              the keyboard (Android resizes the window under edge-to-edge; iOS
-              gets the KAV padding above), so adding keyboardHeight again
-              double-counts it and the focus scrollToEnd would overshoot the
-              note clean off the top of the viewport. */}
+        {/* Shrink the scroll+footer area by the real keyboard height. Under
+            edge-to-edge (SDK 54) Android does NOT auto-resize the window for
+            the keyboard, and a KeyboardAvoidingView with behavior=undefined
+            does nothing there — so without this the note input and footer sit
+            behind the keyboard. Padding the flex container (not the scroll
+            content) reserves the space, so scrollToEnd on note focus lands the
+            note just above the keyboard. `useKeyboardHeight` fires on both
+            platforms, so this replaces the KAV on iOS too. */}
+        <View style={[styles.flex, { paddingBottom: keyboardHeight }]}>
           <ScrollView
             ref={scrollRef}
+            style={styles.flex}
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -339,7 +348,6 @@ export default function MoodCheckinScreen() {
                   <TextInput
                     value={note}
                     onChangeText={setNoteDraft}
-                    onFocus={handleNoteFocus}
                     placeholder={t('mood.notePlaceholder')}
                     placeholderTextColor={tokens.text.faint}
                     style={styles.noteInput}
@@ -357,10 +365,10 @@ export default function MoodCheckinScreen() {
             </View>
           </ScrollView>
 
-          {/* In normal flow (NOT absolute): with the window resizing for the
-              keyboard on Android (and KAV padding on iOS) the button rides
-              above the keyboard instead of covering the note input — the old
-              absolute footer was exactly what hid the caret while typing. */}
+          {/* In normal flow (NOT absolute): the container above reserves the
+              keyboard height, so this button rides just above the keyboard
+              instead of covering the note input — the old absolute footer was
+              exactly what hid the caret while typing. */}
           <View
             style={[
               styles.footer,
@@ -400,7 +408,7 @@ export default function MoodCheckinScreen() {
               </Text>
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </ScreenBackground>
     </SafeAreaView>
   );
