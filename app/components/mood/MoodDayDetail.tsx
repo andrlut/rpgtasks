@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MoodFace } from '@/components/mood/MoodFace';
 import { useMoodForDay, useMoodTags } from '@/lib/api/mood';
 import { useT } from '@/lib/i18n';
 import { moodLevel } from '@/lib/mood';
@@ -34,6 +35,19 @@ export function MoodDayDetail({ dateKey }: Props) {
     return tg.emoji ? `${tg.emoji} ${label}` : label;
   };
 
+  // Emotion ("como se sentiu") and context ("o que influenciou") read as two
+  // different statements — render them as two pill rows with distinct tints.
+  // Unknown slugs (catalog still loading / tag later deactivated) fall into
+  // the emotion row so nothing silently disappears.
+  const entryTags = entry?.tags ?? [];
+  const contextSlugs = new Set(
+    (catalog.data ?? [])
+      .filter((x) => x.tag_group === 'context')
+      .map((x) => x.slug),
+  );
+  const emotionTags = entryTags.filter((s) => !contextSlugs.has(s));
+  const contextTags = entryTags.filter((s) => contextSlugs.has(s));
+
   const open = () =>
     router.push({ pathname: '/mood-checkin', params: { date: dateKey } });
 
@@ -59,27 +73,29 @@ export function MoodDayDetail({ dateKey }: Props) {
 
       {entry && level ? (
         <>
-          {/* The level color is rendered as *area* — but as the ring, not a
-              solid disc. Emoji faces are themselves yellow (~#FCC21B–#FFD983
-              across Noto/Apple), so filling the disc camouflages them on the
-              top three steps: 1.06 on #FAE563, 1.09 on #F2B86C, 1.37 on
-              #9CB2AD. The silhouette disappears and only the eye/mouth strokes
-              survive, reading as floating marks. That matters here because the
-              emoji is the only level-specific mark in this card — the name
-              beside it is neutral text.hi, since the bottom two steps of the
-              ramp measure ~3.2:1 as text on this surface. So: color on the
-              2dp ring, emoji on the dark translucent disc where it reads. */}
+          {/* Drawn face (MoodFace): features in the level's measured ink on
+              the level-colored disc — the emoji-camouflage constraint that
+              forced the ring-only treatment is gone. The label beside it
+              stays neutral text.hi (bottom ramp steps are ~3.2:1 as text). */}
           <View style={styles.moodRow}>
-            <View style={[styles.faceWrap, { borderColor: level.color }]}>
-              <Text style={styles.emoji}>{level.emoji}</Text>
-            </View>
+            <MoodFace value={level.value} size={44} active />
             <Text style={styles.levelLabel}>{t(`mood.levels.${level.key}`)}</Text>
           </View>
 
-          {entry.tags && entry.tags.length > 0 && (
+          {emotionTags.length > 0 && (
             <View style={styles.tagsWrap}>
-              {entry.tags.map((slug) => (
+              {emotionTags.map((slug) => (
                 <View key={slug} style={styles.tagPill}>
+                  <Text style={styles.tagText}>{tagLabel(slug)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {contextTags.length > 0 && (
+            <View style={styles.tagsWrap}>
+              {contextTags.map((slug) => (
+                <View key={slug} style={[styles.tagPill, styles.tagPillContext]}>
                   <Text style={styles.tagText}>{tagLabel(slug)}</Text>
                 </View>
               ))}
@@ -134,18 +150,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: tokens.space[3],
   },
-  faceWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    // 2, not 1.5: the ring is now the only place the level color appears in
-    // this card, so it carries the hue channel on its own.
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  emoji: { fontSize: 24 },
   levelLabel: {
     fontFamily: 'Manrope_800ExtraBold',
     fontSize: 18,
@@ -163,6 +167,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(123, 92, 255, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(123, 92, 255, 0.28)',
+  },
+  // Context ("what influenced the day") pills — gold-tinted, echoing the
+  // app's quest/context accent, so the two tag families read apart at a
+  // glance without needing section headers in this compact card.
+  tagPillContext: {
+    backgroundColor: 'rgba(255, 200, 61, 0.10)',
+    borderColor: 'rgba(255, 200, 61, 0.28)',
   },
   tagText: {
     fontFamily: 'Manrope_700Bold',

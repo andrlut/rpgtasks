@@ -1818,8 +1818,14 @@ const en = {
       loggedPrefix: 'You felt',
     },
     questionPast: 'How did you feel that day?',
-    tagsPrompt: 'Want to name it?',
+    emotionPrompt: 'Which feelings stood out?',
+    contextPrompt: 'What influenced your day the most?',
     tagsOptional: 'optional',
+    showAllTags: 'Show all ({{count}})',
+    showFewerTags: 'Show less',
+    hub: {
+      addDetails: 'Add details',
+    },
     history: {
       title: 'How I felt',
       seeHistory: 'See history',

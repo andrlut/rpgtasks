@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MoodFace, MoodFacePlaceholder } from '@/components/mood/MoodFace';
 import { Sparkline } from '@/components/Sparkline';
 import { useRecentMoods, useTodayMood } from '@/lib/api/mood';
 import { useT } from '@/lib/i18n';
@@ -31,18 +32,14 @@ export function MoodTodayCard() {
         hitSlop={4}
         accessibilityRole="button"
       >
-      {/* Mood color as a ring, not a filled disc and not as ink — filling it
-          camouflages the (yellow) emoji face on the top three steps of the
-          ramp. See MoodDayDetail for the measured numbers. */}
-      <View
-        style={[
-          styles.faceWrap,
-          { borderColor: level ? level.color : tokens.border.strong },
-          !level && styles.faceWrapEmpty,
-        ]}
-      >
-        <Text style={styles.emoji}>{level ? level.emoji : '🙂'}</Text>
-      </View>
+      {/* Drawn face (MoodFace): features render in the level's measured ink,
+          so the disc can BE the level color — the old emoji-camouflage
+          constraint (yellow emoji on yellow fill) no longer applies. */}
+      {level ? (
+        <MoodFace value={level.value} size={44} active />
+      ) : (
+        <MoodFacePlaceholder size={44} />
+      )}
 
       <View style={styles.body}>
         <Text style={styles.eyebrow}>{t('mood.todayCard.eyebrow')}</Text>
@@ -98,22 +95,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface,
     borderWidth: 1,
     borderColor: tokens.border.base,
-  },
-  faceWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    // Matches MoodDayDetail — the ring is the only level-colored area here.
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  faceWrapEmpty: {
-    opacity: 0.6,
-  },
-  emoji: {
-    fontSize: 24,
   },
   body: {
     flex: 1,

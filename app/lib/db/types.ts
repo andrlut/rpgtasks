@@ -429,6 +429,11 @@ export interface MoodTag {
   tag_group: 'emotion' | 'context';
   sort_order: number;
   is_active: boolean;
+  /**
+   * Ordering hint for emotion tags: -2 (worst) .. +2 (best), NULL for context
+   * tags. Never a filter — every emotion stays selectable at every mood.
+   */
+  valence: number | null;
 }
 
 export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';

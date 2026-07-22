@@ -1,6 +1,7 @@
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { MoodFace } from '@/components/mood/MoodFace';
 import { useT } from '@/lib/i18n';
 import { MOOD_LEVELS, type MoodValue } from '@/lib/mood';
 import { tokens } from '@/theme';
@@ -8,19 +9,26 @@ import { tokens } from '@/theme';
 interface Props {
   value: MoodValue | null;
   onSelect: (v: MoodValue) => void;
-  size?: 'lg' | 'md';
+  size?: 'lg' | 'md' | 'sm';
   showLabels?: boolean;
 }
 
+const FACE_SIZE: Record<NonNullable<Props['size']>, number> = {
+  lg: 56,
+  md: 46,
+  sm: 38,
+};
+
 /**
  * The 5-face mood selector shared by the check-in screen, the app-open prompt
- * and (read-only feel) anywhere a scale is shown. One tap = one selection;
- * the selected face fills with its level color, the rest dim.
+ * and the Today-Hub strip. One tap = one selection; the selected face fills
+ * with its level color (features in its measured ink — see MoodFace), the
+ * rest stay outlined and dim.
  *
- * Selection is carried by four channels, none of them hue: the filled ring,
+ * Selection is carried by four channels, none of them hue: the filled disc,
  * the 1.08 scale bump, the dimming of the other four, and the label weight.
- * The label itself stays on `tokens.text.hi` — the two bottom steps of the
- * ramp are fills, and as text on the dark background they measure ~3.2:1.
+ * Labels stay on `tokens.text.hi` — the two bottom steps of the ramp are
+ * fills, and as text on the dark background they measure ~3.2:1.
  */
 export function MoodFaceRow({
   value,
@@ -29,8 +37,7 @@ export function MoodFaceRow({
   showLabels = true,
 }: Props) {
   const { t } = useT();
-  const dim = size === 'lg' ? 56 : 46;
-  const emojiSize = size === 'lg' ? 30 : 26;
+  const dim = FACE_SIZE[size];
 
   return (
     <View style={styles.row}>
@@ -52,22 +59,11 @@ export function MoodFaceRow({
           >
             <View
               style={[
-                styles.circle,
-                {
-                  width: dim,
-                  height: dim,
-                  borderRadius: dim / 2,
-                  borderColor: `${lvl.color}99`,
-                },
-                active && {
-                  backgroundColor: lvl.color,
-                  borderColor: lvl.color,
-                  transform: [{ scale: 1.08 }],
-                },
+                active && styles.bumped,
                 !active && someSelected && styles.dimmed,
               ]}
             >
-              <Text style={{ fontSize: emojiSize }}>{lvl.emoji}</Text>
+              <MoodFace value={lvl.value} size={dim} active={active} />
             </View>
             {showLabels && (
               <Text
@@ -99,11 +95,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  circle: {
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+  bumped: {
+    transform: [{ scale: 1.08 }],
   },
   dimmed: {
     opacity: 0.45,

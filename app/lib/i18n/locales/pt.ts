@@ -1817,8 +1817,14 @@ const pt: Translations = {
       loggedPrefix: 'Você se sentiu',
     },
     questionPast: 'Como você se sentiu nesse dia?',
-    tagsPrompt: 'Quer dar um nome a isso?',
+    emotionPrompt: 'Que sentimentos marcaram o dia?',
+    contextPrompt: 'O que mais influenciou seu dia?',
     tagsOptional: 'opcional',
+    showAllTags: 'Ver todas ({{count}})',
+    showFewerTags: 'Ver menos',
+    hub: {
+      addDetails: 'Adicionar detalhes',
+    },
     history: {
       title: 'Como me senti',
       seeHistory: 'Ver histórico',

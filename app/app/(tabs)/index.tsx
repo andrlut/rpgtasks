@@ -18,6 +18,7 @@ import { useBottomNavClearance } from '@/components/BottomNavBar';
 import { BucketTabsV2, type BucketTabSpec } from '@/components/BucketTabsV2';
 import { CompleteTaskSheet } from '@/components/CompleteTaskSheet';
 import { MoodCheckinPrompt } from '@/components/MoodCheckinPrompt';
+import { MoodHubStrip } from '@/components/mood/MoodHubStrip';
 import { CompletedBucket, type CompletedItem } from '@/components/CompletedBucket';
 import { QuestChipsStrip } from '@/components/QuestChipsStrip';
 import { RewardStatsCard, XPStatsCard } from '@/components/StatsCards';
@@ -552,6 +553,10 @@ export default function HomeScreen() {
                 onUnskip={handleUnskip}
               />
             </View>
+
+            {/* Journal strip after the day's tasks — finish the tasks,
+                close the day. One tap logs; press opens the full check-in. */}
+            <MoodHubStrip />
 
             <View style={styles.bottomActions}>
               <Pressable

@@ -1,10 +1,10 @@
 /**
  * Mood check-in scale — the single source of truth for the 5-point valence
- * ladder shared by the check-in screen, the app-open prompt, the Eu-tab card,
+ * ladder shared by the check-in screen, the Today-Hub strip, the Eu-tab card,
  * the history calendar and the Insights bands. Five discrete levels (Daylio
- * pattern; 5 points, odd so the midpoint exists) rendered as emoji faces with
- * a blue → gold color ramp reused as the visual language everywhere the mood
- * shows up.
+ * pattern; 5 points, odd so the midpoint exists) rendered as drawn SVG faces
+ * (`components/mood/MoodFace`) with a blue → gold color ramp reused as the
+ * visual language everywhere the mood shows up.
  *
  * ## Why blue → gold and not red → green
  *
@@ -49,14 +49,16 @@
  * These colors are fills. As *text on the dark UI background* the two bottom
  * steps are too dark to be legible, so the surfaces below deliberately render
  * the color as an area (chip, ring, cell fill) and keep their labels on
- * `tokens.text.hi`. Where a fill sits *behind* an emoji face, prefer the color
- * as a ring over a solid disc — emoji faces are themselves yellow and vanish
- * on steps 3–5 (1.06–1.65).
+ * `tokens.text.hi`. Historical note: while the faces were emoji (yellow
+ * glyphs, 1.06–1.65 on steps 3–5) the fill could only ever be a ring; the
+ * drawn MoodFace strokes its features in `ink`, so a solid level-colored
+ * disc is now fine.
  *
  * Deliberately quiet: this ladder carries NO XP/coins/Momentum. See the
  * mood_log migration for the "reflection has no score" rationale.
  */
 
+import type { MoodTag } from '@/lib/db/types';
 import { tokens } from '@/theme';
 
 export const MOOD_MIN = 1;
@@ -69,7 +71,6 @@ export type MoodLevelKey = 'terrible' | 'bad' | 'ok' | 'good' | 'great';
 
 export interface MoodLevel {
   value: MoodValue;
-  emoji: string;
   /** Level fill — a blue→gold ramp with monotonic lightness. Fill, not ink. */
   color: string;
   /**
@@ -87,14 +88,45 @@ const INK_LIGHT = '#FFFFFF';
 const INK_DARK = tokens.bg.deep;
 
 export const MOOD_LEVELS: readonly MoodLevel[] = [
-  { value: 1, emoji: '😩', color: '#3874AD', ink: INK_LIGHT, key: 'terrible' },
-  { value: 2, emoji: '🙁', color: '#5E98BD', ink: INK_DARK, key: 'bad' },
-  { value: 3, emoji: '😐', color: '#9CB2AD', ink: INK_DARK, key: 'ok' },
-  { value: 4, emoji: '🙂', color: '#F2B86C', ink: INK_DARK, key: 'good' },
-  { value: 5, emoji: '😄', color: '#FAE563', ink: INK_DARK, key: 'great' },
+  { value: 1, color: '#3874AD', ink: INK_LIGHT, key: 'terrible' },
+  { value: 2, color: '#5E98BD', ink: INK_DARK, key: 'bad' },
+  { value: 3, color: '#9CB2AD', ink: INK_DARK, key: 'ok' },
+  { value: 4, color: '#F2B86C', ink: INK_DARK, key: 'good' },
+  { value: 5, color: '#FAE563', ink: INK_DARK, key: 'great' },
 ];
 
 /** Look up a level by value; falls back to the neutral midpoint. */
 export function moodLevel(value: number): MoodLevel {
   return MOOD_LEVELS.find((l) => l.value === value) ?? MOOD_LEVELS[2];
+}
+
+/** Catalog split by group, both in catalog (sort_order) order. */
+export function splitMoodTags(tags: MoodTag[]): {
+  emotions: MoodTag[];
+  contexts: MoodTag[];
+} {
+  return {
+    emotions: tags.filter((t) => t.tag_group === 'emotion'),
+    contexts: tags.filter((t) => t.tag_group === 'context'),
+  };
+}
+
+/**
+ * Emotion tags reordered around the selected mood (Apple State-of-Mind
+ * pattern): words whose valence sits closest to the rating float up, the rest
+ * sink but STAY selectable — "felt good overall but overwhelmed" is a
+ * first-class entry, so this never filters. With no mood yet, catalog order.
+ */
+export function orderEmotionTags(
+  emotions: MoodTag[],
+  mood: MoodValue | null,
+): MoodTag[] {
+  if (mood === null) return emotions;
+  // mood 1..5 → valence -2..+2, the same scale mood_tag.valence uses.
+  const target = mood - 3;
+  return [...emotions].sort((a, b) => {
+    const da = Math.abs((a.valence ?? 0) - target);
+    const db = Math.abs((b.valence ?? 0) - target);
+    return da !== db ? da - db : a.sort_order - b.sort_order;
+  });
 }

@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { HistoryLensTabs } from '@/components/history/HistoryLensTabs';
+import { MoodFace } from '@/components/mood/MoodFace';
 import { useCorrelation } from '@/lib/api/correlation';
 import { useMoodTags } from '@/lib/api/mood';
 import {
@@ -26,7 +27,7 @@ import {
 import type { SubId } from '@/lib/db/types';
 import { useT } from '@/lib/i18n';
 import { useMetaLookup } from '@/lib/i18n/meta';
-import { moodLevel } from '@/lib/mood';
+import { moodLevel, splitMoodTags, type MoodValue } from '@/lib/mood';
 import { tokens } from '@/theme';
 import { DIMENSION_ORDER, SUBS_BY_DIM } from '@/theme/dimensions';
 
@@ -40,18 +41,13 @@ type Feeling = { type: 'band'; band: Band } | { type: 'tag'; slug: string };
  * rather than restating hexes. They used to hardcode the old red→green ramp,
  * which meant the chips silently kept the pre-CVD colors after `lib/mood.ts`
  * moved to the blue→gold ramp. The representative level per band is the one a
- * user most often lands on: 5, 3 and 2.
+ * user most often lands on: 5, 3 and 2 — rendered as the drawn MoodFace.
  */
-const BANDS: { band: Band; color: string; emoji: string; labelKey: string }[] = [
-  { band: 'great', ...swatch(5), labelKey: 'insights.bandGreat' },
-  { band: 'ok', ...swatch(3), labelKey: 'insights.bandOk' },
-  { band: 'low', ...swatch(2), labelKey: 'insights.bandLow' },
+const BANDS: { band: Band; level: MoodValue; color: string; labelKey: string }[] = [
+  { band: 'great', level: 5, color: moodLevel(5).color, labelKey: 'insights.bandGreat' },
+  { band: 'ok', level: 3, color: moodLevel(3).color, labelKey: 'insights.bandOk' },
+  { band: 'low', level: 2, color: moodLevel(2).color, labelKey: 'insights.bandLow' },
 ];
-
-function swatch(v: number): { color: string; emoji: string } {
-  const l = moodLevel(v);
-  return { color: l.color, emoji: l.emoji };
-}
 
 function matchFor(feeling: Feeling): (r: DayRecord) => boolean {
   if (feeling.type === 'tag') return (r) => r.tags.includes(feeling.slug);
@@ -96,6 +92,14 @@ export default function InsightsScreen() {
     const label = locale === 'en' ? tg.label_en : tg.label_pt;
     return tg.emoji ? `${tg.emoji} ${label}` : label;
   };
+
+  // Emotion words first, context ("what influenced") after — the two groups'
+  // sort_orders interleave in the raw catalog, which would shuffle them
+  // together in the chip cloud.
+  const orderedTagChips = useMemo(() => {
+    const { emotions, contexts } = splitMoodTags(tags.data ?? []);
+    return [...emotions, ...contexts];
+  }, [tags.data]);
 
   const feelingLabel = (): string => {
     if (feeling.type === 'tag') return tagLabel(feeling.slug);
@@ -190,14 +194,18 @@ export default function InsightsScreen() {
                 ]}
                 hitSlop={2}
               >
-                <Text style={styles.chipEmoji}>{b.emoji}</Text>
+                {/* Active face on either chip state: on the dark chip the
+                    colored disc is the band swatch; on the active (band-
+                    colored) chip the disc merges into the bg and the ink
+                    features stay ≥4.5:1 by the ramp's own measurements. */}
+                <MoodFace value={b.level} size={16} active />
                 <Text style={[styles.chipText, active && styles.chipTextActiveDark]}>
                   {t(b.labelKey)}
                 </Text>
               </Pressable>
             );
           })}
-          {(tags.data ?? []).map((tag) => {
+          {orderedTagChips.map((tag) => {
             const active = feeling.type === 'tag' && feeling.slug === tag.slug;
             return (
               <Pressable
