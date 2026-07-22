@@ -111,6 +111,40 @@ export function splitMoodTags(tags: MoodTag[]): {
   };
 }
 
+/** Context sub-groups, in the order they render (Apple State-of-Mind). */
+export const CONTEXT_GROUP_ORDER = ['self', 'relationships', 'life'] as const;
+export type ContextGroup = (typeof CONTEXT_GROUP_ORDER)[number];
+
+/**
+ * Split context tags into their sub-groups (self / relationships / life) so
+ * the check-in can render them as separated blocks. Preserves each group's
+ * catalog order; drops empty groups; any tag with an unknown/null group falls
+ * into a trailing bucket so nothing silently disappears.
+ */
+export function groupContextTags(
+  contexts: MoodTag[],
+): { group: ContextGroup | 'other'; tags: MoodTag[] }[] {
+  const buckets = new Map<ContextGroup | 'other', MoodTag[]>();
+  for (const tag of contexts) {
+    const key = (CONTEXT_GROUP_ORDER as readonly string[]).includes(
+      tag.context_group ?? '',
+    )
+      ? (tag.context_group as ContextGroup)
+      : 'other';
+    const list = buckets.get(key) ?? [];
+    list.push(tag);
+    buckets.set(key, list);
+  }
+  const ordered: { group: ContextGroup | 'other'; tags: MoodTag[] }[] = [];
+  for (const g of CONTEXT_GROUP_ORDER) {
+    const tags = buckets.get(g);
+    if (tags && tags.length > 0) ordered.push({ group: g, tags });
+  }
+  const other = buckets.get('other');
+  if (other && other.length > 0) ordered.push({ group: 'other', tags: other });
+  return ordered;
+}
+
 /**
  * Emotion tags reordered around the selected mood (Apple State-of-Mind
  * pattern): words whose valence sits closest to the rating float up, the rest

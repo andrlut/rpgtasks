@@ -31,6 +31,7 @@ import { todayDateKey, useLogMood, useMoodForDay, useMoodTags } from '@/lib/api/
 import { useT } from '@/lib/i18n';
 import {
   MOOD_LEVELS,
+  groupContextTags,
   moodLevel,
   orderEmotionTags,
   splitMoodTags,
@@ -122,6 +123,9 @@ export default function MoodCheckinScreen() {
     () => orderEmotionTags(emotions, mood),
     [emotions, mood],
   );
+  // Context tags render as separated blocks (self / relationships / life) —
+  // Apple groups "what influenced you" the same way, split by whitespace.
+  const contextGroups = useMemo(() => groupContextTags(contexts), [contexts]);
   // Preview keeps the closest words up front, but a tag the user already
   // picked (e.g. editing an older entry) is never hidden behind "ver todas".
   const visibleEmotions = useMemo(() => {
@@ -307,7 +311,7 @@ export default function MoodCheckinScreen() {
                   />
                 </View>
 
-                {contexts.length > 0 && (
+                {contextGroups.length > 0 && (
                   <View style={styles.tagsSection}>
                     <Text style={styles.tagsLabel}>
                       {t('mood.contextPrompt')}{' '}
@@ -315,11 +319,19 @@ export default function MoodCheckinScreen() {
                         {t('mood.tagsOptional')}
                       </Text>
                     </Text>
-                    <MoodTagRow
-                      tags={contexts}
-                      selected={tags}
-                      onToggle={toggleTag}
-                    />
+                    {/* One MoodTagRow per sub-group, separated by whitespace —
+                        no per-group headers (Apple keeps them label-less; the
+                        spacing alone reads as "these belong together"). */}
+                    <View style={styles.contextGroups}>
+                      {contextGroups.map(({ group, tags: groupTags }) => (
+                        <MoodTagRow
+                          key={group}
+                          tags={groupTags}
+                          selected={tags}
+                          onToggle={toggleTag}
+                        />
+                      ))}
+                    </View>
                   </View>
                 )}
 
@@ -349,13 +361,26 @@ export default function MoodCheckinScreen() {
               keyboard on Android (and KAV padding on iOS) the button rides
               above the keyboard instead of covering the note input — the old
               absolute footer was exactly what hid the caret while typing. */}
-          <View style={[styles.footer, !canSave && styles.footerIdle]}>
+          <View
+            style={[
+              styles.footer,
+              !canSave && styles.footerIdle,
+              // Tie the footer to the mood: a hairline of the level color on
+              // top, matching Apple's fully-tinted CTA area.
+              level && { borderTopColor: `${level.color}55` },
+            ]}
+          >
             <Pressable
               onPress={handleSave}
               disabled={!canSave}
               style={({ pressed }) => [
                 styles.saveBtn,
-                canSave && styles.saveBtnActive,
+                // CTA fills with the level color (Apple's mood-colored button);
+                // label + icon use the level's measured `ink` so contrast holds
+                // across the light gold and dark blue ends of the ramp.
+                canSave && level
+                  ? { backgroundColor: level.color, borderColor: level.color }
+                  : canSave && styles.saveBtnActive,
                 pressed && canSave && { opacity: 0.85 },
               ]}
               hitSlop={4}
@@ -363,10 +388,13 @@ export default function MoodCheckinScreen() {
               <Ionicons
                 name={logMood.isPending ? 'hourglass' : 'checkmark'}
                 size={16}
-                color={canSave ? tokens.text.hi : tokens.text.dim}
+                color={canSave && level ? level.ink : tokens.text.dim}
               />
               <Text
-                style={[styles.saveBtnText, canSave && { color: tokens.text.hi }]}
+                style={[
+                  styles.saveBtnText,
+                  canSave && level && { color: level.ink },
+                ]}
               >
                 {logMood.isPending ? t('mood.saving') : t('mood.save')}
               </Text>
@@ -448,6 +476,11 @@ const styles = StyleSheet.create({
   },
   tagsSection: {
     gap: tokens.space[2],
+  },
+  // Whitespace between context sub-groups — the only thing separating the
+  // self / relationships / life blocks (Apple uses no per-group headers).
+  contextGroups: {
+    gap: tokens.space[3],
   },
   tagsLabel: {
     fontFamily: 'Manrope_700Bold',

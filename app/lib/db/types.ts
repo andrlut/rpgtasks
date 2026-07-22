@@ -434,6 +434,11 @@ export interface MoodTag {
    * tags. Never a filter — every emotion stays selectable at every mood.
    */
   valence: number | null;
+  /**
+   * Presentational sub-group for context tags: which block they render in
+   * (self / relationships / life). NULL for emotion tags.
+   */
+  context_group: 'self' | 'relationships' | 'life' | null;
 }
 
 export type TierName = 'beginner' | 'bronze' | 'silver' | 'gold' | 'master';
