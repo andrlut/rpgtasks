@@ -43,7 +43,9 @@ The app is being repositioned around **3 pillars of identity** (filosofia v3):
 
 **Phase 2+** — Missões completo, **Metas** CRUD (do preview → full), Onboarding recalibrável por categoria via Settings, Learning content contínuo, Hero/Avatar exploration, Insights, Social.
 
-**Brand**: the product brand is now **Perceva** (PercevaGlyph, Vault rewards, Iris identity). Identifiers are mid-migration: Android `package` is **`perceva.app`** (renamed in #275 to match Play Console), but slug `rpgtasks`, iOS `bundleIdentifier` `com.andrlut.rpgtasks`, deep-link `rpgtasks://`, and EAS project `rpgtasks` are still internal. The Android package is load-bearing (must match Play Console); the rest is final-polish that doesn't gate anything. **The deep-link scheme is independent of the package** — changing `rpgtasks://` would require re-pointing Supabase Auth → URL Configuration.
+**Brand**: the product brand is now **Perceva** (PercevaGlyph, Vault rewards, Iris identity). Identifiers are mid-migration. **Already renamed to Perceva:** Android `package` = **`perceva.app`** (in #275, to match Play Console); the **GitHub repo** = **`andrlut/perceva`** (renamed 2026-07-21 — GitHub 301-redirects the old `andrlut/rpgtasks` URL, so pre-existing clones/remotes keep working); the **root `package.json` `name`** = **`perceva`**. **Still internal `rpgtasks` (final-polish, gate nothing):** Expo `slug`, iOS `bundleIdentifier` `com.andrlut.rpgtasks`, deep-link `rpgtasks://`, EAS project `rpgtasks`, and the `@rpgtasks/shared` workspace scope. The Android package is load-bearing (must match Play Console). **The deep-link scheme is independent of the package** — changing `rpgtasks://` would require re-pointing Supabase Auth → URL Configuration; and renaming `@rpgtasks/shared` would touch imports across the whole app, so both are left alone deliberately.
+
+- **Claude Code project label** (why the app's sidebar shows the project name it does): derived from the **git repo name** and/or the **root `package.json` `name`** — *not* the folder basename (it survived the `RPG`→`Perceva` folder rename untouched). Both now read `perceva`, so a fresh clone shows **Perceva**. If a contributor (e.g. Artur) still sees **`rpgtasks`** on an existing checkout: run `git remote set-url origin https://github.com/andrlut/perceva.git`, confirm the root `package.json` `name` is `perceva`, then reload/restart the Claude Code app so it re-reads the project name.
 
 ### V3 status snapshot (updated 2026-07-01)
 
@@ -342,7 +344,7 @@ The publishable key is safe in client (RLS protects). The service_role key has b
 | Build an APK | `cd app && eas build --platform android --profile preview --non-interactive --no-wait` |
 | Ship JS-only hotfix to the Play Store app | `cd app && eas update --channel production` — prefer this over rebuild whenever no native code changed |
 | Ship JS-only hotfix to the internal test APK | `cd app && eas update --channel preview` |
-| Apply migration to cloud | `cd "C:\Users\André Luthold\RPG"` then `supabase db push --linked` |
+| Apply migration to cloud | `cd "C:\Users\André Luthold\Projetos\Perceva"` then `supabase db push --linked` |
 
 ---
 

@@ -193,6 +193,6 @@ WHAT EAS ASKS ABOUT CERTS/PROVISIONING (summary): every prompt about "Apple Dist
 Sources: [Create a build on EAS](https://docs.expo.dev/develop/development-builds/create-a-build/), [iOS device build tutorial](https://docs.expo.dev/tutorial/eas/ios-development-build-for-devices/), [Internal distribution](https://docs.expo.dev/build/internal-distribution/), [eas-cli reference](https://github.com/expo/eas-cli), [App versions / remote source](https://docs.expo.dev/build-reference/app-versions/), [EAS Submit iOS options](https://docs.expo.dev/eas/json/).
 
 Relevant absolute file paths:
-- `C:\Users\André Luthold\Projetos\RPG\app\app.json` (ios block, lines 11–13)
-- `C:\Users\André Luthold\Projetos\RPG\app\eas.json` (build profiles + submit.production, lines 6–37)
-- `C:\Users\André Luthold\Projetos\RPG\app\lib\notifications\scheduler.ts` (confirms local-only notifications → no iOS push entitlement needed)
+- `C:\Users\André Luthold\Projetos\Perceva\app\app.json` (ios block, lines 11–13)
+- `C:\Users\André Luthold\Projetos\Perceva\app\eas.json` (build profiles + submit.production, lines 6–37)
+- `C:\Users\André Luthold\Projetos\Perceva\app\lib\notifications\scheduler.ts` (confirms local-only notifications → no iOS push entitlement needed)

@@ -59,9 +59,9 @@ Priorize as **6 primeiras**; 7–8 são bônus. Cada frame deve ter uma **captio
 `app.json` declara `ios.supportsTablet: true`. Isso **obriga** screenshots de iPad 13" (2064×2752) e faz a Apple revisar em iPad. Se o Perceva v1 não foi desenhado/testado pra iPad, o caminho de menor esforço é **`supportsTablet: false`** → remove o slot de iPad inteiro e reduz superfície de review. Como não posso pushar mudança aqui, deixo isto como diff sugerido pra aplicar na branch de publish (uma linha em `app.json`). Se quiser manter iPad, o slot de screenshots iPad passa a ser obrigatório.
 
 ## Arquivos locais relevantes
-- `C:\Users\André Luthold\Projetos\RPG\app\app.json` — `icon`, `adaptiveIcon`, `splash-icon` (imageWidth 200), `ios.supportsTablet: true`
-- `C:\Users\André Luthold\Projetos\RPG\app\assets\images\icon.png` — 1024×1024 (base pro App Store 1024 e pro Play 512)
-- `C:\Users\André Luthold\Projetos\RPG\app\assets\images\splash-icon.png` — 1024×1024 (renderizado a 200pt; NÃO é 200×200)
+- `C:\Users\André Luthold\Projetos\Perceva\app\app.json` — `icon`, `adaptiveIcon`, `splash-icon` (imageWidth 200), `ios.supportsTablet: true`
+- `C:\Users\André Luthold\Projetos\Perceva\app\assets\images\icon.png` — 1024×1024 (base pro App Store 1024 e pro Play 512)
+- `C:\Users\André Luthold\Projetos\Perceva\app\assets\images\splash-icon.png` — 1024×1024 (renderizado a 200pt; NÃO é 200×200)
 - `android-icon-foreground/background/monochrome.png` — 432×432 (adaptive icon; já cobre o launcher Android, é distinto do ícone de listagem 512×512)
 
 ## Fontes

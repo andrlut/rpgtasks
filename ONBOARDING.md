@@ -34,8 +34,8 @@ Docker **não é necessário** — não rodamos Supabase local, a gente usa dire
 ## 3. Clone e instalação
 
 ```powershell
-git clone https://github.com/andrlut/rpgtasks.git
-cd rpgtasks
+git clone https://github.com/andrlut/perceva.git
+cd perceva
 pnpm install
 ```
 
@@ -214,7 +214,7 @@ git pull --rebase
 # Use timestamp real do momento, formato: YYYYMMDDHHMMSS
 
 # 3. Aplica na cloud
-cd "C:\caminho\pra\rpgtasks"
+cd "C:\caminho\pra\perceva"
 supabase db push --linked
 
 # 4. IMEDIATAMENTE commita o arquivo .sql e empurra

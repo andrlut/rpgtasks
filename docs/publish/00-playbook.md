@@ -265,4 +265,4 @@ Estas são as mudanças em arquivos existentes. Nenhuma toca schema, RPCs, `app/
 - [Expo — Submit to Play](https://docs.expo.dev/submit/android/) · [expo/fyi — Google service account](https://github.com/expo/fyi/blob/main/creating-google-service-account.md)
 - [ScreenshotOtter — Play screenshot sizes](https://screenshototter.com/google-play-screenshot-sizes) · [ScreenKit — feature graphic 1024×500](https://screenkit.tools/specs/google-play-feature-graphic-size)
 
-**Files referenciados** (absolutos): `C:\Users\André Luthold\Projetos\RPG\app\app.json`, `C:\Users\André Luthold\Projetos\RPG\app\eas.json`, `C:\Users\André Luthold\Projetos\RPG\app\app\(tabs)\profile.tsx`.
+**Files referenciados** (absolutos): `C:\Users\André Luthold\Projetos\Perceva\app\app.json`, `C:\Users\André Luthold\Projetos\Perceva\app\eas.json`, `C:\Users\André Luthold\Projetos\Perceva\app\app\(tabs)\profile.tsx`.

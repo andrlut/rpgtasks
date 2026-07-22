@@ -320,8 +320,8 @@ Notes / coordination:
 - The three client-side edits (`profile.tsx`, `pt.ts`, `en.ts`) are JS/TS-only. They can ship to the live APK via `eas update --channel preview` (OTA) once the function is deployed — no native rebuild required. Deploy the Edge Function FIRST, then push the client change, so the button never calls a missing endpoint.
 
 Relevant files (absolute):
-- `C:\Users\André Luthold\Projetos\RPG\supabase\functions\delete-account\index.ts` (to create — full source above)
-- `C:\Users\André Luthold\Projetos\RPG\supabase\functions\delete-account\deno.json` (to create)
-- `C:\Users\André Luthold\Projetos\RPG\app\app\(tabs)\profile.tsx` (edit `handleDeleteAccount`, lines 62–77)
-- `C:\Users\André Luthold\Projetos\RPG\app\lib\i18n\locales\pt.ts` (lines 1363–1364)
-- `C:\Users\André Luthold\Projetos\RPG\app\lib\i18n\locales\en.ts` (lines 1366–1367)
+- `C:\Users\André Luthold\Projetos\Perceva\supabase\functions\delete-account\index.ts` (to create — full source above)
+- `C:\Users\André Luthold\Projetos\Perceva\supabase\functions\delete-account\deno.json` (to create)
+- `C:\Users\André Luthold\Projetos\Perceva\app\app\(tabs)\profile.tsx` (edit `handleDeleteAccount`, lines 62–77)
+- `C:\Users\André Luthold\Projetos\Perceva\app\lib\i18n\locales\pt.ts` (lines 1363–1364)
+- `C:\Users\André Luthold\Projetos\Perceva\app\lib\i18n\locales\en.ts` (lines 1366–1367)
