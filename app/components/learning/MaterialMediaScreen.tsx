@@ -109,7 +109,9 @@ export function MaterialMediaScreen({ detail: m }: Props) {
 
   const [mode, setMode] = useState<Mode>(() => (body ? 'read' : audioPick ? 'listen' : 'view'));
   // Player mounts on first Listen and stays mounted (hidden) afterwards.
-  const [audioActivated, setAudioActivated] = useState(false);
+  // Starts true when Listen IS the default mode (audio-only material) —
+  // otherwise the player would be unreachable with no switcher to tap.
+  const [audioActivated, setAudioActivated] = useState(() => !body && !!audioPick);
 
   const switchMode = (next: Mode) => {
     Haptics.selectionAsync().catch(() => {});
@@ -342,7 +344,7 @@ export function MaterialMediaScreen({ detail: m }: Props) {
 
           {/* Listen — mounted once, then hidden so playback survives
               mode switches. */}
-          {audioActivated && audioPick && (
+          {(audioActivated || mode === 'listen') && audioPick && (
             <View style={mode === 'listen' ? null : styles.hiddenPane}>
               <AudioPane
                 uri={learningMediaUrl(audioPick.media.path)}
