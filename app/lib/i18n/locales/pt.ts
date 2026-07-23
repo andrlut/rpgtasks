@@ -1014,6 +1014,10 @@ const pt: Translations = {
       adopt: 'Adotar',
       added: 'Adicionada',
     },
+    suggested: {
+      hint: 'Toque numa sugestão pra ajustar do seu jeito antes de adicionar — ou toque em Adotar pra usar como está.',
+      premiumHint: '{{count}}/{{limit}} tarefas ativas no plano gratuito · Premium libera ilimitadas',
+    },
     bucketEmpty: 'Nenhuma tarefa nesse grupo.',
     empty: {
       noMatchesTitle: 'Nada encontrado',

@@ -1019,6 +1019,10 @@ const en = {
       adopt: 'Adopt',
       added: 'Added',
     },
+    suggested: {
+      hint: 'Tap a suggestion to tweak it your way before adding — or tap Adopt to use it as is.',
+      premiumHint: '{{count}}/{{limit}} active tasks on the free plan · Premium unlocks unlimited',
+    },
     bucketEmpty: 'No tasks in this bucket.',
     empty: {
       noMatchesTitle: 'No matches',

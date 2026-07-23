@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -25,9 +26,9 @@ import {
   type AdoptPeriodicityChoice,
 } from '@/components/AdoptPeriodicitySheet';
 import { useBottomSafeClearance } from '@/components/BottomNavBar';
-import { DimensionChip } from '@/components/DimensionChip';
 import { ScreenBackground } from '@/components/ScreenBackground';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { SubStack } from '@/components/SubStack';
 import { LimitCounterBadge } from '@/components/premium/LimitCounterBadge';
 import { useT } from '@/lib/i18n';
 import {
@@ -36,9 +37,8 @@ import {
   useStartTaskFromTemplate,
   useTaskTemplates,
 } from '@/lib/api/tasks';
-import { useLimitModalStore, useTaskLimit } from '@/lib/premium';
+import { useLimitModalStore, useTaskLimit, type EntityLimit } from '@/lib/premium';
 import type {
-  DimensionId,
   Recurrence,
   SubId,
   TaskTemplateWithSubs,
@@ -139,8 +139,13 @@ export default function TasksHubScreen() {
     weekly: false,
     one_time: false,
   });
+  // Suggested groups start COLLAPSED — 12 open groups × 3 templates read
+  // as a wall (tester feedback). Search force-expands in SuggestedBody.
   const [collapsedSubs, setCollapsedSubs] = useState<Record<SubId, boolean>>(
-    {} as Record<SubId, boolean>,
+    () =>
+      Object.fromEntries(
+        ALL_SUBS_IN_ORDER.map((s) => [s, true]),
+      ) as Record<SubId, boolean>,
   );
   const [adoptingId, setAdoptingId] = useState<string | null>(null);
   /** Template currently sitting in the periodicity picker sheet. */
@@ -228,6 +233,22 @@ export default function TasksHubScreen() {
     if (!template) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setPickerTemplate(template);
+  };
+
+  // Tap on a suggestion card → open the task form prefilled so the user
+  // adjusts and adds in one flow. Deliberately the "customize" path: the
+  // saved task is a fork (template_id null) that counts as the user's own —
+  // which is what feeds the free-limit → Premium funnel.
+  const handleCustomize = (template: TaskTemplateWithSubs) => {
+    if (taskLimit.atLimit) {
+      openLimit('task');
+      return;
+    }
+    Haptics.selectionAsync().catch(() => {});
+    router.push({
+      pathname: '/task-form',
+      params: { from_template: template.id },
+    });
   };
 
   const handleAdoptConfirm = (choice: AdoptPeriodicityChoice) => {
@@ -433,7 +454,9 @@ export default function TasksHubScreen() {
                   collapsedSubs={collapsedSubs}
                   onToggleSub={toggleSub}
                   onAdopt={handleAdopt}
+                  onCustomize={handleCustomize}
                   adoptingId={adoptingId}
+                  limit={taskLimit}
                   t={t}
                 />
               ) : (
@@ -1097,7 +1120,11 @@ interface SuggestedBodyProps {
   collapsedSubs: Record<SubId, boolean>;
   onToggleSub: (s: SubId) => void;
   onAdopt: (templateId: string) => void;
+  /** Tap on the card body → task-form prefilled (adjust-then-add). */
+  onCustomize: (template: TaskTemplateWithSubs) => void;
   adoptingId: string | null;
+  /** Free-tier task slots — drives the Premium reinforcement line. */
+  limit: EntityLimit;
   t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
@@ -1114,7 +1141,9 @@ function SuggestedBody({
   collapsedSubs,
   onToggleSub,
   onAdopt,
+  onCustomize,
   adoptingId,
+  limit,
   t,
 }: SuggestedBodyProps) {
   const meta = useMetaLookup();
@@ -1140,13 +1169,42 @@ function SuggestedBody({
     );
   }
 
+  const searching = query.trim().length > 0;
+
   return (
     <View style={{ gap: tokens.space[3] }}>
+      {/* How-to hint + Premium reinforcement. Adjusting a suggestion
+         forks it into the user's own task, which consumes the free-tier
+         slots — surfacing that here is the (soft) Premium funnel. */}
+      <View style={styles.suggestedHint}>
+        <Ionicons
+          name="color-wand-outline"
+          size={14}
+          color={tokens.text.mid}
+          style={{ marginTop: 1 }}
+        />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.suggestedHintText}>
+            {t('tasksHub.suggested.hint')}
+          </Text>
+          {!limit.unlimited && (
+            <Text style={styles.suggestedPremiumText}>
+              {t('tasksHub.suggested.premiumHint', {
+                count: limit.count,
+                limit: limit.limit,
+              })}
+            </Text>
+          )}
+        </View>
+      </View>
+
       {subsWithTemplates.map((subId) => {
         const subMeta = meta.sub(subId);
         const dimMeta = meta.dim(subMeta.dimensionId);
         const templates = templatesBySub.get(subId) ?? [];
-        const isCollapsed = !!collapsedSubs[subId];
+        // Search force-expands: collapsed groups would hide the matches
+        // the user just typed for.
+        const isCollapsed = searching ? false : !!collapsedSubs[subId];
         return (
           <View
             key={subId}
@@ -1184,16 +1242,15 @@ function SuggestedBody({
 
             {!isCollapsed && (
               <View style={styles.groupBody}>
-                {templates.map((tmpl, i) => (
+                {templates.map((tmpl) => (
                   <TemplateRow
                     key={tmpl.id}
                     template={tmpl}
-                    divider={i > 0}
                     dimColor={dimMeta.color}
-                    dimId={subMeta.dimensionId}
                     isAdopted={adoptedTemplateIds.has(tmpl.id)}
                     isAdopting={adoptingId === tmpl.id}
                     onAdopt={() => onAdopt(tmpl.id)}
+                    onPress={() => onCustomize(tmpl)}
                     t={t}
                   />
                 ))}
@@ -1208,26 +1265,34 @@ function SuggestedBody({
 
 interface TemplateRowProps {
   template: TaskTemplateWithSubs;
-  divider: boolean;
   dimColor: string;
-  dimId: DimensionId;
   isAdopted: boolean;
   isAdopting: boolean;
   onAdopt: () => void;
+  /** Tap on the card body — open the prefilled form (adjust-then-add). */
+  onPress: () => void;
   t: (key: string, opts?: Record<string, string | number | undefined>) => string;
 }
 
+/**
+ * Suggestion card in the Home TaskCard's visual vocabulary (icon tile,
+ * accent left bar, SubStack + colored pips + reward), so a template
+ * reads as "a task you don't have yet" instead of a distinct species.
+ * The whole body is pressable → prefilled form; "Adotar" on the right
+ * mirrors the Home card's check-button slot.
+ */
 function TemplateRow({
   template,
-  divider,
   dimColor,
-  dimId,
   isAdopted,
   isAdopting,
   onAdopt,
+  onPress,
   t,
 }: TemplateRowProps) {
   const reward = rewardForTaskSubs(template.subs);
+  const primarySub = SUB_META[template.primary_sub_id];
+  const primaryDim = primarySub ? DIMENSION_META[primarySub.dimensionId] : null;
   const pips: string[] = [];
   for (const s of template.subs) {
     const sm = SUB_META[s.sub_id];
@@ -1235,20 +1300,50 @@ function TemplateRow({
     for (let i = 0; i < s.stars; i++) pips.push(color);
   }
   return (
-    <View style={[styles.templateRow, divider && styles.taskRowDivider]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.templateCard,
+        { borderLeftColor: dimColor },
+        pressed && { opacity: 0.85 },
+      ]}
+      accessibilityRole="button"
+      accessibilityHint={t('tasksHub.suggested.hint')}
+    >
+      <LinearGradient
+        colors={tokens.gradient.taskCard}
+        locations={tokens.gradient.taskCardLocations}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      <View
+        style={[
+          styles.templateIconTile,
+          { backgroundColor: primaryDim?.bg ?? tokens.bg.surface2 },
+        ]}
+      >
+        <Ionicons
+          name={(primarySub?.iconName ?? 'sparkles') as never}
+          size={18}
+          color={primaryDim?.color ?? tokens.brand.violet2}
+        />
+      </View>
+
       <View style={styles.templateBody}>
-        <View style={styles.taskTitleRow}>
-          <Text style={styles.taskTitle} numberOfLines={2}>
-            {template.title}
-          </Text>
-          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
-        </View>
-        {template.description && (
-          <Text style={styles.templateDesc} numberOfLines={2}>
-            {template.description}
-          </Text>
-        )}
+        <Text style={styles.taskTitle} numberOfLines={2}>
+          {template.title}
+        </Text>
         <View style={styles.taskMetaRow}>
+          {template.subs.length > 0 && (
+            <SubStack
+              subIds={template.subs.map((s) => s.sub_id)}
+              max={3}
+              size={18}
+            />
+          )}
           {pips.length > 0 && (
             <View style={styles.pipsRow}>
               {pips.map((color, i) => (
@@ -1259,16 +1354,17 @@ function TemplateRow({
               ))}
             </View>
           )}
-          <Text style={styles.taskRecurrence} numberOfLines={1}>
-            {describeRecurrence(template.recurrence, template.target_count)}
-          </Text>
+          <Text style={styles.rewardValue}>+{reward.total.xp}</Text>
           <View style={styles.coinChip}>
             <Ionicons name="ellipse" size={8} color={tokens.semantic.coin} />
             <Text style={styles.coinChipText}>+{reward.total.coins}</Text>
           </View>
-          <DimensionChip id={dimId} size="sm" pressable={false} />
+          <Text style={styles.taskRecurrence} numberOfLines={1}>
+            {describeRecurrence(template.recurrence, template.target_count)}
+          </Text>
         </View>
       </View>
+
       <Pressable
         onPress={isAdopted || isAdopting ? undefined : onAdopt}
         disabled={isAdopted || isAdopting}
@@ -1298,7 +1394,7 @@ function TemplateRow({
           </>
         )}
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
@@ -1525,8 +1621,10 @@ const styles = StyleSheet.create({
     color: tokens.text.dim,
   },
   groupBody: {
-    paddingHorizontal: tokens.space[4],
-    paddingBottom: tokens.space[2],
+    paddingHorizontal: tokens.space[3],
+    paddingTop: tokens.space[3],
+    paddingBottom: tokens.space[3],
+    gap: tokens.space[2],
     borderTopWidth: 1,
     borderTopColor: tokens.border.divider,
   },
@@ -1623,20 +1721,50 @@ const styles = StyleSheet.create({
     color: tokens.semantic.coin,
     letterSpacing: 0.2,
   },
-  templateRow: {
+  // Suggestion card — mirrors the Home TaskCard container (gradient bg,
+  // dim accent bar, icon tile) so templates read as tasks-to-be.
+  templateCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: tokens.space[3],
-    paddingVertical: tokens.space[3],
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingLeft: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: tokens.border.base,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderLeftWidth: 3,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  templateIconTile: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   templateBody: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 5,
   },
-  templateDesc: {
+  suggestedHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingHorizontal: tokens.space[1],
+  },
+  suggestedHintText: {
     ...tokens.type.caption,
     color: tokens.text.mid,
+  },
+  suggestedPremiumText: {
+    fontFamily: 'Manrope_700Bold',
+    fontSize: 11,
+    color: tokens.semantic.coinLight,
+    letterSpacing: 0.2,
   },
   adoptBtn: {
     flexDirection: 'row',
