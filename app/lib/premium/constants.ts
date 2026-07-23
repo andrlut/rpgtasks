@@ -1,11 +1,11 @@
 /**
  * Perceva Premium — client-side constants for the P1 conversion layer.
  *
- * P1 has NO payment gateway (RevenueCat lands in P2) and NO free-limit
- * enforcement (the `profile.subscription_tier` column is cosmetic — see
- * migration 20260701000001_profile_subscription_tier). This file holds the
- * feature flags, hardcoded plan pricing metadata and the instrument-gate
- * membership that the paywall UI reads.
+ * P1 has NO payment gateway (RevenueCat lands in P2), but since P1.1 the
+ * free-tier limits and the instrument gate ARE enforced server-side (BEFORE
+ * INSERT triggers — see migration 20260707000001_premium_free_limits_p1_1 and
+ * limits.ts). This file holds the feature flags, hardcoded plan pricing
+ * metadata and the instrument-gate membership that the paywall UI reads.
  */
 
 /**
