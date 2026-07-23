@@ -6,7 +6,9 @@ subs: [build, learn]
 topic: atomic-habits-book
 source_url: https://jamesclear.com/atomic-habits
 source_label: Atomic Habits — James Clear (Avery, 2018)
-status: pronto
+status: publicado
+published_migration: 20260722000008_learning_material_summary_atomic_habits.sql
+released_at: 2026-07-24 09:00 BRT (agendado)
 ---
 
 # Hábitos Atômicos — confrontado com a ciência real
