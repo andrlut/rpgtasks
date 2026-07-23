@@ -5,7 +5,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image as RNImage,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
@@ -201,33 +200,16 @@ export function MaterialMediaScreen({ detail: m }: Props) {
           onScroll={onContentScroll}
           scrollEventThrottle={50}
         >
-          {/* Book-style hero — the portrait cover floating over itself,
-              blurred. Falls back to the generated cover when no art. */}
+          {/* Full-bleed landscape hero — matches the non-media detail
+              screen. MaterialCover crops the art into the 220-tall banner
+              (or renders the generated cover when there's no art). */}
           <View style={styles.heroWrap}>
-            {heroUrl ? (
-              <View style={styles.bookHero}>
-                <RNImage
-                  source={{ uri: heroUrl }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                  blurRadius={22}
-                />
-                <View style={styles.bookHeroDim} />
-                <Image
-                  source={{ uri: heroUrl }}
-                  style={styles.bookCover}
-                  contentFit="cover"
-                  accessibilityLabel={title}
-                />
-              </View>
-            ) : (
-              <MaterialCover
-                dimensionId={m.dimension_id}
-                subId={m.subs[0] ?? null}
-                imageUrl={null}
-                variant="hero"
-              />
-            )}
+            <MaterialCover
+              dimensionId={m.dimension_id}
+              subId={m.subs[0] ?? null}
+              imageUrl={heroUrl}
+              variant="hero"
+            />
             <Pressable
               onPress={() => router.back()}
               style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
@@ -576,25 +558,6 @@ const styles = StyleSheet.create({
   // Hero
   heroWrap: {
     position: 'relative',
-  },
-  bookHero: {
-    width: '100%',
-    height: 264,
-    overflow: 'hidden',
-    backgroundColor: '#1A1F44',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bookHeroDim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 14, 38, 0.45)',
-  },
-  bookCover: {
-    width: 136,
-    height: 204,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
   },
   backBtn: {
     position: 'absolute',
